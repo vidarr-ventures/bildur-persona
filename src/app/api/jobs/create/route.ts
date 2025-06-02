@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createJob, initializeDatabase } from '@/lib/db';
-import { JobQueue } from '@/lib/queue';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,24 +24,6 @@ export async function POST(request: NextRequest) {
     
     console.log('Job created:', jobId);
 
-    // Queue a test worker
-    const queue = new JobQueue();
-    await queue.addJob(jobId, 'test-worker', { 
-      primaryProductUrl,
-      amazonProductUrl,
-      targetKeywords 
-    });
-
-    // Get the current URL for the worker call
-    const baseUrl = request.nextUrl.origin;
-    
-    // Trigger the worker
-    await fetch(`${baseUrl}/api/workers/test-worker`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jobId, payload: { primaryProductUrl, amazonProductUrl, targetKeywords } })
-    });
-
     // Return job ID for tracking
     return NextResponse.json({
       success: true,
@@ -54,7 +35,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Job creation error:', error);
     return NextResponse.json(
-      { error: 'Failed to create job' },
+      { error: 'Failed to create job', details: error.message },
       { status: 500 }
     );
   }
