@@ -75,6 +75,9 @@ export async function POST(request: NextRequest) {
     
     await queue.markTaskCompleted(jobId, 'amazon-competitors');
     
+    // Mark job as completed for now (until we build reviews collector)
+    await updateJobStatus(jobId, 'completed', 100, undefined, undefined);
+    
     console.log(`Amazon competitor discovery completed for job ${jobId}`);
     
     return NextResponse.json({
@@ -105,7 +108,8 @@ export async function POST(request: NextRequest) {
 async function extractProductInfo(amazonUrl: string) {
   try {
     // Extract ASIN from URL
-    const asinMatch = amazonUrl.match(/\/dp\/([A-Z0-9]{10})/);
+    const asinPattern = /\/dp\/([A-Z0-9]{10})/;
+    const asinMatch = amazonUrl.match(asinPattern);
     const asin = asinMatch ? asinMatch[1] : null;
     
     if (!asin) {
@@ -182,7 +186,8 @@ async function searchAmazonProducts(keyword: string): Promise<CompetitorProduct[
       const imageUrl = imageElement.attr('src') || '';
       
       // Extract ASIN from URL
-      const asinMatch = productUrl.match(/\/dp\/([A-Z0-9]{10})/);
+      const asinPattern = /\/dp\/([A-Z0-9]{10})/;
+      const asinMatch = productUrl.match(asinPattern);
       const asin = asinMatch ? asinMatch[1] : '';
       
       if (title && asin) {
@@ -209,4 +214,36 @@ async function searchAmazonProducts(keyword: string): Promise<CompetitorProduct[
 
 function filterAndDeduplicateCompetitors(competitors: CompetitorProduct[], userProductUrl: string): CompetitorProduct[] {
   // Extract user's ASIN to filter out
-  const userAsinMatch = userProductUrl.match(/\/d
+  const asinPattern = /\/dp\/([A-Z0-9]{10})/;
+  const userAsinMatch = userProductUrl.match(asinPattern);
+  const userAsin = userAsinMatch ? userAsinMatch[1] : '';
+  
+  // Remove duplicates by ASIN and filter out user's product
+  const seen = new Set<string>();
+  const filtered = competitors.filter(product => {
+    if (seen.has(product.asin) || product.asin === userAsin) {
+      return false;
+    }
+    seen.add(product.asin);
+    return true;
+  });
+  
+  return filtered;
+}
+
+async function storeCompetitors(jobId: string, competitors: CompetitorProduct[]) {
+  // For now, we'll just log the competitors
+  // In a full implementation, you would store these in the database
+  console.log(`Storing ${competitors.length} competitors for job ${jobId}`);
+  
+  competitors.forEach((competitor, index) => {
+    console.log(`Competitor ${index + 1}:`, {
+      asin: competitor.asin,
+      title: competitor.title.substring(0, 50) + '...',
+      price: competitor.price,
+      rating: competitor.rating
+    });
+  });
+  
+  // TODO: Add database storage for competitors
+  // await sql`INSERT INTO competitors (job_id, asin, title, price, rating, review_count, image_url, product_url) VALUES ...`
