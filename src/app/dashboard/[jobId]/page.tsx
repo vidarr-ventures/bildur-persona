@@ -1,14 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 
-export default function Dashboard({ params }: { params: { jobId: string } }) {
-  const { jobId } = params;
+export default function Dashboard() {
+  const params = useParams();
+  const jobId = params.jobId as string;
   const [jobStatus, setJobStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!jobId) return;
+
     const fetchJobStatus = async () => {
       try {
         const response = await fetch(`/api/jobs/status/${jobId}`);
