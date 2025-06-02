@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+kimport { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/db';
 import { JobQueue } from '@/lib/queue';
 
@@ -13,9 +13,12 @@ interface CompetitorProduct {
 }
 
 export async function POST(request: NextRequest) {
+  let jobId: string = '';
+  
   try {
     const body = await request.json();
-    const { jobId, payload } = body;
+    jobId = body.jobId;
+    const { payload } = body;
     const { amazonProductUrl, targetKeywords } = payload;
     
     console.log(`Starting Amazon competitor discovery for job ${jobId}`);
@@ -82,7 +85,7 @@ export async function POST(request: NextRequest) {
     
     // Update job status to failed
     await updateJobStatus(
-      body.jobId, 
+      jobId, 
       'failed', 
       0, 
       undefined, 
