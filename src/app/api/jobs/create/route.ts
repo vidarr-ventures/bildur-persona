@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createJob, initializeDatabase } from '@/lib/db';
+import { JobQueue } from '@/lib/queue';
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,6 +51,25 @@ export async function POST(request: NextRequest) {
     try {
       jobId = await createJob(body);
       console.log('Job created successfully:', jobId);
+      
+      // Queue Amazon competitor discovery
+      const queue = new JobQueue();
+      await queue.addJob(jobId, 'amazon-competitors', { 
+        amazonProductUrl,
+        targetKeywords 
+      });
+      
+      // Trigger the worker
+      const baseUrl = request.nextUrl.origin;
+      await fetch(`${baseUrl}/api/workers/amazon-competitors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          jobId, 
+          payload: { amazonProductUrl, targetKeywords } 
+        })
+      });
+      
     } catch (createError: any) {
       console.error('Job creation failed:', createError);
       return NextResponse.json(
