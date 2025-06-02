@@ -28,8 +28,9 @@ export default function Home() {
       setResult(data);
       
       if (data.success) {
-        console.log('Job created:', data.jobId);
-      }
+  // Redirect to dashboard
+  window.location.href = `/dashboard/${data.jobId}`;
+}
     } catch (error) {
       console.error('Error:', error);
       setResult({ error: 'Failed to submit form' });
