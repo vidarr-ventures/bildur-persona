@@ -3,26 +3,60 @@ import { createJob, initializeDatabase } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    // Initialize database tables if they don't exist
-    await initializeDatabase();
+    console.log('Starting job creation...');
 
     // Parse request body
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+      console.log('Request body parsed successfully:', body);
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
     
     // Validate required fields
     const { primaryProductUrl, amazonProductUrl, targetKeywords } = body;
     
     if (!primaryProductUrl || !amazonProductUrl || !targetKeywords) {
+      console.log('Missing required fields:', { primaryProductUrl, amazonProductUrl, targetKeywords });
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
+    console.log('Validation passed, initializing database...');
+
+    // Initialize database tables if they don't exist
+    try {
+      await initializeDatabase();
+      console.log('Database initialized successfully');
+    } catch (dbError) {
+      console.error('Database initialization failed:', dbError);
+      return NextResponse.json(
+        { error: 'Database initialization failed', details: dbError.message },
+        { status: 500 }
+      );
+    }
+
+    console.log('Creating job in database...');
+
     // Create job in database
-    const jobId = await createJob(body);
-    
-    console.log('Job created:', jobId);
+    let jobId;
+    try {
+      jobId = await createJob(body);
+      console.log('Job created successfully:', jobId);
+    } catch (createError) {
+      console.error('Job creation failed:', createError);
+      return NextResponse.json(
+        { error: 'Failed to create job in database', details: createError.message },
+        { status: 500 }
+      );
+    }
 
     // Return job ID for tracking
     return NextResponse.json({
@@ -33,7 +67,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Job creation error:', error);
+    console.error('Unexpected error in job creation:', error);
     return NextResponse.json(
       { error: 'Failed to create job', details: error.message },
       { status: 500 }
