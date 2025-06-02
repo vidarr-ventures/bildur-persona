@@ -24,7 +24,7 @@ export async function getJobStatus(jobId: string): Promise<Job | null> {
   const result = await sql`
     SELECT * FROM jobs WHERE id = ${jobId}
   `;
-  return result.rows[0] || null;
+  return (result.rows[0] as Job) || null;
 }
 
 export async function updateJobStatus(
@@ -45,7 +45,6 @@ export async function updateJobStatus(
   `;
 }
 
-// Initialize database tables
 export async function initializeDatabase() {
   try {
     await sql`

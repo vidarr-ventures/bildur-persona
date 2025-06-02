@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 
 export default function Dashboard() {
   const params = useParams();
@@ -23,7 +24,7 @@ export default function Dashboard() {
         } else {
           setError(data.error || 'Failed to fetch job status');
         }
-      } catch (err) {
+      } catch {
         setError('Network error');
       } finally {
         setLoading(false);
@@ -117,12 +118,12 @@ export default function Dashboard() {
         </div>
         
         <div className="mt-6 text-center">
-          <a 
+          <Link 
             href="/"
             className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
           >
             Create New Job
-          </a>
+          </Link>
         </div>
       </div>
     </div>

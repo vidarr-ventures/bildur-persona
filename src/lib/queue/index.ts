@@ -18,9 +18,9 @@ export class JobQueue {
   }
 
   async getJob(taskType: string) {
-    const item = await kv.brpop(`queue:${taskType}`, 1);
-    if (item && item.length > 1) {
-      return JSON.parse(item[1]);
+    const item = await kv.rpop(`queue:${taskType}`);
+    if (item) {
+      return JSON.parse(item);
     }
     return null;
   }

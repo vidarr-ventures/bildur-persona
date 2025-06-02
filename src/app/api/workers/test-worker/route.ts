@@ -5,7 +5,7 @@ import { JobQueue } from '@/lib/queue';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { jobId, payload } = body;
+    const { jobId } = body;
     
     console.log(`Processing test worker for job ${jobId}`);
     
