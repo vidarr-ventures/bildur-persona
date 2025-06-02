@@ -35,10 +35,10 @@ export async function POST(request: NextRequest) {
     try {
       await initializeDatabase();
       console.log('Database initialized successfully');
-    } catch (dbError) {
+    } catch (dbError: any) {
       console.error('Database initialization failed:', dbError);
       return NextResponse.json(
-        { error: 'Database initialization failed', details: dbError.message },
+        { error: 'Database initialization failed', details: dbError?.message || 'Unknown error' },
         { status: 500 }
       );
     }
@@ -50,10 +50,10 @@ export async function POST(request: NextRequest) {
     try {
       jobId = await createJob(body);
       console.log('Job created successfully:', jobId);
-    } catch (createError) {
+    } catch (createError: any) {
       console.error('Job creation failed:', createError);
       return NextResponse.json(
-        { error: 'Failed to create job in database', details: createError.message },
+        { error: 'Failed to create job in database', details: createError?.message || 'Unknown error' },
         { status: 500 }
       );
     }
@@ -66,10 +66,10 @@ export async function POST(request: NextRequest) {
       message: 'Job created successfully'
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Unexpected error in job creation:', error);
     return NextResponse.json(
-      { error: 'Failed to create job', details: error.message },
+      { error: 'Failed to create job', details: error?.message || 'Unknown error' },
       { status: 500 }
     );
   }
