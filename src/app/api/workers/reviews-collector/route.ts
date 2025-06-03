@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         allReviews.push(...reviews);
         
         completedSources++;
-        const progress = 15 + Math.floor((completedSources / collectionTargets.length) * 50);
+        const progress = 15 + Math.floor((completedSources / collectionTargets.length) * 60);
         await updateJobStatus(jobId, 'processing', progress, undefined, undefined);
         
         // Add delay between requests to be respectful
@@ -95,27 +95,41 @@ export async function POST(request: NextRequest) {
     console.log(`Collected ${allReviews.length} total reviews`);
     
     // Update progress
-    await updateJobStatus(jobId, 'processing', 70, undefined, undefined);
+    await updateJobStatus(jobId, 'processing', 80, undefined, undefined);
     
-    // Process and analyze reviews
-    const processedReviews = await processReviews(allReviews);
+    // Store raw reviews in database (no analysis here)
+    await storeReviews(jobId, allReviews);
     
-    // Store reviews in database
-    await storeReviews(jobId, processedReviews);
+    // Create basic collection summary (counts only, no sentiment analysis)
+    const collectionSummary = {
+      totalReviews: allReviews.length,
+      reviewsBySource: allReviews.reduce((acc, review) => {
+        acc[review.source] = (acc[review.source] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+      reviewsByProduct: allReviews.reduce((acc, review) => {
+        acc[review.productTitle] = (acc[review.productTitle] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+      dateRange: {
+        earliest: allReviews.reduce((earliest, review) => 
+          review.reviewDate < earliest ? review.reviewDate : earliest, 
+          allReviews[0]?.reviewDate || ''
+        ),
+        latest: allReviews.reduce((latest, review) => 
+          review.reviewDate > latest ? review.reviewDate : latest, 
+          allReviews[0]?.reviewDate || ''
+        )
+      }
+    };
     
-    // Update progress
-    await updateJobStatus(jobId, 'processing', 85, undefined, undefined);
+    console.log('Collection summary:', collectionSummary);
     
-    // Generate summary insights
-    const reviewInsights = generateReviewInsights(processedReviews);
-    
-    console.log('Review insights:', reviewInsights);
-    
-    // Queue the next worker (persona generator)
+    // Queue the persona generator with raw data
     const queue = new JobQueue();
     await queue.addJob(jobId, 'persona-generator', {
-      reviews: processedReviews,
-      reviewInsights,
+      rawReviews: allReviews,
+      collectionSummary,
       competitors,
       userProduct,
       targetKeywords
@@ -126,13 +140,13 @@ export async function POST(request: NextRequest) {
     // Mark as completed for now (until we build persona generator)
     await updateJobStatus(jobId, 'completed', 100, undefined, undefined);
     
-    console.log(`Review collection completed for job ${jobId}. Found ${allReviews.length} reviews.`);
+    console.log(`Review collection completed for job ${jobId}. Collected ${allReviews.length} raw reviews for analysis.`);
     
     return NextResponse.json({
       success: true,
       message: 'Review collection completed',
       reviewsCollected: allReviews.length,
-      insights: reviewInsights
+      collectionSummary
     });
 
   } catch (error) {
@@ -158,7 +172,7 @@ async function collectReviewsFromSource(target: CollectionTarget): Promise<Revie
   
   try {
     if (target.source === 'user_amazon' || target.source === 'competitor_amazon') {
-      // Simulate Amazon review collection
+      // Simulate Amazon review collection - just raw text, no analysis
       const reviewCount = Math.floor(Math.random() * 50) + 10; // 10-60 reviews
       
       for (let i = 0; i < reviewCount; i++) {
@@ -168,7 +182,7 @@ async function collectReviewsFromSource(target: CollectionTarget): Promise<Revie
           source: target.source,
           sourceUrl: target.url,
           productTitle: target.productTitle,
-          reviewText: generateSampleReviewText(rating, target.productTitle),
+          reviewText: generateRawReviewText(target.productTitle),
           rating,
           reviewDate: generateRandomDate(),
           reviewerName: generateRandomReviewerName(),
@@ -179,7 +193,7 @@ async function collectReviewsFromSource(target: CollectionTarget): Promise<Revie
       }
       
     } else if (target.source === 'user_website') {
-      // Simulate website review collection (usually fewer reviews)
+      // Simulate website review collection
       const reviewCount = Math.floor(Math.random() * 15) + 3; // 3-18 reviews
       
       for (let i = 0; i < reviewCount; i++) {
@@ -189,18 +203,18 @@ async function collectReviewsFromSource(target: CollectionTarget): Promise<Revie
           source: target.source,
           sourceUrl: target.url,
           productTitle: target.productTitle,
-          reviewText: generateSampleReviewText(rating, target.productTitle),
+          reviewText: generateRawReviewText(target.productTitle),
           rating,
           reviewDate: generateRandomDate(),
           reviewerName: generateRandomReviewerName(),
-          verifiedPurchase: true, // Website reviews are usually verified
+          verifiedPurchase: true,
           helpfulVotes: Math.floor(Math.random() * 10)
         };
         reviews.push(review);
       }
     }
     
-    console.log(`Collected ${reviews.length} reviews from ${target.productTitle}`);
+    console.log(`Collected ${reviews.length} raw reviews from ${target.productTitle}`);
     return reviews;
     
   } catch (error) {
@@ -209,38 +223,22 @@ async function collectReviewsFromSource(target: CollectionTarget): Promise<Revie
   }
 }
 
-function generateSampleReviewText(rating: number, productTitle: string): string {
-  const positiveReviews = [
-    "Great product! Exactly what I was looking for. Fast delivery and excellent quality.",
-    "Love this item! Works perfectly and exceeded my expectations. Highly recommend.",
-    "Fantastic purchase. The quality is outstanding and it arrived quickly.",
-    "Perfect! This product does exactly what it promises. Very satisfied with my purchase.",
-    "Excellent value for money. Great quality and fantastic customer service."
+function generateRawReviewText(productTitle: string): string {
+  // Generate more realistic, mixed review text without pre-categorizing sentiment
+  const reviewTemplates = [
+    "I bought this product last month and have been using it daily. The build quality seems solid and it arrived quickly. Setup was straightforward though the instructions could be clearer. Overall satisfied with the purchase.",
+    "This item works as described. The price point is reasonable for what you get. Delivery was on time and packaging was secure. Would consider buying again.",
+    "Mixed feelings about this product. Some features work really well, others not so much. Customer service was responsive when I had questions. Worth trying if you need this type of item.",
+    "Good value for money. Not the highest quality but gets the job done. Had a minor issue initially but was able to resolve it. Shipping was fast.",
+    "Decent product overall. Fits my needs and does what it's supposed to do. Nothing fancy but reliable. Would recommend for basic use.",
+    "The product arrived damaged but the replacement process was smooth. Once I got a working unit, it's been performing well. Happy with the customer service.",
+    "Works perfectly for my use case. Easy to set up and use. Quality seems good so far though I've only had it a few weeks. Good purchase.",
+    "Had high expectations based on reviews but found some disappointing aspects. Still functional and serves its purpose. Might look at alternatives next time.",
+    "Solid product with good features. A bit pricey but the quality justifies the cost. Installation was easy and it's been working reliably.",
+    "This replaced my old one which broke after years of use. This new one seems more durable and has better features. Time will tell how it holds up."
   ];
   
-  const neutralReviews = [
-    "Good product overall. A few minor issues but generally satisfied.",
-    "Decent quality for the price. Could be better but it works as expected.",
-    "It's okay. Does what it's supposed to do but nothing exceptional.",
-    "Average product. Works fine but I've seen better alternatives.",
-    "Not bad, but not great either. It serves its purpose adequately."
-  ];
-  
-  const negativeReviews = [
-    "Disappointed with this purchase. The quality is not as advertised.",
-    "Had high hopes but this product didn't meet my expectations.",
-    "Poor quality materials. Broke after just a few uses.",
-    "Not worth the money. There are much better alternatives available.",
-    "Terrible experience. Product arrived damaged and customer service was unhelpful."
-  ];
-  
-  if (rating >= 4) {
-    return positiveReviews[Math.floor(Math.random() * positiveReviews.length)];
-  } else if (rating >= 3) {
-    return neutralReviews[Math.floor(Math.random() * neutralReviews.length)];
-  } else {
-    return negativeReviews[Math.floor(Math.random() * negativeReviews.length)];
-  }
+  return reviewTemplates[Math.floor(Math.random() * reviewTemplates.length)];
 }
 
 function generateRandomDate(): string {
@@ -258,21 +256,8 @@ function generateRandomReviewerName(): string {
   return names[Math.floor(Math.random() * names.length)];
 }
 
-async function processReviews(reviews: Review[]): Promise<Review[]> {
-  // In a real implementation, you would:
-  // 1. Clean and normalize review text
-  // 2. Remove spam/fake reviews
-  // 3. Extract key phrases and sentiments
-  // 4. Categorize by themes
-  
-  console.log(`Processing ${reviews.length} reviews...`);
-  
-  // For now, just return the reviews as-is
-  return reviews;
-}
-
 async function storeReviews(jobId: string, reviews: Review[]) {
-  console.log(`Storing ${reviews.length} reviews for job ${jobId}`);
+  console.log(`Storing ${reviews.length} raw reviews for job ${jobId}`);
   
   // Group reviews by source for logging
   const reviewsBySource = reviews.reduce((acc, review) => {
@@ -280,41 +265,8 @@ async function storeReviews(jobId: string, reviews: Review[]) {
     return acc;
   }, {} as Record<string, number>);
   
-  console.log('Reviews by source:', reviewsBySource);
+  console.log('Raw reviews by source:', reviewsBySource);
   
   // TODO: Store in database
   // await sql`INSERT INTO reviews (job_id, source, source_url, product_title, review_text, rating, review_date, reviewer_name, verified_purchase, helpful_votes) VALUES ...`
-}
-
-function generateReviewInsights(reviews: Review[]) {
-  const totalReviews = reviews.length;
-  const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews;
-  
-  const ratingDistribution = {
-    1: reviews.filter(r => r.rating === 1).length,
-    2: reviews.filter(r => r.rating === 2).length,
-    3: reviews.filter(r => r.rating === 3).length,
-    4: reviews.filter(r => r.rating === 4).length,
-    5: reviews.filter(r => r.rating === 5).length,
-  };
-  
-  const sourceBreakdown = reviews.reduce((acc, review) => {
-    acc[review.source] = (acc[review.source] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  const verifiedPurchaseRate = reviews.filter(r => r.verifiedPurchase).length / totalReviews;
-  
-  return {
-    totalReviews,
-    averageRating: Math.round(averageRating * 10) / 10,
-    ratingDistribution,
-    sourceBreakdown,
-    verifiedPurchaseRate: Math.round(verifiedPurchaseRate * 100),
-    sentimentSummary: {
-      positive: reviews.filter(r => r.rating >= 4).length,
-      neutral: reviews.filter(r => r.rating === 3).length,
-      negative: reviews.filter(r => r.rating <= 2).length
-    }
-  };
 }
