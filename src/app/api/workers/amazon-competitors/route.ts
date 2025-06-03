@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     jobId = body.jobId;
     const { payload } = body;
-    const { amazonProductUrl, targetKeywords } = payload;
+    const { amazonProductUrl, targetKeywords, primaryProductUrl } = payload;
     
     console.log(`Starting Amazon competitor discovery for job ${jobId}`);
     
@@ -66,10 +66,33 @@ export async function POST(request: NextRequest) {
     // Update progress
     await updateJobStatus(jobId, 'processing', 75, undefined, undefined);
     
-    // Mark as completed for now
-    await updateJobStatus(jobId, 'completed', 100, undefined, undefined);
-    
+    // Queue the next worker (reviews collector)
     const queue = new JobQueue();
+    await queue.addJob(jobId, 'reviews-collector', {
+      competitors: uniqueCompetitors,
+      userProduct: userProductData,
+      targetKeywords,
+      amazonProductUrl,
+      primaryProductUrl
+    });
+    
+    // Trigger the review collector
+    const baseUrl = request.nextUrl.origin;
+    await fetch(`${baseUrl}/api/workers/reviews-collector`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        jobId, 
+        payload: { 
+          competitors: uniqueCompetitors,
+          userProduct: userProductData,
+          targetKeywords,
+          amazonProductUrl,
+          primaryProductUrl
+        } 
+      })
+    });
+    
     await queue.markTaskCompleted(jobId, 'amazon-competitors');
     
     console.log(`Amazon competitor discovery completed for job ${jobId}`);
