@@ -545,7 +545,7 @@ async function storePersonaReport(jobId: string, personaReport: string) {
 
 function extractExecutiveSummary(personaReport: string): string {
   // Extract the executive summary section from the full report
-  const summaryMatch = personaReport.match(/## Executive Summary\s*(.*?)(?=##|$)/s);
+  const summaryMatch = personaReport.match(/## Executive Summary[\s\S]*?(.*?)(?=##|$)/);
   
   if (summaryMatch) {
     return summaryMatch[1].trim();
