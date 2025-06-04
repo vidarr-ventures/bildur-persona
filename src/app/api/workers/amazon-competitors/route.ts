@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/db';
 import { JobQueue } from '@/lib/queue';
-import fetch from 'node-fetch';
+// Remove the import - use built-in fetch
 
 interface CompetitorProduct {
   asin: string;
