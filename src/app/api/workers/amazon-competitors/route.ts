@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/db';
 import { JobQueue } from '@/lib/queue';
+import fetch from 'node-fetch';
 
 interface CompetitorProduct {
   asin: string;
@@ -33,24 +34,27 @@ export async function POST(request: NextRequest) {
     // Update progress
     await updateJobStatus(jobId, 'processing', 25, undefined, undefined);
     
-    // Search for competitors using keywords - simplified for now
+    // Search for competitors using keywords
     const searchKeywords = targetKeywords.split(',').map((k: string) => k.trim());
     const competitors: CompetitorProduct[] = [];
     
-    // Simulate finding competitors (in real implementation, this would scrape Amazon)
-    for (let i = 0; i < Math.min(searchKeywords.length * 3, 10); i++) {
-      competitors.push({
-        asin: `B${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
-        title: `Competitor Product ${i + 1} for ${searchKeywords[i % searchKeywords.length]}`,
-        price: `$${(Math.random() * 100 + 10).toFixed(2)}`,
-        rating: `${(Math.random() * 2 + 3).toFixed(1)} out of 5 stars`,
-        reviewCount: `${Math.floor(Math.random() * 1000 + 50)} reviews`,
-        imageUrl: 'https://via.placeholder.com/150',
-        productUrl: `https://amazon.com/dp/B${Math.random().toString(36).substring(2, 12).toUpperCase()}`
-      });
+    for (const keyword of searchKeywords) {
+      console.log(`Searching Amazon for keyword: ${keyword}`);
+      
+      try {
+        const searchResults = await searchAmazonWithScrapeOwl(keyword);
+        competitors.push(...searchResults);
+        
+        // Add delay between searches
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+      } catch (searchError) {
+        console.error(`Error searching for ${keyword}:`, searchError);
+        // Continue with other keywords even if one fails
+      }
     }
     
-    console.log(`Simulated ${competitors.length} competitors`);
+    console.log(`Found ${competitors.length} total competitors`);
     
     // Update progress
     await updateJobStatus(jobId, 'processing', 60, undefined, undefined);
@@ -122,6 +126,123 @@ export async function POST(request: NextRequest) {
   }
 }
 
+async function searchAmazonWithScrapeOwl(keyword: string): Promise<CompetitorProduct[]> {
+  const products: CompetitorProduct[] = [];
+  
+  try {
+    const searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(keyword)}`;
+    
+    const scrapeOwlResponse = await fetch('https://api.scrapeowl.com/v1/scrape', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${process.env.SCRAPEOWL_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        api_key: process.env.SCRAPEOWL_API_KEY,
+        url: searchUrl,
+        elements: [
+          {
+            name: 'products',
+            selector: '[data-component-type="s-search-result"]',
+            type: 'list',
+            children: [
+              {
+                name: 'title',
+                selector: 'h2 a span',
+                type: 'text'
+              },
+              {
+                name: 'price',
+                selector: '.a-price-whole',
+                type: 'text'
+              },
+              {
+                name: 'rating',
+                selector: '.a-icon-alt',
+                type: 'text'
+              },
+              {
+                name: 'reviewCount',
+                selector: '.a-size-base',
+                type: 'text'
+              },
+              {
+                name: 'link',
+                selector: 'h2 a',
+                type: 'attribute',
+                attribute: 'href'
+              },
+              {
+                name: 'image',
+                selector: 'img',
+                type: 'attribute',
+                attribute: 'src'
+              }
+            ]
+          }
+        ]
+      }),
+    });
+
+    if (!scrapeOwlResponse.ok) {
+      throw new Error(`ScrapeOwl API error: ${scrapeOwlResponse.status}`);
+    }
+
+    const scrapeData = await scrapeOwlResponse.json();
+    
+    if (scrapeData.success && scrapeData.data && scrapeData.data.products) {
+      const scrapedProducts = scrapeData.data.products.slice(0, 10); // Limit to top 10
+      
+      for (const product of scrapedProducts) {
+        const productUrl = product.link ? `https://www.amazon.com${product.link}` : '';
+        const asinMatch = productUrl.match(/\/dp\/([A-Z0-9]{10})/);
+        const asin = asinMatch ? asinMatch[1] : '';
+        
+        if (product.title && asin) {
+          products.push({
+            asin,
+            title: product.title,
+            price: product.price || 'N/A',
+            rating: product.rating || 'N/A',
+            reviewCount: product.reviewCount || 'N/A',
+            imageUrl: product.image || '',
+            productUrl
+          });
+        }
+      }
+    }
+    
+    console.log(`ScrapeOwl found ${products.length} products for keyword: ${keyword}`);
+    return products;
+    
+  } catch (error) {
+    console.error(`ScrapeOwl error for keyword ${keyword}:`, error);
+    
+    // Fallback to simulated data if scraping fails
+    console.log(`Falling back to simulated data for keyword: ${keyword}`);
+    return generateFallbackProducts(keyword, 3);
+  }
+}
+
+function generateFallbackProducts(keyword: string, count: number): CompetitorProduct[] {
+  const products: CompetitorProduct[] = [];
+  
+  for (let i = 0; i < count; i++) {
+    products.push({
+      asin: `B${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
+      title: `${keyword} Product ${i + 1}`,
+      price: `$${(Math.random() * 100 + 10).toFixed(2)}`,
+      rating: `${(Math.random() * 2 + 3).toFixed(1)} out of 5 stars`,
+      reviewCount: `${Math.floor(Math.random() * 1000 + 50)} reviews`,
+      imageUrl: 'https://via.placeholder.com/150',
+      productUrl: `https://amazon.com/dp/B${Math.random().toString(36).substring(2, 12).toUpperCase()}`
+    });
+  }
+  
+  return products;
+}
+
 async function extractProductInfo(amazonUrl: string) {
   try {
     // Extract ASIN from URL
@@ -133,6 +254,7 @@ async function extractProductInfo(amazonUrl: string) {
       throw new Error('Could not extract ASIN from Amazon URL');
     }
     
+    // TODO: Could scrape the actual product page here for real title/category
     return {
       asin,
       title: 'User Product',

@@ -1,4 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import OpenAI from 'openai';
+
+function getOpenAIClient() {
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/db';
 import { JobQueue } from '@/lib/queue';
 import OpenAI from 'openai';
@@ -513,7 +519,8 @@ Please analyze this data and generate a comprehensive customer persona report fo
 `;
 
   try {
-    const completion = await openai.chat.completions.create({
+    const openai = getOpenAIClient();
+const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         { role: "system", content: systemPrompt },
