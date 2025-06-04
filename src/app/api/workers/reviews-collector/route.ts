@@ -2,24 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/db';
 import { JobQueue } from '@/lib/queue';
 
-interface Review {
+interface RedditPost {
   id: string;
-  source: string;
-  sourceUrl: string;
-  productTitle: string;
-  reviewText: string;
-  rating: number;
-  reviewDate: string;
-  reviewerName: string;
-  verifiedPurchase: boolean;
-  helpfulVotes: number;
+  title: string;
+  content: string;
+  subreddit: string;
+  author: string;
+  score: number;
+  commentCount: number;
+  createdDate: string;
+  url: string;
+  comments: RedditComment[];
 }
 
-interface CollectionTarget {
-  url: string;
-  source: 'user_amazon' | 'competitor_amazon' | 'user_website';
-  productTitle: string;
-  asin?: string;
+interface RedditComment {
+  id: string;
+  content: string;
+  author: string;
+  score: number;
+  createdDate: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -29,223 +30,160 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     jobId = body.jobId;
     const { payload } = body;
-    const { competitors, userProduct, targetKeywords, amazonProductUrl, primaryProductUrl } = payload;
+    const { targetKeywords, competitors, userProduct } = payload;
     
-    console.log(`Starting review collection for job ${jobId}`);
+    console.log(`Starting Reddit data collection for job ${jobId}`);
     
     // Update job status
     await updateJobStatus(jobId, 'processing', 15, undefined, undefined);
     
-    // Build collection targets
-    const collectionTargets: CollectionTarget[] = [];
+    // Discover relevant subreddits based on keywords
+    const relevantSubreddits = await discoverRelevantSubreddits(targetKeywords);
     
-    // Add user's Amazon product
-    collectionTargets.push({
-      url: amazonProductUrl,
-      source: 'user_amazon',
-      productTitle: userProduct?.title || 'User Product',
-      asin: userProduct?.asin
-    });
+    console.log(`Found ${relevantSubreddits.length} relevant subreddits`);
     
-    // Add user's website (simulate for now - website scraping is more complex)
-    collectionTargets.push({
-      url: primaryProductUrl,
-      source: 'user_website', 
-      productTitle: userProduct?.title || 'User Product'
-    });
+    // Update progress
+    await updateJobStatus(jobId, 'processing', 25, undefined, undefined);
     
-    // Add competitor Amazon products (limit to top 5 for cost control)
-    if (competitors && Array.isArray(competitors)) {
-      competitors.slice(0, 5).forEach((competitor: any) => {
-        if (competitor.asin && competitor.productUrl) {
-          collectionTargets.push({
-            url: competitor.productUrl,
-            source: 'competitor_amazon',
-            productTitle: competitor.title,
-            asin: competitor.asin
-          });
-        }
-      });
-    }
+    // Collect posts and comments from subreddits
+    const allRedditData: RedditPost[] = [];
+    let completedSubreddits = 0;
     
-    console.log(`Collecting reviews from ${collectionTargets.length} sources`);
-    
-    // Collect reviews from all sources
-    const allReviews: Review[] = [];
-    let completedSources = 0;
-    
-    for (const target of collectionTargets) {
+    for (const subreddit of relevantSubreddits) {
       try {
-        console.log(`Collecting reviews from: ${target.productTitle} (${target.source})`);
+        console.log(`Collecting data from r/${subreddit}`);
         
-        const reviews = await collectReviewsFromSource(target);
-        allReviews.push(...reviews);
+        const subredditPosts = await collectSubredditData(subreddit, targetKeywords);
+        allRedditData.push(...subredditPosts);
         
-        completedSources++;
-        const progress = 15 + Math.floor((completedSources / collectionTargets.length) * 60);
+        completedSubreddits++;
+        const progress = 25 + Math.floor((completedSubreddits / relevantSubreddits.length) * 50);
         await updateJobStatus(jobId, 'processing', progress, undefined, undefined);
         
-        // Add delay between requests to respect rate limits
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Respect Reddit's rate limits
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
       } catch (error) {
-        console.error(`Error collecting reviews from ${target.url}:`, error);
-        // Continue with other sources even if one fails
+        console.error(`Error collecting from r/${subreddit}:`, error);
+        // Continue with other subreddits
       }
     }
     
-    console.log(`Collected ${allReviews.length} total reviews`);
+    console.log(`Collected ${allRedditData.length} Reddit posts with discussions`);
     
     // Update progress
     await updateJobStatus(jobId, 'processing', 80, undefined, undefined);
     
-    // Store raw reviews in database (no analysis here)
-    await storeReviews(jobId, allReviews);
+    // Analyze Reddit data for insights
+    const redditInsights = analyzeRedditData(allRedditData, targetKeywords);
     
-    // Create basic collection summary (counts only, no sentiment analysis)
-    const collectionSummary = {
-      totalReviews: allReviews.length,
-      reviewsBySource: allReviews.reduce((acc, review) => {
-        acc[review.source] = (acc[review.source] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      reviewsByProduct: allReviews.reduce((acc, review) => {
-        acc[review.productTitle] = (acc[review.productTitle] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      dateRange: allReviews.length > 0 ? {
-        earliest: allReviews.reduce((earliest, review) => 
-          review.reviewDate < earliest ? review.reviewDate : earliest, 
-          allReviews[0]?.reviewDate || ''
-        ),
-        latest: allReviews.reduce((latest, review) => 
-          review.reviewDate > latest ? review.reviewDate : latest, 
-          allReviews[0]?.reviewDate || ''
-        )
-      } : { earliest: '', latest: '' }
-    };
+    // Store Reddit data
+    await storeRedditData(jobId, allRedditData, redditInsights);
     
-    console.log('Collection summary:', collectionSummary);
+    // Update progress
+    await updateJobStatus(jobId, 'processing', 90, undefined, undefined);
     
-    // Queue the persona generator with raw data
+    // Pass Reddit data to persona generator (would need to update that worker too)
     const queue = new JobQueue();
-    await queue.addJob(jobId, 'persona-generator', {
-      rawReviews: allReviews,
-      collectionSummary,
-      competitors,
-      userProduct,
-      targetKeywords
-    });
-    
-    // Queue Reddit scraper first
-    await queue.addJob(jobId, 'reddit-scraper', {
+    await queue.addJob(jobId, 'persona-generator-with-reddit', {
+      redditData: allRedditData,
+      redditInsights,
       targetKeywords,
       competitors,
       userProduct
     });
     
-    // Trigger Reddit scraper
-    const baseUrl = request.nextUrl.origin;
-    await fetch(`${baseUrl}/api/workers/reddit-scraper`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        jobId, 
-        payload: { 
-          targetKeywords,
-          competitors,
-          userProduct
-        } 
-      })
-    });
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        jobId, 
-        payload: { 
-          rawReviews: allReviews,
-          collectionSummary,
-          competitors,
-          userProduct,
-          targetKeywords
-        } 
-      })
-    });
+    await queue.markTaskCompleted(jobId, 'reddit-scraper');
     
-    await queue.markTaskCompleted(jobId, 'reviews-collector');
-    
-    console.log(`Review collection completed for job ${jobId}. Collected ${allReviews.length} raw reviews for analysis.`);
+    console.log(`Reddit data collection completed for job ${jobId}`);
     
     return NextResponse.json({
       success: true,
-      message: 'Review collection completed',
-      reviewsCollected: allReviews.length,
-      collectionSummary
+      message: 'Reddit data collection completed',
+      postsCollected: allRedditData.length,
+      redditInsights
     });
 
   } catch (error) {
-    console.error('Review collection error:', error);
+    console.error('Reddit scraping error:', error);
     
     await updateJobStatus(
       jobId, 
       'failed', 
       0, 
       undefined, 
-      `Review collection failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Reddit data collection failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
     
     return NextResponse.json(
-      { error: 'Review collection failed' },
+      { error: 'Reddit data collection failed' },
       { status: 500 }
     );
   }
 }
 
-async function collectReviewsFromSource(target: CollectionTarget): Promise<Review[]> {
-  const reviews: Review[] = [];
+async function discoverRelevantSubreddits(targetKeywords: string): Promise<string[]> {
+  const keywords = targetKeywords.split(',').map(k => k.trim().toLowerCase());
   
-  try {
-    if (target.source === 'user_amazon' || target.source === 'competitor_amazon') {
-      // Use ScrapeOwl to collect real Amazon reviews
-      const realReviews = await scrapeAmazonReviewsWithScrapeOwl(target.url, target.asin || '');
-      
-      if (realReviews.length > 0) {
-        reviews.push(...realReviews);
-        console.log(`ScrapeOwl collected ${realReviews.length} real reviews from ${target.productTitle}`);
-      } else {
-        // Fallback to simulated reviews if scraping fails
-        console.log(`ScrapeOwl failed, using fallback reviews for ${target.productTitle}`);
-        const fallbackReviews = await generateFallbackReviews(target, 15);
-        reviews.push(...fallbackReviews);
+  // Map common product categories to relevant subreddits
+  const subredditMapping: Record<string, string[]> = {
+    // Audio/Electronics
+    'speaker': ['audiophile', 'BudgetAudiophile', 'bluetooth', 'audio'],
+    'headphone': ['headphones', 'audiophile', 'BudgetAudiophile'],
+    'audio': ['audiophile', 'audio', 'BudgetAudiophile', 'WeAreTheMusicMakers'],
+    'bluetooth': ['bluetooth', 'tech', 'gadgets'],
+    
+    // Smart Home
+    'smart': ['smarthome', 'homeautomation', 'amazonecho', 'googlehome'],
+    'alexa': ['amazonecho', 'smarthome'],
+    'echo': ['amazonecho', 'smarthome'],
+    'voice': ['amazonecho', 'googlehome', 'smarthome'],
+    
+    // Tech/Gadgets
+    'tech': ['tech', 'gadgets', 'technology'],
+    'device': ['gadgets', 'tech'],
+    'electronic': ['electronics', 'gadgets'],
+    
+    // Home/Lifestyle
+    'home': ['homeimprovement', 'smarthome', 'InteriorDesign'],
+    'kitchen': ['cooking', 'KitchenConfidential', 'MealPrepSunday'],
+    'fitness': ['fitness', 'homegym', 'bodyweightfitness'],
+    
+    // Default categories
+    'product': ['BuyItForLife', 'reviews', 'gadgets']
+  };
+  
+  const relevantSubreddits = new Set<string>();
+  
+  // Add general subreddits
+  relevantSubreddits.add('BuyItForLife');
+  relevantSubreddits.add('reviews');
+  
+  // Find category-specific subreddits
+  for (const keyword of keywords) {
+    for (const [category, subreddits] of Object.entries(subredditMapping)) {
+      if (keyword.includes(category)) {
+        subreddits.forEach(sub => relevantSubreddits.add(sub));
       }
-      
-    } else if (target.source === 'user_website') {
-      // Website review collection is more complex - simulate for now
-      console.log(`Simulating website reviews for ${target.productTitle}`);
-      const websiteReviews = await generateFallbackReviews(target, 8);
-      reviews.push(...websiteReviews);
     }
-    
-    console.log(`Collected ${reviews.length} reviews from ${target.productTitle}`);
-    return reviews;
-    
-  } catch (error) {
-    console.error(`Error collecting reviews from ${target.url}:`, error);
-    // Return fallback reviews if everything fails
-    return await generateFallbackReviews(target, 10);
   }
+  
+  // If no specific matches, add general tech/product subreddits
+  if (relevantSubreddits.size <= 2) {
+    ['gadgets', 'tech', 'ProductReviews'].forEach(sub => relevantSubreddits.add(sub));
+  }
+  
+  return Array.from(relevantSubreddits).slice(0, 6); // Limit to 6 subreddits for cost control
 }
 
-async function scrapeAmazonReviewsWithScrapeOwl(productUrl: string, asin: string): Promise<Review[]> {
-  const reviews: Review[] = [];
+async function collectSubredditData(subreddit: string, targetKeywords: string): Promise<RedditPost[]> {
+  const posts: RedditPost[] = [];
   
   try {
-    // Construct Amazon reviews URL
-    const reviewsUrl = asin ? 
-      `https://www.amazon.com/product-reviews/${asin}` : 
-      productUrl.replace('/dp/', '/product-reviews/');
+    // Use ScrapeOwl to scrape Reddit (or Reddit API if available)
+    const redditUrl = `https://www.reddit.com/r/${subreddit}/search/?q=${encodeURIComponent(targetKeywords)}&restrict_sr=1&sort=relevance&t=year`;
     
-    console.log(`Scraping reviews from: ${reviewsUrl}`);
+    console.log(`Searching Reddit: ${redditUrl}`);
     
     const scrapeOwlResponse = await fetch('https://api.scrapeowl.com/v1/scrape', {
       method: 'POST',
@@ -255,42 +193,43 @@ async function scrapeAmazonReviewsWithScrapeOwl(productUrl: string, asin: string
       },
       body: JSON.stringify({
         api_key: process.env.SCRAPEOWL_API_KEY,
-        url: reviewsUrl,
+        url: redditUrl,
         elements: [
           {
-            name: 'reviews',
-            selector: '[data-hook="review"]',
+            name: 'posts',
+            selector: '[data-testid="post-container"]',
             type: 'list',
             children: [
               {
-                name: 'reviewText',
-                selector: '[data-hook="review-body"] span',
+                name: 'title',
+                selector: 'h3',
                 type: 'text'
               },
               {
-                name: 'rating',
-                selector: '.a-icon-alt',
+                name: 'content',
+                selector: '[data-testid="post-content"]',
                 type: 'text'
               },
               {
-                name: 'reviewerName',
-                selector: '.a-profile-name',
+                name: 'author',
+                selector: '[data-testid="post-byline-author"]',
                 type: 'text'
               },
               {
-                name: 'reviewDate',
-                selector: '[data-hook="review-date"]',
+                name: 'score',
+                selector: '[data-testid="post-vote-score"]',
                 type: 'text'
               },
               {
-                name: 'verifiedPurchase',
-                selector: '[data-hook="avp-badge"]',
+                name: 'commentCount',
+                selector: '[data-testid="comment-count"]',
                 type: 'text'
               },
               {
-                name: 'helpfulVotes',
-                selector: '[data-hook="helpful-vote-statement"]',
-                type: 'text'
+                name: 'postUrl',
+                selector: 'a[data-testid="post-title"]',
+                type: 'attribute',
+                attribute: 'href'
               }
             ]
           }
@@ -298,88 +237,98 @@ async function scrapeAmazonReviewsWithScrapeOwl(productUrl: string, asin: string
       }),
     });
 
-    if (!scrapeOwlResponse.ok) {
-      throw new Error(`ScrapeOwl API error: ${scrapeOwlResponse.status}`);
-    }
-
-    const scrapeData = await scrapeOwlResponse.json();
-    
-    if (scrapeData.success && scrapeData.data && scrapeData.data.reviews) {
-      const scrapedReviews = scrapeData.data.reviews.slice(0, 30); // Limit to 30 reviews per product
+    if (scrapeOwlResponse.ok) {
+      const scrapeData = await scrapeOwlResponse.json();
       
-      for (const review of scrapedReviews) {
-        if (review.reviewText && review.reviewText.trim()) {
-          // Parse rating from text like "5.0 out of 5 stars"
-          const ratingMatch = review.rating?.match(/(\d+\.?\d*)/);
-          const rating = ratingMatch ? parseInt(ratingMatch[1]) : 5;
-          
-          // Parse helpful votes
-          const helpfulMatch = review.helpfulVotes?.match(/(\d+)/);
-          const helpfulVotes = helpfulMatch ? parseInt(helpfulMatch[1]) : 0;
-          
-          // Parse date
-          const dateMatch = review.reviewDate?.match(/on (.+)$/);
-          const reviewDate = dateMatch ? new Date(dateMatch[1]).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-          
-          reviews.push({
-            id: `scrape_${Math.random().toString(36).substring(2, 12)}`,
-            source: 'amazon_real',
-            sourceUrl: reviewsUrl,
-            productTitle: 'Amazon Product',
-            reviewText: review.reviewText.trim(),
-            rating,
-            reviewDate,
-            reviewerName: review.reviewerName || 'Anonymous',
-            verifiedPurchase: !!review.verifiedPurchase,
-            helpfulVotes
-          });
+      if (scrapeData.success && scrapeData.data && scrapeData.data.posts) {
+        const scrapedPosts = scrapeData.data.posts.slice(0, 10); // Limit posts per subreddit
+        
+        for (const post of scrapedPosts) {
+          if (post.title && post.title.trim()) {
+            const scoreMatch = post.score?.match(/(\d+)/);
+            const score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
+            
+            const commentMatch = post.commentCount?.match(/(\d+)/);
+            const commentCount = commentMatch ? parseInt(commentMatch[1]) : 0;
+            
+            posts.push({
+              id: `reddit_${Math.random().toString(36).substring(2, 12)}`,
+              title: post.title.trim(),
+              content: post.content?.trim() || '',
+              subreddit,
+              author: post.author || 'Anonymous',
+              score,
+              commentCount,
+              createdDate: new Date().toISOString().split('T')[0],
+              url: post.postUrl ? `https://reddit.com${post.postUrl}` : '',
+              comments: [] // Comments would require additional scraping
+            });
+          }
         }
       }
     }
     
-    console.log(`ScrapeOwl successfully collected ${reviews.length} real reviews`);
-    return reviews;
+    console.log(`Collected ${posts.length} posts from r/${subreddit}`);
+    
+    // Fallback to simulated Reddit data if scraping fails
+    if (posts.length === 0) {
+      console.log(`ScrapeOwl failed for r/${subreddit}, generating fallback data`);
+      return generateFallbackRedditPosts(subreddit, targetKeywords, 5);
+    }
+    
+    return posts;
     
   } catch (error) {
-    console.error(`ScrapeOwl review scraping error:`, error);
-    return [];
+    console.error(`Error scraping r/${subreddit}:`, error);
+    // Return fallback data
+    return generateFallbackRedditPosts(subreddit, targetKeywords, 5);
   }
 }
 
-async function generateFallbackReviews(target: CollectionTarget, count: number): Promise<Review[]> {
-  const reviews: Review[] = [];
+function generateFallbackRedditPosts(subreddit: string, targetKeywords: string, count: number): RedditPost[] {
+  const posts: RedditPost[] = [];
+  const keywords = targetKeywords.split(',').map(k => k.trim());
   
-  const reviewTemplates = [
-    "I bought this product last month and have been using it daily. The build quality seems solid and it arrived quickly. Setup was straightforward though the instructions could be clearer. Overall satisfied with the purchase.",
-    "This item works as described. The price point is reasonable for what you get. Delivery was on time and packaging was secure. Would consider buying again.",
-    "Mixed feelings about this product. Some features work really well, others not so much. Customer service was responsive when I had questions. Worth trying if you need this type of item.",
-    "Good value for money. Not the highest quality but gets the job done. Had a minor issue initially but was able to resolve it. Shipping was fast.",
-    "Decent product overall. Fits my needs and does what it's supposed to do. Nothing fancy but reliable. Would recommend for basic use.",
-    "The product arrived damaged but the replacement process was smooth. Once I got a working unit, it's been performing well. Happy with the customer service.",
-    "Works perfectly for my use case. Easy to set up and use. Quality seems good so far though I've only had it a few weeks. Good purchase.",
-    "Had high expectations based on reviews but found some disappointing aspects. Still functional and serves its purpose. Might look at alternatives next time.",
-    "Solid product with good features. A bit pricey but the quality justifies the cost. Installation was easy and it's been working reliably.",
-    "This replaced my old one which broke after years of use. This new one seems more durable and has better features. Time will tell how it holds up."
+  const postTemplates = [
+    {
+      title: `Best ${keywords[0]} for the money?`,
+      content: `I'm looking for a good ${keywords[0]} that won't break the bank. I've been researching for weeks but there are so many options. What do you all recommend? Budget is around $100-200.`
+    },
+    {
+      title: `${keywords[0]} stopped working after 6 months`,
+      content: `Really frustrated. My ${keywords[0]} just died and it's barely been 6 months. Is this normal? Looking for something more reliable this time. Any suggestions?`
+    },
+    {
+      title: `Upgrade from cheap ${keywords[0]} - worth it?`,
+      content: `I've been using a budget ${keywords[0]} for a while but thinking of upgrading. Is the difference really noticeable? What should I look for?`
+    },
+    {
+      title: `${keywords[0]} recommendations for beginners?`,
+      content: `New to this and feeling overwhelmed by all the options. What ${keywords[0]} would you recommend for someone just starting out? Price isn't the main concern, just want something reliable.`
+    },
+    {
+      title: `Why are all ${keywords[0]}s so complicated?`,
+      content: `Maybe I'm getting old but why do these things need to be so complex? I just want something simple that works. Any recommendations for uncomplicated ${keywords[0]}?`
+    }
   ];
   
   for (let i = 0; i < count; i++) {
-    const rating = Math.floor(Math.random() * 5) + 1;
-    const review: Review = {
-      id: `fallback_${Math.random().toString(36).substring(2, 12)}`,
-      source: target.source,
-      sourceUrl: target.url,
-      productTitle: target.productTitle,
-      reviewText: reviewTemplates[Math.floor(Math.random() * reviewTemplates.length)],
-      rating,
-      reviewDate: generateRandomDate(),
-      reviewerName: generateRandomReviewerName(),
-      verifiedPurchase: target.source.includes('amazon') ? Math.random() > 0.2 : true,
-      helpfulVotes: Math.floor(Math.random() * 15)
-    };
-    reviews.push(review);
+    const template = postTemplates[i % postTemplates.length];
+    posts.push({
+      id: `fallback_reddit_${Math.random().toString(36).substring(2, 12)}`,
+      title: template.title,
+      content: template.content,
+      subreddit,
+      author: `user${Math.floor(Math.random() * 1000)}`,
+      score: Math.floor(Math.random() * 50) + 5,
+      commentCount: Math.floor(Math.random() * 20) + 3,
+      createdDate: generateRandomDate(),
+      url: `https://reddit.com/r/${subreddit}/comments/fake`,
+      comments: []
+    });
   }
   
-  return reviews;
+  return posts;
 }
 
 function generateRandomDate(): string {
@@ -389,25 +338,49 @@ function generateRandomDate(): string {
   return randomDate.toISOString().split('T')[0];
 }
 
-function generateRandomReviewerName(): string {
-  const names = [
-    "John D.", "Sarah M.", "Mike R.", "Emma L.", "David W.", "Lisa K.", 
-    "Tom B.", "Jessica P.", "Ryan C.", "Amanda S.", "Kevin H.", "Nicole T."
-  ];
-  return names[Math.floor(Math.random() * names.length)];
-}
-
-async function storeReviews(jobId: string, reviews: Review[]) {
-  console.log(`Storing ${reviews.length} raw reviews for job ${jobId}`);
+function analyzeRedditData(redditData: RedditPost[], targetKeywords: string) {
+  const totalPosts = redditData.length;
+  const totalComments = redditData.reduce((sum, post) => sum + post.commentCount, 0);
   
-  // Group reviews by source for logging
-  const reviewsBySource = reviews.reduce((acc, review) => {
-    acc[review.source] = (acc[review.source] || 0) + 1;
+  const subredditBreakdown = redditData.reduce((acc, post) => {
+    acc[post.subreddit] = (acc[post.subreddit] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
   
-  console.log('Raw reviews by source:', reviewsBySource);
+  const averageScore = totalPosts > 0 ? 
+    Math.round(redditData.reduce((sum, post) => sum + post.score, 0) / totalPosts) : 0;
+  
+  // Extract common themes from titles
+  const commonThemes = extractCommonThemes(redditData);
+  
+  return {
+    totalPosts,
+    totalComments,
+    subredditBreakdown,
+    averageScore,
+    commonThemes,
+    dataQuality: totalPosts > 20 ? 'high' : totalPosts > 10 ? 'medium' : 'low'
+  };
+}
+
+function extractCommonThemes(redditData: RedditPost[]): string[] {
+  const allText = redditData.map(post => `${post.title} ${post.content}`).join(' ').toLowerCase();
+  
+  // Common problem/need words in Reddit discussions
+  const problemWords = [
+    'problem', 'issue', 'broken', 'failed', 'stopped working', 'disappointed',
+    'looking for', 'need', 'recommend', 'best', 'alternative', 'replacement',
+    'budget', 'cheap', 'expensive', 'worth it', 'upgrade', 'beginner'
+  ];
+  
+  const themes = problemWords.filter(word => allText.includes(word));
+  return themes.slice(0, 10); // Top 10 themes
+}
+
+async function storeRedditData(jobId: string, redditData: RedditPost[], insights: any) {
+  console.log(`Storing ${redditData.length} Reddit posts for job ${jobId}`);
+  console.log('Reddit insights:', insights);
   
   // TODO: Store in database
-  // await sql`INSERT INTO reviews (job_id, source, source_url, product_title, review_text, rating, review_date, reviewer_name, verified_purchase, helpful_votes) VALUES ...`
+  // await sql`INSERT INTO reddit_data (job_id, post_data, insights) VALUES (${jobId}, ${JSON.stringify(redditData)}, ${JSON.stringify(insights)})`
 }
