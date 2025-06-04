@@ -137,9 +137,27 @@ export async function POST(request: NextRequest) {
       targetKeywords
     });
     
-    // Trigger the persona generator
+    // Queue Reddit scraper first
+    await queue.addJob(jobId, 'reddit-scraper', {
+      targetKeywords,
+      competitors,
+      userProduct
+    });
+    
+    // Trigger Reddit scraper
     const baseUrl = request.nextUrl.origin;
-    await fetch(`${baseUrl}/api/workers/persona-generator`, {
+    await fetch(`${baseUrl}/api/workers/reddit-scraper`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        jobId, 
+        payload: { 
+          targetKeywords,
+          competitors,
+          userProduct
+        } 
+      })
+    });
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
