@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     console.log(`Manually processing job ${jobId}`);
     
     // Get job details first
-    const statusResponse = await fetch(`${process.env.VERCEL_URL || 'https://persona-sigma-ten.vercel.app'}/api/jobs/status/${jobId}`);
+const statusResponse = await fetch(`https://persona-sigma-ten.vercel.app/api/jobs/status/${jobId}`);
     const statusData = await statusResponse.json();
     
     if (!statusData.success) {
@@ -19,8 +19,7 @@ export async function POST(request: NextRequest) {
     }
     
     const userInputs = statusData.job.user_inputs;
-    const baseUrl = process.env.VERCEL_URL || 'https://persona-sigma-ten.vercel.app';
-    
+const baseUrl = 'https://persona-sigma-ten.vercel.app';    
     const results = [];
     
     // 1. Website Crawler
