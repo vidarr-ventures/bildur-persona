@@ -12,22 +12,37 @@ export default function Home() {
   const [result, setResult] = useState<any>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  e.preventDefault();
+  setIsSubmitting(true);
+  
+  console.log('Form data being sent:', formData); // Debug line
+  
+  try {
+    const response = await fetch('/api/jobs/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData),
+    });
     
-    try {
-      const response = await fetch('/api/jobs/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      
-      const data = await response.json();
-      setResult(data);
-      
-      if (data.success) {
+    console.log('Response status:', response.status); // Debug line
+    const data = await response.json();
+    console.log('Response data:', data); // Debug line
+    
+    setResult(data);
+    
+    if (data.success) {
+      // Redirect to dashboard
+      window.location.href = `/dashboard/${data.jobId}`;
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    setResult({ error: 'Failed to submit form' });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   // Redirect to dashboard
   window.location.href = `/dashboard/${data.jobId}`;
 }
