@@ -7,7 +7,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Validate required fields
-    const { websiteUrl, targetKeywords, amazonUrl } = body;
+const { primaryProductUrl, targetKeywords, amazonProductUrl } = body;
+const websiteUrl = primaryProductUrl;
+const amazonUrl = amazonProductUrl;
     
     if (!websiteUrl || !targetKeywords) {
       return NextResponse.json(
@@ -41,13 +43,12 @@ export async function POST(request: NextRequest) {
     // Create job in database
     console.log('Creating job with data:', { websiteUrl, targetKeywords, amazonUrl });
     
-    const job = await createJob({
-      website_url: websiteUrl,
-      target_keywords: targetKeywords,
-      amazon_url: amazonUrl || null,
-      status: 'pending'
-    });
-
+const job = await createJob({
+  website_url: websiteUrl,  // This should already be correct
+  target_keywords: targetKeywords,
+  amazon_url: amazonUrl || null,
+  status: 'pending'
+});
     console.log('Job created in database:', job);
 
     // Add job to queue for automatic processing
