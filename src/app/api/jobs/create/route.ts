@@ -1,118 +1,101 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createJob } from '@/lib/db';
-import { JobQueue } from '@/lib/queue';
+import { Queue } from '@/lib/queue';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
     // Validate required fields
-    const {
-      primaryProductUrl,
-      amazonProductUrl,
-      targetKeywords,
-      competitors,
-      businessType,
-      targetMarket
-    } = body;
+    const { websiteUrl, targetKeywords, amazonUrl } = body;
     
-    if (!primaryProductUrl || !targetKeywords) {
+    if (!websiteUrl || !targetKeywords) {
       return NextResponse.json(
-        { error: 'Missing required fields: primaryProductUrl and targetKeywords are required' },
+        { error: 'Website URL and target keywords are required' },
         { status: 400 }
       );
     }
-    
-    // Extract userProduct from targetKeywords or primaryProductUrl
-    const userProduct = targetKeywords.split(',')[0]?.trim() || 'product';
-    
-    console.log('Creating new job with data:', {
-      primaryProductUrl,
-      amazonProductUrl: amazonProductUrl || 'Not provided',
-      targetKeywords,
-      userProduct,
-      businessType: businessType || 'Not specified',
-      targetMarket: targetMarket || 'Not specified'
-    });
-    
-    // Create job in database - createJob returns the jobId directly
-    const jobId = await createJob({
-      primaryProductUrl,
-      amazonProductUrl,
-      targetKeywords,
-      competitors: competitors || [],
-      userProduct,
-      businessType,
-      targetMarket
-    });
-    
-    if (!jobId) {
+
+    // Validate URL format
+    try {
+      new URL(websiteUrl);
+    } catch {
       return NextResponse.json(
-        { error: 'Failed to create job' },
-        { status: 500 }
+        { error: 'Invalid website URL format' },
+        { status: 400 }
       );
     }
-    
-    console.log(`Created job ${jobId}, queuing initial tasks`);
-    
-    // Initialize job queue
-    const queue = new JobQueue();
-    
-    // Queue all the worker tasks in the correct order
-    const tasks = [];
-    
-    // 1. Website crawler - crawl the user's own website first
-    tasks.push(queue.addJob(jobId, 'website-crawler', {
-      primaryProductUrl,
-      targetKeywords,
-      userProduct,
-      businessType,
-      targetMarket
-    }));
-    
-    // 2. Amazon competitors (if Amazon URL provided)
-    if (amazonProductUrl) {
-      tasks.push(queue.addJob(jobId, 'amazon-competitors', {
-        amazonProductUrl,
-        targetKeywords,
-        userProduct
-      }));
+
+    // Validate Amazon URL if provided
+    if (amazonUrl) {
+      try {
+        new URL(amazonUrl);
+      } catch {
+        return NextResponse.json(
+          { error: 'Invalid Amazon URL format' },
+          { status: 400 }
+        );
+      }
     }
+
+    // Create job in database
+    console.log('Creating job with data:', { websiteUrl, targetKeywords, amazonUrl });
     
-    // 3. Google competitors
-    tasks.push(queue.addJob(jobId, 'google-competitors', {
-      primaryProductUrl,
-      targetKeywords,
-      competitors: competitors || [],
-      userProduct
-    }));
-    
-    // 4. Reddit data collection
-    tasks.push(queue.addJob(jobId, 'reviews-collector', {
-      targetKeywords,
-      userProduct,
-      primaryProductUrl
-    }));
-    
-    // Wait for all initial tasks to be queued
-    await Promise.all(tasks);
-    
-    console.log(`Successfully queued ${tasks.length} initial tasks for job ${jobId}`);
-    
-    // Return job ID for tracking
+    const job = await createJob({
+      website_url: websiteUrl,
+      target_keywords: targetKeywords,
+      amazon_url: amazonUrl || null,
+      status: 'pending'
+    });
+
+    console.log('Job created in database:', job);
+
+    // Add job to queue for automatic processing
+    const queueJobId = await Queue.addJob({
+      type: 'persona_research',
+      data: {
+        jobId: job.id,
+        websiteUrl: websiteUrl,
+        targetKeywords: targetKeywords,
+        amazonUrl: amazonUrl,
+      },
+    });
+
+    console.log('Job added to queue:', queueJobId);
+
     return NextResponse.json({
       success: true,
-      jobId,
-      status: 'pending',
-      message: `Job created successfully. Processing ${tasks.length} data collection tasks.`,
-      tasksQueued: tasks.length
+      jobId: job.id,
+      queueId: queueJobId,
+      message: 'Job created and queued for processing'
     });
 
   } catch (error) {
-    console.error('Error creating job:', error);
+    console.error('Job creation error:', error);
     
+    // Type-safe error handling
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // More specific error handling
+    if (errorMessage.includes('duplicate key')) {
+      return NextResponse.json(
+        { error: 'A job with these parameters already exists' },
+        { status: 409 }
+      );
+    }
+    
+    if (errorMessage.includes('connection')) {
+      return NextResponse.json(
+        { error: 'Database connection failed. Please try again.' },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
-      { error: 'Failed to create job', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: 'Failed to create job', 
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined 
+      },
       { status: 500 }
     );
   }

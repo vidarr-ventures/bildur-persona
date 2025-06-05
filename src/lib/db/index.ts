@@ -2,65 +2,96 @@ import { sql } from '@vercel/postgres';
 
 export interface Job {
   id: string;
-  user_inputs: any;
+  website_url: string;
+  target_keywords: string;
+  amazon_url?: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  created_at: string;
+  updated_at: string;
+}
+
+export async function createJob(data: {
+  website_url: string;
+  target_keywords: string;
+  amazon_url?: string;
   status: string;
-  progress: number;
-  results_blob_url?: string;
-  error_message?: string;
-  created_at: Date;
-  completed_at?: Date;
-}
-
-export async function createJob(userInputs: any): Promise<string> {
-  const result = await sql`
-    INSERT INTO jobs (user_inputs, status, progress)
-    VALUES (${JSON.stringify(userInputs)}, 'pending', 0)
-    RETURNING id
-  `;
-  return result.rows[0].id;
-}
-
-export async function getJobStatus(jobId: string): Promise<Job | null> {
-  const result = await sql`
-    SELECT * FROM jobs WHERE id = ${jobId}
-  `;
-  return (result.rows[0] as Job) || null;
-}
-
-export async function updateJobStatus(
-  jobId: string, 
-  status: string, 
-  progress: number, 
-  resultsUrl?: string,
-  errorMessage?: string
-) {
-  await sql`
-    UPDATE jobs 
-    SET status = ${status}, 
-        progress = ${progress},
-        results_blob_url = ${resultsUrl || null},
-        error_message = ${errorMessage || null},
-        completed_at = ${status === 'completed' ? 'NOW()' : null}
-    WHERE id = ${jobId}
-  `;
-}
-
-export async function initializeDatabase() {
+}) {
   try {
-    await sql`
-      CREATE TABLE IF NOT EXISTS jobs (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_inputs JSONB NOT NULL,
-        status VARCHAR(50) DEFAULT 'pending',
-        progress INTEGER DEFAULT 0,
-        results_blob_url TEXT,
-        error_message TEXT,
-        created_at TIMESTAMP DEFAULT NOW(),
-        completed_at TIMESTAMP
-      )
+    const result = await sql`
+      INSERT INTO jobs (website_url, target_keywords, amazon_url, status)
+      VALUES (${data.website_url}, ${data.target_keywords}, ${data.amazon_url}, ${data.status})
+      RETURNING *
     `;
-    console.log('Database initialized successfully');
+    return result.rows[0];
   } catch (error) {
-    console.error('Database initialization error:', error);
+    console.error('Error creating job:', error);
+    throw error;
+  }
+}
+
+export async function updateJobStatus(jobId: string, status: string) {
+  try {
+    const result = await sql`
+      UPDATE jobs 
+      SET status = ${status}, updated_at = NOW()
+      WHERE id = ${jobId}
+      RETURNING *
+    `;
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error updating job status:', error);
+    throw error;
+  }
+}
+
+export async function getJobById(id: string) {
+  try {
+    const result = await sql`
+      SELECT * FROM jobs 
+      WHERE id = ${id}
+    `;
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error('Error getting job by ID:', error);
+    throw error;
+  }
+}
+
+export async function saveJobData(jobId: string, dataType: string, data: any) {
+  try {
+    const result = await sql`
+      INSERT INTO job_data (job_id, data_type, data)
+      VALUES (${jobId}, ${dataType}, ${JSON.stringify(data)})
+      ON CONFLICT (job_id, data_type)
+      DO UPDATE SET 
+        data = ${JSON.stringify(data)},
+        updated_at = NOW()
+      RETURNING *
+    `;
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error saving job data:', error);
+    throw error;
+  }
+}
+
+export async function getJobData(jobId: string, dataType?: string) {
+  try {
+    let result;
+    if (dataType) {
+      result = await sql`
+        SELECT * FROM job_data
+        WHERE job_id = ${jobId} AND data_type = ${dataType}
+      `;
+    } else {
+      result = await sql`
+        SELECT * FROM job_data
+        WHERE job_id = ${jobId}
+      `;
+    }
+    return result.rows;
+  } catch (error) {
+    console.error('Error getting job data:', error);
+    throw error;
   }
 }

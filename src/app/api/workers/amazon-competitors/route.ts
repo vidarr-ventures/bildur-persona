@@ -1,138 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/db';
-import { JobQueue } from '@/lib/queue';
-// Remove the import - use built-in fetch
+import { saveJobData } from '@/lib/db';
 
-interface CompetitorProduct {
-  asin: string;
+interface ProductInfo {
   title: string;
   price: string;
   rating: string;
-  reviewCount: string;
-  imageUrl: string;
-  productUrl: string;
+  reviews: string;
+  category: string;
 }
 
-export async function POST(request: NextRequest) {
-  let jobId: string = '';
-  
+async function extractProductInfo(url: string): Promise<ProductInfo | null> {
   try {
-    const body = await request.json();
-    jobId = body.jobId;
-    const { payload } = body;
-    const { amazonProductUrl, targetKeywords, primaryProductUrl } = payload;
-    
-    console.log(`Starting Amazon competitor discovery for job ${jobId}`);
-    
-    // Update job status to processing
-    await updateJobStatus(jobId, 'processing', 10, undefined, undefined);
-    
-    // Extract category and keywords from user's Amazon product
-    const userProductData = await extractProductInfo(amazonProductUrl);
-    console.log('User product data:', userProductData);
-    
-    // Update progress
-    await updateJobStatus(jobId, 'processing', 25, undefined, undefined);
-    
-    // Search for competitors using keywords
-    const searchKeywords = targetKeywords.split(',').map((k: string) => k.trim());
-    const competitors: CompetitorProduct[] = [];
-    
-    for (const keyword of searchKeywords) {
-      console.log(`Searching Amazon for keyword: ${keyword}`);
-      
-      try {
-        const searchResults = await searchAmazonWithScrapeOwl(keyword);
-        competitors.push(...searchResults);
-        
-        // Add delay between searches
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-      } catch (searchError) {
-        console.error(`Error searching for ${keyword}:`, searchError);
-        // Continue with other keywords even if one fails
-      }
-    }
-    
-    console.log(`Found ${competitors.length} total competitors`);
-    
-    // Update progress
-    await updateJobStatus(jobId, 'processing', 60, undefined, undefined);
-    
-    // Remove duplicates and filter out user's own product
-    const uniqueCompetitors = filterAndDeduplicateCompetitors(competitors, amazonProductUrl);
-    
-    console.log(`Found ${uniqueCompetitors.length} unique competitors`);
-    
-    // Store competitors in database
-    await storeCompetitors(jobId, uniqueCompetitors);
-    
-    // Update progress
-    await updateJobStatus(jobId, 'processing', 75, undefined, undefined);
-    
-    // Queue the next worker (reviews collector)
-    const queue = new JobQueue();
-    await queue.addJob(jobId, 'reviews-collector', {
-      competitors: uniqueCompetitors,
-      userProduct: userProductData,
-      targetKeywords,
-      amazonProductUrl,
-      primaryProductUrl
-    });
-    
-    // Trigger the review collector
-    const baseUrl = request.nextUrl.origin;
-    await fetch(`${baseUrl}/api/workers/reviews-collector`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        jobId, 
-        payload: { 
-          competitors: uniqueCompetitors,
-          userProduct: userProductData,
-          targetKeywords,
-          amazonProductUrl,
-          primaryProductUrl
-        } 
-      })
-    });
-    
-    await queue.markTaskCompleted(jobId, 'amazon-competitors');
-    
-    console.log(`Amazon competitor discovery completed for job ${jobId}`);
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Amazon competitor discovery completed',
-      competitorsFound: uniqueCompetitors.length
-    });
-
-  } catch (error) {
-    console.error('Amazon competitor discovery error:', error);
-    
-    // Update job status to failed
-    await updateJobStatus(
-      jobId, 
-      'failed', 
-      0, 
-      undefined, 
-      `Amazon competitor discovery failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-    
-    return NextResponse.json(
-      { error: 'Amazon competitor discovery failed' },
-      { status: 500 }
-    );
-  }
-}
-
-async function searchAmazonWithScrapeOwl(keyword: string): Promise<CompetitorProduct[]> {
-  const products: CompetitorProduct[] = [];
-  
-  try {
-    const searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(keyword)}`;
-    
-    const scrapeOwlResponse = await fetch('https://api.scrapeowl.com/v1/scrape', {
+    const scrapeResponse = await fetch('https://api.scrapeowl.com/v1/scrape', {
       method: 'POST',
       headers: {
         'Authorization': `Token ${process.env.SCRAPEOWL_API_KEY}`,
@@ -140,162 +20,225 @@ async function searchAmazonWithScrapeOwl(keyword: string): Promise<CompetitorPro
       },
       body: JSON.stringify({
         api_key: process.env.SCRAPEOWL_API_KEY,
-        url: searchUrl,
+        url: url,
         elements: [
-          {
-            name: 'products',
-            selector: '[data-component-type="s-search-result"]',
-            type: 'list',
-            children: [
-              {
-                name: 'title',
-                selector: 'h2 a span',
-                type: 'text'
-              },
-              {
-                name: 'price',
-                selector: '.a-price-whole',
-                type: 'text'
-              },
-              {
-                name: 'rating',
-                selector: '.a-icon-alt',
-                type: 'text'
-              },
-              {
-                name: 'reviewCount',
-                selector: '.a-size-base',
-                type: 'text'
-              },
-              {
-                name: 'link',
-                selector: 'h2 a',
-                type: 'attribute',
-                attribute: 'href'
-              },
-              {
-                name: 'image',
-                selector: 'img',
-                type: 'attribute',
-                attribute: 'src'
-              }
-            ]
-          }
-        ]
+          { name: 'title', selector: '#productTitle, h1.a-size-large' },
+          { name: 'price', selector: '.a-price-whole, .a-offscreen' },
+          { name: 'rating', selector: '.a-icon-alt, [data-hook="average-star-rating"]' },
+          { name: 'reviews', selector: '[data-hook="total-review-count"]' },
+        ],
       }),
     });
 
-    if (!scrapeOwlResponse.ok) {
-      throw new Error(`ScrapeOwl API error: ${scrapeOwlResponse.status}`);
+    if (!scrapeResponse.ok) {
+      throw new Error(`Scraping failed: ${scrapeResponse.statusText}`);
     }
 
-    const scrapeData = await scrapeOwlResponse.json();
-    
-    if (scrapeData.success && scrapeData.data && scrapeData.data.products) {
-      const scrapedProducts = scrapeData.data.products.slice(0, 10); // Limit to top 10
-      
-      for (const product of scrapedProducts) {
-        const productUrl = product.link ? `https://www.amazon.com${product.link}` : '';
-        const asinMatch = productUrl.match(/\/dp\/([A-Z0-9]{10})/);
-        const asin = asinMatch ? asinMatch[1] : '';
-        
-        if (product.title && asin) {
-          products.push({
-            asin,
-            title: product.title,
-            price: product.price || 'N/A',
-            rating: product.rating || 'N/A',
-            reviewCount: product.reviewCount || 'N/A',
-            imageUrl: product.image || '',
-            productUrl
-          });
-        }
-      }
-    }
-    
-    console.log(`ScrapeOwl found ${products.length} products for keyword: ${keyword}`);
-    return products;
-    
-  } catch (error) {
-    console.error(`ScrapeOwl error for keyword ${keyword}:`, error);
-    
-    // Fallback to simulated data if scraping fails
-    console.log(`Falling back to simulated data for keyword: ${keyword}`);
-    return generateFallbackProducts(keyword, 3);
-  }
-}
-
-function generateFallbackProducts(keyword: string, count: number): CompetitorProduct[] {
-  const products: CompetitorProduct[] = [];
-  
-  for (let i = 0; i < count; i++) {
-    products.push({
-      asin: `B${Math.random().toString(36).substring(2, 12).toUpperCase()}`,
-      title: `${keyword} Product ${i + 1}`,
-      price: `$${(Math.random() * 100 + 10).toFixed(2)}`,
-      rating: `${(Math.random() * 2 + 3).toFixed(1)} out of 5 stars`,
-      reviewCount: `${Math.floor(Math.random() * 1000 + 50)} reviews`,
-      imageUrl: 'https://via.placeholder.com/150',
-      productUrl: `https://amazon.com/dp/B${Math.random().toString(36).substring(2, 12).toUpperCase()}`
-    });
-  }
-  
-  return products;
-}
-
-async function extractProductInfo(amazonUrl: string) {
-  try {
-    // Extract ASIN from URL
-    const asinPattern = /\/dp\/([A-Z0-9]{10})/;
-    const asinMatch = amazonUrl.match(asinPattern);
-    const asin = asinMatch ? asinMatch[1] : null;
-    
-    if (!asin) {
-      throw new Error('Could not extract ASIN from Amazon URL');
-    }
-    
-    // TODO: Could scrape the actual product page here for real title/category
+    const data = await scrapeResponse.json();
     return {
-      asin,
-      title: 'User Product',
-      category: 'Unknown',
-      keywords: []
+      title: data.title || 'Unknown Product',
+      price: data.price || 'Price not found',
+      rating: data.rating || 'No rating',
+      reviews: data.reviews || 'No reviews',
+      category: extractCategoryFromTitle(data.title || ''),
     };
-    
   } catch (error) {
     console.error('Error extracting product info:', error);
-    throw error;
+    return null;
   }
 }
 
-function filterAndDeduplicateCompetitors(competitors: CompetitorProduct[], userProductUrl: string): CompetitorProduct[] {
-  // Extract user's ASIN to filter out
-  const asinPattern = /\/dp\/([A-Z0-9]{10})/;
-  const userAsinMatch = userProductUrl.match(asinPattern);
-  const userAsin = userAsinMatch ? userAsinMatch[1] : '';
+function extractCategoryFromTitle(title: string): string {
+  const keywords = title.toLowerCase().split(' ');
+  const categories = ['electronics', 'clothing', 'books', 'home', 'kitchen', 'tools', 'sports'];
   
-  // Remove duplicates by ASIN and filter out user's product
-  const seen = new Set<string>();
-  const filtered = competitors.filter(product => {
-    if (seen.has(product.asin) || product.asin === userAsin) {
-      return false;
+  for (const category of categories) {
+    if (keywords.some(word => word.includes(category))) {
+      return category;
     }
-    seen.add(product.asin);
-    return true;
-  });
-  
-  return filtered;
+  }
+  return 'general';
 }
 
-async function storeCompetitors(jobId: string, competitors: CompetitorProduct[]) {
-  console.log(`Storing ${competitors.length} competitors for job ${jobId}`);
-  
-  competitors.forEach((competitor, index) => {
-    console.log(`Competitor ${index + 1}:`, {
-      asin: competitor.asin,
-      title: competitor.title.substring(0, 50) + '...',
-      price: competitor.price,
-      rating: competitor.rating
+async function searchCompetitors(category: string, keywords: string): Promise<any[]> {
+  try {
+    const searchQuery = `${category} ${keywords}`.trim();
+    const amazonSearchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(searchQuery)}`;
+
+    const scrapeResponse = await fetch('https://api.scrapeowl.com/v1/scrape', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${process.env.SCRAPEOWL_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        api_key: process.env.SCRAPEOWL_API_KEY,
+        url: amazonSearchUrl,
+        elements: [
+          { 
+            name: 'products', 
+            selector: '[data-component-type="s-search-result"]',
+            multiple: true,
+            children: [
+              { name: 'title', selector: 'h2 a span' },
+              { name: 'price', selector: '.a-price-whole' },
+              { name: 'rating', selector: '.a-icon-alt' },
+              { name: 'url', selector: 'h2 a', attribute: 'href' },
+            ]
+          }
+        ],
+      }),
     });
-  });
+
+    if (!scrapeResponse.ok) {
+      throw new Error(`Search scraping failed: ${scrapeResponse.statusText}`);
+    }
+
+    const data = await scrapeResponse.json();
+    return data.products || [];
+  } catch (error) {
+    console.error('Error searching competitors:', error);
+    return [];
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { jobId, websiteUrl, targetKeywords, amazonUrl } = await request.json();
+
+    if (!jobId) {
+      return NextResponse.json({ error: 'Job ID is required' }, { status: 400 });
+    }
+
+    console.log(`Starting Amazon competitor analysis for job ${jobId}`);
+    
+    // Update job status to processing
+    await updateJobStatus(jobId, 'processing');
+    
+    // Extract category and keywords from user's Amazon product
+    const userProductData = await extractProductInfo(amazonUrl);
+    
+    if (!userProductData) {
+      await updateJobStatus(jobId, 'processing');
+      console.log('Could not extract product info, using fallback search');
+    }
+
+    const searchCategory = userProductData?.category || 'general';
+    const searchKeywords = targetKeywords || userProductData?.title || 'product';
+
+    console.log(`Searching for competitors in category: ${searchCategory}, keywords: ${searchKeywords}`);
+
+    // Search for competitor products
+    await updateJobStatus(jobId, 'processing');
+    const competitors = await searchCompetitors(searchCategory, searchKeywords);
+
+    // Process and analyze competitor data
+    await updateJobStatus(jobId, 'processing');
+    const competitorAnalysis = {
+      userProduct: userProductData,
+      searchQuery: {
+        category: searchCategory,
+        keywords: searchKeywords,
+      },
+      competitors: competitors.slice(0, 10), // Top 10 competitors
+      analysis: {
+        totalCompetitors: competitors.length,
+        priceRange: analyzePriceRange(competitors),
+        averageRating: calculateAverageRating(competitors),
+        commonFeatures: extractCommonFeatures(competitors),
+        marketInsights: generateMarketInsights(competitors, userProductData),
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    // Save the competitor analysis data
+    await saveJobData(jobId, 'amazon_competitors', competitorAnalysis);
+
+    console.log(`Amazon competitor analysis completed for job ${jobId}`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Amazon competitor analysis completed',
+      data: competitorAnalysis,
+    });
+
+  } catch (error) {
+    console.error('Amazon competitor analysis error:', error);
+    
+    try {
+      const { jobId } = await request.json();
+      if (jobId) {
+        await updateJobStatus(jobId, 'failed');
+      }
+    } catch (updateError) {
+      console.error('Failed to update job status:', updateError);
+    }
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json(
+      { error: 'Amazon competitor analysis failed', details: errorMessage },
+      { status: 500 }
+    );
+  }
+}
+
+function analyzePriceRange(competitors: any[]): { min: number; max: number; average: number } {
+  const prices = competitors
+    .map(comp => parseFloat(comp.price?.replace(/[^0-9.]/g, '') || '0'))
+    .filter(price => price > 0);
+
+  if (prices.length === 0) {
+    return { min: 0, max: 0, average: 0 };
+  }
+
+  return {
+    min: Math.min(...prices),
+    max: Math.max(...prices),
+    average: prices.reduce((sum, price) => sum + price, 0) / prices.length,
+  };
+}
+
+function calculateAverageRating(competitors: any[]): number {
+  const ratings = competitors
+    .map(comp => parseFloat(comp.rating?.match(/[\d.]+/)?.[0] || '0'))
+    .filter(rating => rating > 0);
+
+  if (ratings.length === 0) return 0;
+  return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
+}
+
+function extractCommonFeatures(competitors: any[]): string[] {
+  const allTitles = competitors.map(comp => comp.title || '').join(' ').toLowerCase();
+  const words = allTitles.split(/\s+/).filter(word => word.length > 3);
+  const wordCounts = words.reduce((acc, word) => {
+    acc[word] = (acc[word] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return Object.entries(wordCounts)
+    .filter(([word, count]) => count >= 3)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([word]) => word);
+}
+
+function generateMarketInsights(competitors: any[], userProduct: ProductInfo | null): string[] {
+  const insights = [];
+  
+  if (competitors.length > 0) {
+    insights.push(`Found ${competitors.length} direct competitors in the market`);
+  }
+  
+  const priceRange = analyzePriceRange(competitors);
+  if (priceRange.average > 0) {
+    insights.push(`Average competitor price: $${priceRange.average.toFixed(2)}`);
+    insights.push(`Price range: $${priceRange.min.toFixed(2)} - $${priceRange.max.toFixed(2)}`);
+  }
+  
+  const avgRating = calculateAverageRating(competitors);
+  if (avgRating > 0) {
+    insights.push(`Average competitor rating: ${avgRating.toFixed(1)} stars`);
+  }
+  
+  return insights;
 }

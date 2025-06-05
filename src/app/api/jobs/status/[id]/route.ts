@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getJobStatus } from '@/lib/db';
+import { getJobById } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const jobId = (await params).id;
+    const { id } = await params;
     
-    if (!jobId) {
+    if (!id) {
       return NextResponse.json(
         { error: 'Job ID is required' },
         { status: 400 }
       );
     }
 
-    const job = await getJobStatus(jobId);
+    const job = await getJobById(id);
     
     if (!job) {
       return NextResponse.json(
@@ -26,21 +26,13 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      job: {
-        id: job.id,
-        status: job.status,
-        progress: job.progress,
-        results_blob_url: job.results_blob_url,
-        error_message: job.error_message,
-        created_at: job.created_at,
-        completed_at: job.completed_at
-      }
+      job
     });
 
   } catch (error) {
-    console.error('Error fetching job status:', error);
+    console.error('Job status error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch job status' },
+      { error: 'Failed to get job status' },
       { status: 500 }
     );
   }

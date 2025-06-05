@@ -1,205 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/db';
-import { JobQueue } from '@/lib/queue';
+import { saveJobData } from '@/lib/db';
 
-interface WebsitePage {
-  id: string;
+interface WebsiteData {
   url: string;
   title: string;
+  description: string;
   content: string;
-  pageType: string; // 'homepage', 'product', 'about', 'testimonials', 'blog', 'other'
-  headings: string[];
-  links: string[];
-  images: string[];
-  metadata: {
-    description?: string;
-    keywords?: string;
-    wordCount: number;
-    lastCrawled: string;
-  };
-}
-
-interface WebsiteInsights {
-  totalPages: number;
-  pageTypes: Record<string, number>;
-  commonKeywords: string[];
-  brandMessaging: string[];
-  targetAudience: string[];
-  valuePropositions: string[];
-  testimonials: string[];
-  productFeatures: string[];
-  dataQuality: 'high' | 'medium' | 'low';
-}
-
-export async function POST(request: NextRequest) {
-  let jobId: string = '';
-  
-  try {
-    const body = await request.json();
-    jobId = body.jobId;
-    const { payload } = body;
-    const { primaryProductUrl, targetKeywords, userProduct } = payload;
-    
-    console.log(`Starting website crawling for job ${jobId} on ${primaryProductUrl}`);
-    
-    // Update job status
-    await updateJobStatus(jobId, 'processing', 20, undefined, undefined);
-    
-    // Extract domain and prepare for crawling
-    const domain = extractDomain(primaryProductUrl);
-    const pagesToCrawl = await discoverPages(primaryProductUrl, domain);
-    
-    console.log(`Found ${pagesToCrawl.length} pages to crawl for ${domain}`);
-    
-    // Update progress
-    await updateJobStatus(jobId, 'processing', 30, undefined, undefined);
-    
-    // Crawl pages in batches to respect timeouts
-    const allWebsiteData: WebsitePage[] = [];
-    let completedPages = 0;
-    
-    for (const pageUrl of pagesToCrawl) {
-      try {
-        console.log(`Crawling page: ${pageUrl}`);
-        
-        const pageData = await crawlPage(pageUrl, domain);
-        if (pageData) {
-          allWebsiteData.push(pageData);
-        }
-        
-        completedPages++;
-        const progress = 30 + Math.floor((completedPages / pagesToCrawl.length) * 40);
-        await updateJobStatus(jobId, 'processing', progress, undefined, undefined);
-        
-        // Respect rate limits
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-      } catch (error) {
-        console.error(`Error crawling ${pageUrl}:`, error);
-        // Continue with other pages
-      }
-    }
-    
-    console.log(`Crawled ${allWebsiteData.length} pages from ${domain}`);
-    
-    // Update progress
-    await updateJobStatus(jobId, 'processing', 75, undefined, undefined);
-    
-    // Analyze website data for insights
-    const websiteInsights = analyzeWebsiteData(allWebsiteData, targetKeywords, userProduct);
-    
-    // Store website data
-    await storeWebsiteData(jobId, allWebsiteData, websiteInsights);
-    
-    // Update progress
-    await updateJobStatus(jobId, 'processing', 85, undefined, undefined);
-    
-    // Queue the data processor (final step)
-    const queue = new JobQueue();
-    await queue.addJob(jobId, 'data-processor', {
-      websiteData: allWebsiteData,
-      websiteInsights,
-      targetKeywords,
-      userProduct
-    });
-    
-    await queue.markTaskCompleted(jobId, 'website-crawler');
-    
-    console.log(`Website crawling completed for job ${jobId}`);
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Website crawling completed',
-      pagesCrawled: allWebsiteData.length,
-      websiteInsights
-    });
-
-  } catch (error) {
-    console.error('Website crawling error:', error);
-    
-    await updateJobStatus(
-      jobId, 
-      'failed', 
-      0, 
-      undefined, 
-      `Website crawling failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-    
-    return NextResponse.json(
-      { error: 'Website crawling failed' },
-      { status: 500 }
-    );
-  }
+  metadata: any;
 }
 
 function extractDomain(url: string): string {
   try {
     const urlObj = new URL(url);
     return urlObj.hostname;
-  } catch (error) {
-    console.error('Invalid URL:', url);
+  } catch {
     return '';
   }
 }
 
-async function discoverPages(startUrl: string, domain: string): Promise<string[]> {
-  const pages = new Set<string>();
-  pages.add(startUrl);
-  
+async function crawlWebsite(url: string): Promise<WebsiteData | null> {
   try {
-    // Get the homepage to discover internal links
-    const homepageData = await crawlPage(startUrl, domain);
+    console.log(`Crawling website: ${url}`);
     
-    if (homepageData && homepageData.links) {
-      // Add important page types we want to prioritize
-      const priorityPages = homepageData.links.filter(link => {
-        const lowerLink = link.toLowerCase();
-        return lowerLink.includes('about') ||
-               lowerLink.includes('product') ||
-               lowerLink.includes('service') ||
-               lowerLink.includes('testimonial') ||
-               lowerLink.includes('review') ||
-               lowerLink.includes('customer') ||
-               lowerLink.includes('story') ||
-               lowerLink.includes('case-study') ||
-               lowerLink.includes('contact') ||
-               lowerLink.includes('pricing') ||
-               lowerLink.includes('feature');
-      });
-      
-      priorityPages.forEach(link => pages.add(link));
-    }
-    
-    // Add common important pages manually
-    const commonPages = [
-      `https://${domain}/about`,
-      `https://${domain}/about-us`,
-      `https://${domain}/products`,
-      `https://${domain}/services`,
-      `https://${domain}/testimonials`,
-      `https://${domain}/reviews`,
-      `https://${domain}/customers`,
-      `https://${domain}/case-studies`,
-      `https://${domain}/features`,
-      `https://${domain}/pricing`
-    ];
-    
-    commonPages.forEach(page => pages.add(page));
-    
-    // Limit to top 10 pages for cost control
-    return Array.from(pages).slice(0, 10);
-    
-  } catch (error) {
-    console.error('Error discovering pages:', error);
-    return [startUrl]; // Fallback to just the start URL
-  }
-}
-
-async function crawlPage(url: string, domain: string): Promise<WebsitePage | null> {
-  try {
-    console.log(`Crawling: ${url}`);
-    
-    const scrapeOwlResponse = await fetch('https://api.scrapeowl.com/v1/scrape', {
+    const response = await fetch('https://api.scrapeowl.com/v1/scrape', {
       method: 'POST',
       headers: {
         'Authorization': `Token ${process.env.SCRAPEOWL_API_KEY}`,
@@ -209,341 +33,249 @@ async function crawlPage(url: string, domain: string): Promise<WebsitePage | nul
         api_key: process.env.SCRAPEOWL_API_KEY,
         url: url,
         elements: [
-          {
-            name: 'title',
-            selector: 'title',
-            type: 'text'
-          },
-          {
-            name: 'description',
-            selector: 'meta[name="description"]',
-            type: 'attribute',
-            attribute: 'content'
-          },
-          {
-            name: 'keywords',
-            selector: 'meta[name="keywords"]',
-            type: 'attribute',
-            attribute: 'content'
-          },
-          {
-            name: 'headings',
-            selector: 'h1, h2, h3',
-            type: 'list',
-            children: [
-              {
-                name: 'text',
-                selector: '',
-                type: 'text'
-              }
-            ]
-          },
-          {
-            name: 'content',
-            selector: 'main, .main, #main, .content, #content, article, .article',
-            type: 'text'
-          },
-          {
-            name: 'bodyText',
-            selector: 'body',
-            type: 'text'
-          },
-          {
-            name: 'links',
-            selector: 'a[href]',
-            type: 'list',
-            children: [
-              {
-                name: 'href',
-                selector: '',
-                type: 'attribute',
-                attribute: 'href'
-              }
-            ]
-          }
-        ]
+          { name: 'title', selector: 'title' },
+          { name: 'description', selector: 'meta[name="description"]', attribute: 'content' },
+          { name: 'h1', selector: 'h1', multiple: true },
+          { name: 'h2', selector: 'h2', multiple: true },
+          { name: 'paragraphs', selector: 'p', multiple: true },
+          { name: 'links', selector: 'a', multiple: true, attribute: 'href' },
+        ],
       }),
     });
 
-    if (scrapeOwlResponse.ok) {
-      const scrapeData = await scrapeOwlResponse.json();
-      
-      if (scrapeData.success && scrapeData.data) {
-        const data = scrapeData.data;
-        
-        // Extract internal links
-        const internalLinks = data.links ? 
-          data.links
-            .map((link: any) => link.href)
-            .filter((href: string) => href && (href.includes(domain) || href.startsWith('/')))
-            .map((href: string) => href.startsWith('/') ? `https://${domain}${href}` : href)
-          : [];
-        
-        // Determine page type
-        const pageType = determinePageType(url, data.title || '', data.content || data.bodyText || '');
-        
-        // Extract headings
-        const headings = data.headings ? 
-          data.headings.map((h: any) => h.text).filter((text: string) => text && text.trim()) 
-          : [];
-        
-        const content = data.content || data.bodyText || '';
-        
-        return {
-          id: `website_${Math.random().toString(36).substring(2, 12)}`,
-          url,
-          title: data.title || '',
-          content: content.substring(0, 5000), // Limit content length
-          pageType,
-          headings,
-          links: internalLinks.slice(0, 20), // Limit links
-          images: [], // Could add image extraction if needed
-          metadata: {
-            description: data.description || '',
-            keywords: data.keywords || '',
-            wordCount: content.split(/\s+/).length,
-            lastCrawled: new Date().toISOString()
-          }
-        };
-      }
+    if (!response.ok) {
+      throw new Error(`Scraping failed: ${response.statusText}`);
     }
+
+    const data = await response.json();
     
-    console.log(`Failed to crawl ${url}, generating fallback data`);
-    return generateFallbackPageData(url, domain);
-    
+    return {
+      url: url,
+      title: data.title || 'No title found',
+      description: data.description || 'No description found',
+      content: [
+        ...(data.h1 || []),
+        ...(data.h2 || []),
+        ...(data.paragraphs || [])
+      ].join(' '),
+      metadata: {
+        headings: {
+          h1: data.h1 || [],
+          h2: data.h2 || []
+        },
+        links: data.links || [],
+        crawled: new Date().toISOString()
+      }
+    };
   } catch (error) {
     console.error(`Error crawling ${url}:`, error);
-    return generateFallbackPageData(url, domain);
+    return null;
   }
 }
 
-function determinePageType(url: string, title: string, content: string): string {
-  const lowerUrl = url.toLowerCase();
-  const lowerTitle = title.toLowerCase();
-  const lowerContent = content.toLowerCase();
+function analyzeWebsiteContent(websiteData: WebsiteData[], keywords: string): any {
+  const allContent = websiteData.map(site => 
+    `${site.title} ${site.description} ${site.content}`
+  ).join(' ').toLowerCase();
   
-  if (lowerUrl.includes('/about') || lowerTitle.includes('about') || lowerContent.includes('our story')) {
-    return 'about';
-  }
-  if (lowerUrl.includes('/product') || lowerTitle.includes('product') || lowerContent.includes('features')) {
-    return 'product';
-  }
-  if (lowerUrl.includes('/testimonial') || lowerUrl.includes('/review') || lowerContent.includes('customer says')) {
-    return 'testimonials';
-  }
-  if (lowerUrl.includes('/blog') || lowerUrl.includes('/news') || lowerUrl.includes('/article')) {
-    return 'blog';
-  }
-  if (lowerUrl.includes('/contact') || lowerTitle.includes('contact')) {
-    return 'contact';
-  }
-  if (lowerUrl.includes('/pricing') || lowerTitle.includes('pricing') || lowerContent.includes('price')) {
-    return 'pricing';
-  }
-  if (lowerUrl === extractDomain(url) || lowerUrl.endsWith('/') || lowerUrl.includes('home')) {
-    return 'homepage';
-  }
+  const keywordList = keywords.toLowerCase().split(' ');
+  const keywordMatches = keywordList.map(keyword => ({
+    keyword,
+    count: (allContent.match(new RegExp(keyword, 'g')) || []).length
+  }));
   
-  return 'other';
-}
-
-function generateFallbackPageData(url: string, domain: string): WebsitePage {
-  const pageType = determinePageType(url, '', '');
-  
-  const fallbackContent = {
-    homepage: `Welcome to ${domain}. We provide high-quality products and services to help you achieve your goals. Our customers love our innovative solutions and excellent customer service.`,
-    about: `About ${domain}: We are a leading company in our industry, dedicated to providing exceptional value to our customers. Our team has years of experience and we pride ourselves on innovation and quality.`,
-    product: `Our products are designed with your needs in mind. We focus on quality, reliability, and user experience. Features include advanced functionality and easy-to-use interface.`,
-    testimonials: `"${domain} has been fantastic to work with. Their product exceeded our expectations and their support team is amazing." - Happy Customer`,
-    other: `${domain} - Quality products and services you can trust. We are committed to customer satisfaction and continuous improvement.`
-  };
+  const valueProps = extractValuePropositions(allContent);
+  const brandMessaging = extractBrandMessaging(websiteData);
+  const customerFocus = analyzeCustomerFocus(allContent);
   
   return {
-    id: `fallback_${Math.random().toString(36).substring(2, 12)}`,
-    url,
-    title: `${domain} - ${pageType}`,
-    content: fallbackContent[pageType as keyof typeof fallbackContent] || fallbackContent.other,
-    pageType,
-    headings: [`${domain}`, `Quality Products`, `Customer Focused`],
-    links: [],
-    images: [],
+    totalPages: websiteData.length,
+    keywordRelevance: keywordMatches,
+    valuePropositions: valueProps,
+    brandMessaging: brandMessaging,
+    customerFocus: customerFocus,
+    contentThemes: extractContentThemes(allContent),
     metadata: {
-      description: `${domain} ${pageType} page`,
-      keywords: '',
-      wordCount: 50,
-      lastCrawled: new Date().toISOString()
+      analyzed: new Date().toISOString(),
+      keywords: keywords
     }
   };
 }
 
-function analyzeWebsiteData(websiteData: WebsitePage[], targetKeywords: string, userProduct: string): WebsiteInsights {
-  const totalPages = websiteData.length;
-  
-  // Count page types
-  const pageTypes = websiteData.reduce((acc, page) => {
-    acc[page.pageType] = (acc[page.pageType] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  // Extract common keywords from content
-  const allContent = websiteData.map(page => `${page.title} ${page.content} ${page.headings.join(' ')}`).join(' ').toLowerCase();
-  const commonKeywords = extractKeywords(allContent, targetKeywords);
-  
-  // Extract brand messaging (from homepage and about pages)
-  const brandPages = websiteData.filter(page => page.pageType === 'homepage' || page.pageType === 'about');
-  const brandMessaging = extractBrandMessaging(brandPages);
-  
-  // Extract target audience indicators
-  const targetAudience = extractTargetAudience(allContent);
-  
-  // Extract value propositions
-  const valuePropositions = extractValuePropositions(brandPages);
-  
-  // Extract testimonials
-  const testimonialPages = websiteData.filter(page => page.pageType === 'testimonials');
-  const testimonials = extractTestimonials(testimonialPages);
-  
-  // Extract product features
-  const productPages = websiteData.filter(page => page.pageType === 'product' || page.pageType === 'homepage');
-  const productFeatures = extractProductFeatures(productPages, userProduct);
-  
-  return {
-    totalPages,
-    pageTypes,
-    commonKeywords,
-    brandMessaging,
-    targetAudience,
-    valuePropositions,
-    testimonials,
-    productFeatures,
-    dataQuality: totalPages > 5 ? 'high' : totalPages > 2 ? 'medium' : 'low'
-  };
-}
-
-function extractKeywords(content: string, targetKeywords: string): string[] {
-  const keywords = targetKeywords.split(',').map(k => k.trim().toLowerCase());
-  const words = content.split(/\s+/).filter(word => word.length > 3);
-  
-  // Count word frequency
-  const wordCount = words.reduce((acc, word) => {
-    const cleanWord = word.replace(/[^\w]/g, '').toLowerCase();
-    if (cleanWord.length > 3) {
-      acc[cleanWord] = (acc[cleanWord] || 0) + 1;
-    }
-    return acc;
-  }, {} as Record<string, number>);
-  
-  // Get most frequent words
-  const frequentWords = Object.entries(wordCount)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 20)
-    .map(([word]) => word);
-  
-  // Combine with target keywords
-  return [...new Set([...keywords, ...frequentWords])].slice(0, 15);
-}
-
-function extractBrandMessaging(brandPages: WebsitePage[]): string[] {
-  const messaging: string[] = [];
-  
-  brandPages.forEach(page => {
-    // Look for key messaging patterns
-    const content = page.content.toLowerCase();
-    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
-    
-    // Find sentences that contain brand messaging keywords
-    const messagingKeywords = ['we are', 'we provide', 'we help', 'our mission', 'we believe', 'dedicated to', 'committed to'];
-    
-    sentences.forEach(sentence => {
-      messagingKeywords.forEach(keyword => {
-        if (sentence.includes(keyword) && sentence.length < 200) {
-          messaging.push(sentence.trim());
-        }
-      });
-    });
-  });
-  
-  return messaging.slice(0, 10);
-}
-
-function extractTargetAudience(content: string): string[] {
-  const audienceIndicators = [
-    'small business', 'enterprise', 'startup', 'professional', 'individual', 'team', 'company',
-    'beginner', 'expert', 'student', 'educator', 'manager', 'developer', 'designer',
-    'entrepreneur', 'freelancer', 'agency', 'consultant', 'customer', 'client'
+function extractValuePropositions(content: string): string[] {
+  const valuePatterns = [
+    /(?:we|our)\s+(?:provide|offer|deliver|ensure|guarantee)[\s\w]{1,100}/gi,
+    /(?:best|leading|top|premium|quality|reliable|trusted)[\s\w]{1,50}/gi,
+    /(?:save|reduce|increase|improve|enhance|optimize)[\s\w]{1,50}/gi
   ];
   
-  const foundAudiences = audienceIndicators.filter(indicator => 
-    content.includes(indicator)
-  );
-  
-  return foundAudiences.slice(0, 8);
-}
-
-function extractValuePropositions(brandPages: WebsitePage[]): string[] {
-  const propositions: string[] = [];
-  
-  brandPages.forEach(page => {
-    const headings = page.headings.join(' ').toLowerCase();
-    const content = page.content.toLowerCase();
-    
-    // Look for value proposition patterns
-    const valueKeywords = ['save time', 'save money', 'increase', 'improve', 'better', 'faster', 'easier', 'simple', 'effective', 'reliable'];
-    
-    page.headings.forEach(heading => {
-      valueKeywords.forEach(keyword => {
-        if (heading.toLowerCase().includes(keyword) && heading.length < 100) {
-          propositions.push(heading);
-        }
-      });
-    });
+const props: string[] = [];
+  valuePatterns.forEach(pattern => {
+    const matches = content.match(pattern) || [];
+    props.push(...matches.slice(0, 5));
   });
   
-  return propositions.slice(0, 8);
+  return [...new Set(props)].slice(0, 10);
 }
 
-function extractTestimonials(testimonialPages: WebsitePage[]): string[] {
-  const testimonials: string[] = [];
+function extractBrandMessaging(websites: WebsiteData[]): any {
+  const titles = websites.map(site => site.title).join(' ');
+  const descriptions = websites.map(site => site.description).join(' ');
   
-  testimonialPages.forEach(page => {
-    const content = page.content;
+  return {
+    mainTitles: websites.map(site => site.title),
+    descriptions: websites.map(site => site.description),
+    tone: analyzeTone(titles + ' ' + descriptions),
+    focusAreas: extractFocusAreas(titles + ' ' + descriptions)
+  };
+}
+
+function analyzeTone(text: string): string {
+  const professionalWords = ['professional', 'enterprise', 'business', 'corporate'];
+  const friendlyWords = ['friendly', 'easy', 'simple', 'fun', 'enjoy'];
+  const urgentWords = ['fast', 'quick', 'immediate', 'urgent', 'now'];
+  
+  const professionalCount = professionalWords.filter(word => text.toLowerCase().includes(word)).length;
+  const friendlyCount = friendlyWords.filter(word => text.toLowerCase().includes(word)).length;
+  const urgentCount = urgentWords.filter(word => text.toLowerCase().includes(word)).length;
+  
+  if (professionalCount > friendlyCount && professionalCount > urgentCount) return 'professional';
+  if (friendlyCount > urgentCount) return 'friendly';
+  if (urgentCount > 0) return 'urgent';
+  return 'neutral';
+}
+
+function extractFocusAreas(text: string): string[] {
+  const areas = ['quality', 'price', 'service', 'innovation', 'reliability', 'speed', 'convenience'];
+  return areas.filter(area => text.toLowerCase().includes(area));
+}
+
+function analyzeCustomerFocus(content: string): any {
+  const customerWords = (content.match(/\b(?:customer|client|user|buyer|you|your)\b/g) || []).length;
+  const productWords = (content.match(/\b(?:product|service|solution|feature|benefit)\b/g) || []).length;
+  
+  return {
+    customerMentions: customerWords,
+    productMentions: productWords,
+    customerFocusRatio: customerWords / Math.max(productWords, 1),
+    isCustomerCentric: customerWords > productWords
+  };
+}
+
+function extractContentThemes(content: string): string[] {
+  const words = content.split(/\s+/).filter(word => word.length > 4);
+  const wordCounts = words.reduce((acc, word) => {
+    acc[word] = (acc[word] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  return Object.entries(wordCounts)
+    .filter(([word, count]) => count >= 5)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 15)
+    .map(([word]) => word);
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { jobId, websiteUrl, targetKeywords } = await request.json();
+
+    if (!jobId || !websiteUrl) {
+      return NextResponse.json({ error: 'Job ID and website URL are required' }, { status: 400 });
+    }
+
+    const primaryProductUrl = websiteUrl;
+    console.log(`Starting website analysis for job ${jobId}: ${primaryProductUrl}`);
     
-    // Look for testimonial patterns (quotes, customer stories)
-    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 30);
+    // Update job status
+    await updateJobStatus(jobId, 'processing');
     
-    sentences.forEach(sentence => {
-      if (sentence.includes('"') || sentence.includes('customer') || sentence.includes('amazing') || sentence.includes('great')) {
-        testimonials.push(sentence.trim());
+    // Extract domain and prepare for crawling
+    const domain = extractDomain(primaryProductUrl);
+    if (!domain) {
+      throw new Error('Invalid website URL provided');
+    }
+
+    await updateJobStatus(jobId, 'processing');
+    
+    // Crawl main pages
+    const urlsToCrawl = [
+      primaryProductUrl,
+      `https://${domain}`,
+      `https://${domain}/about`,
+      `https://${domain}/products`,
+      `https://${domain}/services`
+    ];
+    
+    console.log(`Crawling ${urlsToCrawl.length} pages for comprehensive analysis...`);
+    
+    const websiteData: WebsiteData[] = [];
+    for (let i = 0; i < urlsToCrawl.length; i++) {
+      const url = urlsToCrawl[i];
+      const data = await crawlWebsite(url);
+      if (data) {
+        websiteData.push(data);
+      }
+      
+      // Update progress
+      const progress = 30 + (i / urlsToCrawl.length) * 40;
+      await updateJobStatus(jobId, 'processing');
+    }
+
+    if (websiteData.length === 0) {
+      throw new Error('Could not crawl any pages from the website');
+    }
+
+    await updateJobStatus(jobId, 'processing');
+    
+    // Analyze website content
+    const analysis = analyzeWebsiteContent(websiteData, targetKeywords || '');
+    
+    const websiteAnalysis = {
+      pages: websiteData,
+      analysis: analysis,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        domain: domain,
+        totalPages: websiteData.length,
+        keywords: targetKeywords
+      }
+    };
+
+    await updateJobStatus(jobId, 'processing');
+
+    // Save the website analysis data
+    await saveJobData(jobId, 'website', websiteAnalysis);
+
+    console.log(`Website analysis completed for job ${jobId}. Analyzed ${websiteData.length} pages.`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Website analysis completed',
+      data: {
+        pagesAnalyzed: websiteData.length,
+        domain: domain,
+        keywordMatches: analysis.keywordRelevance,
+        valuePropositions: analysis.valuePropositions.length
       }
     });
-  });
-  
-  return testimonials.slice(0, 8);
-}
 
-function extractProductFeatures(productPages: WebsitePage[], userProduct: string): string[] {
-  const features: string[] = [];
-  
-  productPages.forEach(page => {
-    // Look in headings for features
-    page.headings.forEach(heading => {
-      if (heading.length < 100 && (
-        heading.toLowerCase().includes('feature') ||
-        heading.toLowerCase().includes(userProduct.toLowerCase()) ||
-        heading.toLowerCase().includes('benefit')
-      )) {
-        features.push(heading);
+  } catch (error) {
+    console.error('Website crawling error:', error);
+    
+    try {
+      const { jobId } = await request.json();
+      if (jobId) {
+        await updateJobStatus(jobId, 'failed');
       }
-    });
-  });
-  
-  return features.slice(0, 10);
-}
+    } catch (updateError) {
+      console.error('Failed to update job status:', updateError);
+    }
 
-async function storeWebsiteData(jobId: string, websiteData: WebsitePage[], insights: WebsiteInsights) {
-  console.log(`Storing ${websiteData.length} website pages for job ${jobId}`);
-  console.log('Website insights:', insights);
-  
-  // TODO: Store in database
-  // await sql`INSERT INTO website_data (job_id, page_data, insights) VALUES (${jobId}, ${JSON.stringify(websiteData)}, ${JSON.stringify(insights)})`
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json(
+      { error: 'Website analysis failed', details: errorMessage },
+      { status: 500 }
+    );
+  }
 }
