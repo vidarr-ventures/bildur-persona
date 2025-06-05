@@ -1,4 +1,5 @@
 import { kv } from '@vercel/kv';
+import { updateJobStatus } from '@/lib/db';
 
 export interface QueueJob {
   id: string;
@@ -35,7 +36,7 @@ export class Queue {
     // Add to queue using lpush (left push)
     await kv.lpush(this.QUEUE_KEY, JSON.stringify(job));
     
-    // Trigger processing
+    // Trigger processing immediately
     await this.triggerProcessing();
     
     return job.id;
@@ -71,10 +72,10 @@ export class Queue {
 
   static async failJob(jobId: string, error: string): Promise<void> {
     try {
-const jobStr = await kv.hget(this.PROCESSING_KEY, jobId);
-if (!jobStr || typeof jobStr !== 'string') return;
+      const jobStr = await kv.hget(this.PROCESSING_KEY, jobId);
+      if (!jobStr || typeof jobStr !== 'string') return;
 
-const job: QueueJob = JSON.parse(jobStr);
+      const job: QueueJob = JSON.parse(jobStr);
       job.attempts++;
 
       if (job.attempts < job.maxAttempts) {
@@ -116,23 +117,107 @@ const job: QueueJob = JSON.parse(jobStr);
 
   static async triggerProcessing(): Promise<void> {
     try {
-      // Call the queue processor endpoint
-      const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL 
+      // Get base URL for the current environment
+      const baseUrl = process.env.VERCEL_URL 
         ? `https://${process.env.VERCEL_URL}` 
-        : 'http://localhost:3000';
+        : process.env.NEXTAUTH_URL || 'http://localhost:3000';
       
-      // Use fetch with no-wait approach to avoid blocking
-      fetch(`${baseUrl}/api/queue/processor`, {
+      console.log('Triggering queue processor at:', baseUrl);
+      
+      // Call the queue processor endpoint immediately
+      const response = await fetch(`${baseUrl}/api/queue/processor`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ trigger: true }),
-      }).catch(error => {
-        console.log('Queue processor trigger sent:', error.message);
       });
+
+      if (!response.ok) {
+        console.error('Queue processor trigger failed:', response.status, response.statusText);
+        // Try direct processing as fallback
+        await this.processQueueDirectly();
+      } else {
+        console.log('Queue processor triggered successfully');
+      }
     } catch (error) {
-      console.log('Queue processor trigger initiated');
+      console.error('Error triggering queue processor:', error);
+      
+      // Fallback: try direct processing
+      try {
+        console.log('Trying fallback direct processing...');
+        await this.processQueueDirectly();
+      } catch (fallbackError) {
+        console.error('Fallback processing also failed:', fallbackError);
+      }
+    }
+  }
+
+  static async processQueueDirectly(): Promise<void> {
+    try {
+      console.log('Direct queue processing started...');
+      
+      // Get next job
+      const job = await this.getNextJob();
+      if (!job) {
+        console.log('No jobs in queue for direct processing');
+        return;
+      }
+
+      console.log('Processing job directly:', job.id);
+      
+      // Update job status
+      await updateJobStatus(job.data.jobId, 'processing');
+      
+      // Execute workers directly
+      await this.executeWorkersDirectly(job.data);
+      
+      // Mark as completed
+      await updateJobStatus(job.data.jobId, 'completed');
+      await this.completeJob(job.id);
+      
+      console.log('Direct processing completed for job:', job.id);
+      
+    } catch (error) {
+      console.error('Direct queue processing error:', error);
+    }
+  }
+
+  static async executeWorkersDirectly(jobData: any): Promise<void> {
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
+    const workers = [
+      '/api/workers/website-crawler',
+      '/api/workers/reviews-collector', 
+      '/api/workers/amazon-competitors',
+      '/api/workers/persona-generator'
+    ];
+
+    for (const worker of workers) {
+      try {
+        console.log('Executing worker:', worker);
+        
+        const response = await fetch(`${baseUrl}${worker}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jobId: jobData.jobId,
+            websiteUrl: jobData.websiteUrl,
+            targetKeywords: jobData.targetKeywords,
+            amazonUrl: jobData.amazonUrl,
+          }),
+        });
+
+        if (!response.ok) {
+          console.error(`Worker ${worker} failed:`, response.status);
+        } else {
+          console.log(`Worker ${worker} completed successfully`);
+        }
+      } catch (error) {
+        console.error(`Error executing worker ${worker}:`, error);
+      }
     }
   }
 
