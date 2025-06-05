@@ -1,12 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createJob } from '@/lib/db';
-import { Queue } from '@/lib/queue';
+import { createJob, updateJobStatus } from '@/lib/db';
+
+// Execute all workers for a job
+async function processJobAutomatically(jobId: string, websiteUrl: string, targetKeywords: string, amazonUrl?: string) {
+  try {
+    console.log(`Starting automatic processing for job ${jobId}`);
+    
+    // Update status to processing
+    await updateJobStatus(jobId, 'processing');
+    
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : 'http://localhost:3000';
+
+    const workers = [
+      '/api/workers/website-crawler',
+      '/api/workers/reviews-collector', 
+      '/api/workers/amazon-competitors',
+      '/api/workers/persona-generator'
+    ];
+
+    // Execute workers sequentially
+    for (const worker of workers) {
+      try {
+        console.log(`Executing ${worker} for job ${jobId}`);
+        
+        const response = await fetch(`${baseUrl}${worker}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jobId,
+            websiteUrl,
+            targetKeywords,
+            amazonUrl,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Worker ${worker} failed:`, response.status, errorText);
+          throw new Error(`Worker ${worker} failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log(`Worker ${worker} completed successfully for job ${jobId}`);
+        
+      } catch (workerError) {
+        console.error(`Error in worker ${worker}:`, workerError);
+        // Continue with other workers even if one fails
+      }
+    }
+
+    // Mark job as completed
+    await updateJobStatus(jobId, 'completed');
+    console.log(`Job ${jobId} processing completed successfully`);
+    
+  } catch (error) {
+    console.error(`Error processing job ${jobId}:`, error);
+    await updateJobStatus(jobId, 'failed');
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // Extract fields that the form actually sends
+    // Extract fields that the form sends
     const { primaryProductUrl, targetKeywords, amazonProductUrl } = body;
     
     // Map to expected variable names
@@ -14,7 +73,6 @@ export async function POST(request: NextRequest) {
     const amazonUrl = amazonProductUrl;
     
     console.log('Received form data:', { primaryProductUrl, targetKeywords, amazonProductUrl });
-    console.log('Mapped to:', { websiteUrl, targetKeywords, amazonUrl });
     
     if (!websiteUrl || !targetKeywords) {
       return NextResponse.json(
@@ -51,65 +109,29 @@ export async function POST(request: NextRequest) {
     // Create job in database
     console.log('Creating job with data:', { websiteUrl, targetKeywords, amazonUrl });
     
-    let job;
-    try {
-      job = await createJob({
-        website_url: websiteUrl,
-        target_keywords: targetKeywords,
-        amazon_url: amazonUrl || null,
-        status: 'pending'
-      });
-      console.log('Job created in database:', job);
-    } catch (dbError) {
-      console.error('Database error creating job:', dbError);
-      const dbErrorMessage = dbError instanceof Error ? dbError.message : 'Database error';
-      return NextResponse.json(
-        { 
-          error: 'Database error creating job',
-          details: dbErrorMessage,
-          step: 'database_creation'
-        },
-        { status: 500 }
-      );
-    }
+    const job = await createJob({
+      website_url: websiteUrl,
+      target_keywords: targetKeywords,
+      amazon_url: amazonUrl || null,
+      status: 'pending'
+    });
 
-    // Add job to queue for automatic processing
-    let queueJobId;
-    try {
-      queueJobId = await Queue.addJob({
-        type: 'persona_research',
-        data: {
-          jobId: job.id,
-          websiteUrl: websiteUrl,
-          targetKeywords: targetKeywords,
-          amazonUrl: amazonUrl,
-        },
+    console.log('Job created in database:', job);
+
+    // Start processing automatically (don't wait for it to complete)
+    processJobAutomatically(job.id, websiteUrl, targetKeywords, amazonUrl)
+      .catch(error => {
+        console.error('Auto-processing failed:', error);
       });
-      console.log('Job added to queue:', queueJobId);
-    } catch (queueError) {
-      console.error('Queue error:', queueError);
-      const queueErrorMessage = queueError instanceof Error ? queueError.message : 'Queue error';
-      return NextResponse.json(
-        { 
-          error: 'Queue error adding job',
-          details: queueErrorMessage,
-          step: 'queue_addition',
-          jobId: job.id
-        },
-        { status: 500 }
-      );
-    }
 
     return NextResponse.json({
       success: true,
       jobId: job.id,
-      queueId: queueJobId,
-      message: 'Job created and queued for processing'
+      message: 'Job created and processing started automatically'
     });
 
   } catch (error) {
-    console.error('General job creation error:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('Job creation error:', error);
     
     // Type-safe error handling
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -118,7 +140,6 @@ export async function POST(request: NextRequest) {
       { 
         error: 'Failed to create job', 
         details: errorMessage,
-        stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined,
         step: 'general_error'
       },
       { status: 500 }
