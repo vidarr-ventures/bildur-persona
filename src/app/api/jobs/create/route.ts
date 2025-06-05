@@ -6,14 +6,22 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // Validate required fields
-const { primaryProductUrl, targetKeywords, amazonProductUrl } = body;
-const websiteUrl = primaryProductUrl;
-const amazonUrl = amazonProductUrl;
+    // Extract fields that the form actually sends
+    const { primaryProductUrl, targetKeywords, amazonProductUrl } = body;
+    
+    // Map to expected variable names
+    const websiteUrl = primaryProductUrl;
+    const amazonUrl = amazonProductUrl;
+    
+    console.log('Received form data:', { primaryProductUrl, targetKeywords, amazonProductUrl });
+    console.log('Mapped to:', { websiteUrl, targetKeywords, amazonUrl });
     
     if (!websiteUrl || !targetKeywords) {
       return NextResponse.json(
-        { error: 'Website URL and target keywords are required' },
+        { 
+          error: 'Website URL and target keywords are required',
+          received: { websiteUrl, targetKeywords, amazonUrl }
+        },
         { status: 400 }
       );
     }
@@ -43,12 +51,13 @@ const amazonUrl = amazonProductUrl;
     // Create job in database
     console.log('Creating job with data:', { websiteUrl, targetKeywords, amazonUrl });
     
-const job = await createJob({
-  website_url: websiteUrl,  // This should already be correct
-  target_keywords: targetKeywords,
-  amazon_url: amazonUrl || null,
-  status: 'pending'
-});
+    const job = await createJob({
+      website_url: websiteUrl,
+      target_keywords: targetKeywords,
+      amazon_url: amazonUrl || null,
+      status: 'pending'
+    });
+
     console.log('Job created in database:', job);
 
     // Add job to queue for automatic processing
