@@ -12,17 +12,19 @@ export async function POST(request: NextRequest) {
       amazonProductUrl,
       targetKeywords,
       competitors,
-      userProduct,
       businessType,
       targetMarket
     } = body;
     
-    if (!primaryProductUrl || !targetKeywords || !userProduct) {
+    if (!primaryProductUrl || !targetKeywords) {
       return NextResponse.json(
-        { error: 'Missing required fields: primaryProductUrl, targetKeywords, and userProduct are required' },
+        { error: 'Missing required fields: primaryProductUrl and targetKeywords are required' },
         { status: 400 }
       );
     }
+    
+    // Extract userProduct from targetKeywords or primaryProductUrl
+    const userProduct = targetKeywords.split(',')[0]?.trim() || 'product';
     
     console.log('Creating new job with data:', {
       primaryProductUrl,
