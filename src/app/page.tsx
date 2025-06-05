@@ -12,40 +12,30 @@ export default function Home() {
   const [result, setResult] = useState<any>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsSubmitting(true);
-  
-  console.log('Form data being sent:', formData); // Debug line
-  
-  try {
-    const response = await fetch('/api/jobs/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(formData),
-    });
+    e.preventDefault();
+    setIsSubmitting(true);
     
-    console.log('Response status:', response.status); // Debug line
-    const data = await response.json();
-    console.log('Response data:', data); // Debug line
+    console.log('Form data being sent:', formData); // Debug line
     
-    setResult(data);
-    
-    if (data.success) {
-      // Redirect to dashboard
-      window.location.href = `/dashboard/${data.jobId}`;
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    setResult({ error: 'Failed to submit form' });
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-  // Redirect to dashboard
-  window.location.href = `/dashboard/${data.jobId}`;
-}
+    try {
+      const response = await fetch('/api/jobs/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+      
+      console.log('Response status:', response.status); // Debug line
+      const data = await response.json();
+      console.log('Response data:', data); // Debug line
+      
+      setResult(data);
+      
+      if (data.success) {
+        // Redirect to dashboard
+        window.location.href = `/dashboard/${data.jobId}`;
+      }
     } catch (error) {
       console.error('Error:', error);
       setResult({ error: 'Failed to submit form' });
@@ -78,11 +68,10 @@ export default function Home() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Amazon Product URL
+              Amazon Product URL (Optional)
             </label>
             <input
               type="url"
-              required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.amazonProductUrl}
               onChange={(e) => setFormData({...formData, amazonProductUrl: e.target.value})}
@@ -100,7 +89,7 @@ export default function Home() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.targetKeywords}
               onChange={(e) => setFormData({...formData, targetKeywords: e.target.value})}
-              placeholder="keyword1, keyword2, keyword3"
+              placeholder="bluetooth speaker, wireless audio, portable speaker"
             />
           </div>
 
@@ -109,13 +98,14 @@ export default function Home() {
             disabled={isSubmitting}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
           >
-            {isSubmitting ? 'Creating Job...' : 'Start Research'}
+            {isSubmitting ? 'Creating Analysis...' : 'Start Customer Research'}
           </button>
         </form>
 
         {result && (
           <div className="mt-6 p-4 rounded-md bg-gray-100">
-            <pre className="text-sm">{JSON.stringify(result, null, 2)}</pre>
+            <h3 className="font-medium mb-2">Response:</h3>
+            <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(result, null, 2)}</pre>
           </div>
         )}
       </div>
