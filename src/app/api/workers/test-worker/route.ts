@@ -1,44 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateJobStatus } from '@/lib/db';
-import { JobQueue } from '@/lib/queue';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { jobId } = body;
+    const { jobId } = await request.json();
     
-    console.log(`Processing test worker for job ${jobId}`);
+    if (!jobId) {
+      return NextResponse.json({ error: 'jobId required' }, { status: 400 });
+    }
     
-    // Update job status to processing
-    await updateJobStatus(jobId, 'processing', 25);
+    console.log(`Testing worker trigger for job ${jobId}`);
     
-    // Simulate some work
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Try to trigger the website crawler directly
+    const websiteCrawlerResponse = await fetch(`${process.env.VERCEL_URL || 'http://localhost:3000'}/api/workers/website-crawler`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jobId,
+        payload: {
+          primaryProductUrl: 'https://example.com',
+          targetKeywords: 'test keywords',
+          userProduct: 'test product'
+        }
+      }),
+    });
     
-    // Update progress
-    await updateJobStatus(jobId, 'processing', 50);
-    
-    // Simulate more work
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mark as completed
-    await updateJobStatus(jobId, 'completed', 100);
-    
-    const queue = new JobQueue();
-    await queue.markTaskCompleted(jobId, 'test-worker');
-    
-    console.log(`Completed test worker for job ${jobId}`);
+    const result = await websiteCrawlerResponse.text();
     
     return NextResponse.json({
       success: true,
-      message: 'Test worker completed'
+      message: 'Worker triggered',
+      result,
+      status: websiteCrawlerResponse.status
     });
-
+    
   } catch (error) {
     console.error('Test worker error:', error);
-    return NextResponse.json(
-      { error: 'Test worker failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      error: 'Test failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }
