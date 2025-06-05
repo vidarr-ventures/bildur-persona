@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       const websiteResult = await websiteResponse.json();
       results.push({ worker: 'website-crawler', success: websiteResponse.ok, result: websiteResult });
     } catch (error) {
-      results.push({ worker: 'website-crawler', success: false, error: error.message });
+      results.push({ worker: 'website-crawler', success: false, error: error instanceof Error ? error.message : 'Unknown error' });
     }
     
     // 2. Reviews Collector (Reddit)
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       const reviewsResult = await reviewsResponse.json();
       results.push({ worker: 'reviews-collector', success: reviewsResponse.ok, result: reviewsResult });
     } catch (error) {
-      results.push({ worker: 'reviews-collector', success: false, error: error.message });
+      results.push({ worker: 'reviews-collector', success: false, error: error instanceof Error ? error.message : 'Unknown error' });
     }
     
     // 3. Amazon Competitors (if Amazon URL provided)
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
         const amazonResult = await amazonResponse.json();
         results.push({ worker: 'amazon-competitors', success: amazonResponse.ok, result: amazonResult });
       } catch (error) {
-        results.push({ worker: 'amazon-competitors', success: false, error: error.message });
+        results.push({ worker: 'amazon-competitors', success: false, error: error instanceof Error ? error.message : 'Unknown error' });
       }
     }
     
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       const googleResult = await googleResponse.json();
       results.push({ worker: 'google-competitors', success: googleResponse.ok, result: googleResult });
     } catch (error) {
-      results.push({ worker: 'google-competitors', success: false, error: error.message });
+      results.push({ worker: 'google-competitors', success: false, error: error instanceof Error ? error.message : 'Unknown error' });
     }
     
     // 5. Persona Generator (final step)
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       const personaResult = await personaResponse.json();
       results.push({ worker: 'persona-generator', success: personaResponse.ok, result: personaResult });
     } catch (error) {
-      results.push({ worker: 'persona-generator', success: false, error: error.message });
+      results.push({ worker: 'persona-generator', success: false, error: error instanceof Error ? error.message : 'Unknown error' });
     }
     
     return NextResponse.json({
@@ -155,3 +155,4 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
+
