@@ -51,27 +51,54 @@ export async function POST(request: NextRequest) {
     // Create job in database
     console.log('Creating job with data:', { websiteUrl, targetKeywords, amazonUrl });
     
-    const job = await createJob({
-      website_url: websiteUrl,
-      target_keywords: targetKeywords,
-      amazon_url: amazonUrl || null,
-      status: 'pending'
-    });
-
-    console.log('Job created in database:', job);
+    let job;
+    try {
+      job = await createJob({
+        website_url: websiteUrl,
+        target_keywords: targetKeywords,
+        amazon_url: amazonUrl || null,
+        status: 'pending'
+      });
+      console.log('Job created in database:', job);
+    } catch (dbError) {
+      console.error('Database error creating job:', dbError);
+      const dbErrorMessage = dbError instanceof Error ? dbError.message : 'Database error';
+      return NextResponse.json(
+        { 
+          error: 'Database error creating job',
+          details: dbErrorMessage,
+          step: 'database_creation'
+        },
+        { status: 500 }
+      );
+    }
 
     // Add job to queue for automatic processing
-    const queueJobId = await Queue.addJob({
-      type: 'persona_research',
-      data: {
-        jobId: job.id,
-        websiteUrl: websiteUrl,
-        targetKeywords: targetKeywords,
-        amazonUrl: amazonUrl,
-      },
-    });
-
-    console.log('Job added to queue:', queueJobId);
+    let queueJobId;
+    try {
+      queueJobId = await Queue.addJob({
+        type: 'persona_research',
+        data: {
+          jobId: job.id,
+          websiteUrl: websiteUrl,
+          targetKeywords: targetKeywords,
+          amazonUrl: amazonUrl,
+        },
+      });
+      console.log('Job added to queue:', queueJobId);
+    } catch (queueError) {
+      console.error('Queue error:', queueError);
+      const queueErrorMessage = queueError instanceof Error ? queueError.message : 'Queue error';
+      return NextResponse.json(
+        { 
+          error: 'Queue error adding job',
+          details: queueErrorMessage,
+          step: 'queue_addition',
+          jobId: job.id
+        },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -81,30 +108,18 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Job creation error:', error);
+    console.error('General job creation error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     
     // Type-safe error handling
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
-    // More specific error handling
-    if (errorMessage.includes('duplicate key')) {
-      return NextResponse.json(
-        { error: 'A job with these parameters already exists' },
-        { status: 409 }
-      );
-    }
-    
-    if (errorMessage.includes('connection')) {
-      return NextResponse.json(
-        { error: 'Database connection failed. Please try again.' },
-        { status: 503 }
-      );
-    }
-
     return NextResponse.json(
       { 
         error: 'Failed to create job', 
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined 
+        details: errorMessage,
+        stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined,
+        step: 'general_error'
       },
       { status: 500 }
     );
