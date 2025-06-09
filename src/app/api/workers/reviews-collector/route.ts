@@ -29,10 +29,14 @@ async function searchGoogleForRedditThreads(keywords: string): Promise<string[]>
       body: JSON.stringify({
         api_key: process.env.SCRAPEOWL_API_KEY,
         url: searchUrl,
+        render_js: true,
+        wait_for: 3000,
         elements: [
           { name: 'search_results', selector: 'div[data-ved] a[href*="reddit.com"]', multiple: true, attribute: 'href' },
           { name: 'result_links', selector: 'a[href*="reddit.com/r/"]', multiple: true, attribute: 'href' },
-          { name: 'all_links', selector: 'a[href*="reddit.com"]', multiple: true, attribute: 'href' }
+          { name: 'all_links', selector: 'a[href*="reddit.com"]', multiple: true, attribute: 'href' },
+          { name: 'search_divs', selector: 'div[data-ved]', multiple: true },
+          { name: 'result_titles', selector: 'h3', multiple: true }
         ],
       }),
     });
@@ -86,6 +90,8 @@ async function scrapeRedditThread(url: string): Promise<RedditThread | null> {
       body: JSON.stringify({
         api_key: process.env.SCRAPEOWL_API_KEY,
         url: oldRedditUrl,
+        render_js: true,
+        wait_for: 2000,
         elements: [
           // Get thread title
           { name: 'title', selector: '.title .may-blank, h1' },
