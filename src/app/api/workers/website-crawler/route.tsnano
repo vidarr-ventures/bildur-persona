@@ -1,0 +1,233 @@
+// src/app/api/workers/website-crawler/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { updateJobStatus, saveJobData } from '@/lib/db';
+
+interface WebsiteData {
+  url: string;
+  title: string;
+  content: string;
+  valuePropositions: string[];
+  features: string[];
+  benefits: string[];
+  keywords: string[];
+  metadata: {
+    timestamp: string;
+    contentLength: number;
+    extractionMethod: string;
+  };
+}
+
+async function crawlWebsiteDirectly(websiteUrl: string, targetKeywords: string[]): Promise<WebsiteData | null> {
+  try {
+    console.log(`Starting direct website crawl for: ${websiteUrl}`);
+    
+    // Fetch the website directly (no third-party service)
+    const response = await fetch(websiteUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; PersonaBot/1.0; Research purposes)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'Connection': 'keep-alive',
+      },
+      timeout: 15000 // 15 second timeout
+    });
+
+    if (!response.ok) {
+      console.log(`Failed to fetch website: ${response.status}`);
+      return null;
+    }
+
+    const html = await response.text();
+    console.log(`Fetched ${html.length} characters from website`);
+
+    // Extract text content from HTML
+    const textContent = extractTextFromHTML(html);
+    const title = extractTitle(html);
+    
+    // Analyze content for key information
+    const analysis = analyzeWebsiteContent(textContent, targetKeywords);
+    
+    const websiteData: WebsiteData = {
+      url: websiteUrl,
+      title: title,
+      content: textContent.substring(0, 5000), // First 5000 chars
+      valuePropositions: analysis.valuePropositions,
+      features: analysis.features,
+      benefits: analysis.benefits,
+      keywords: analysis.keywords,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        contentLength: textContent.length,
+        extractionMethod: 'direct_fetch'
+      }
+    };
+
+    console.log(`Website analysis completed. Found ${analysis.valuePropositions.length} value props, ${analysis.features.length} features`);
+    return websiteData;
+
+  } catch (error) {
+    console.error('Error crawling website:', error);
+    return null;
+  }
+}
+
+function extractTextFromHTML(html: string): string {
+  // Remove script and style tags completely
+  let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+  text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+  
+  // Remove HTML tags but keep the text
+  text = text.replace(/<[^>]*>/g, ' ');
+  
+  // Clean up whitespace
+  text = text.replace(/\s+/g, ' ').trim();
+  
+  // Decode HTML entities
+  text = text.replace(/&nbsp;/g, ' ');
+  text = text.replace(/&amp;/g, '&');
+  text = text.replace(/&lt;/g, '<');
+  text = text.replace(/&gt;/g, '>');
+  text = text.replace(/&quot;/g, '"');
+  text = text.replace(/&#39;/g, "'");
+  
+  return text;
+}
+
+function extractTitle(html: string): string {
+  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  return titleMatch ? titleMatch[1].trim() : 'Unknown Title';
+}
+
+function analyzeWebsiteContent(content: string, targetKeywords: string[]): {
+  valuePropositions: string[];
+  features: string[];
+  benefits: string[];
+  keywords: string[];
+} {
+  const contentLower = content.toLowerCase();
+  
+  // Extract value propositions (sentences with key value words)
+  const valueWords = ['best', 'premium', 'quality', 'effective', 'proven', 'guaranteed', 'certified', 'natural', 'safe', 'scientifically', 'clinically'];
+  const valuePropositions = extractSentencesWithWords(content, valueWords).slice(0, 8);
+  
+  // Extract features (sentences with feature words)
+  const featureWords = ['made', 'includes', 'features', 'comes with', 'designed', 'built', 'contains', 'material', 'size', 'dimensions'];
+  const features = extractSentencesWithWords(content, featureWords).slice(0, 10);
+  
+  // Extract benefits (sentences with benefit words)
+  const benefitWords = ['helps', 'improves', 'reduces', 'increases', 'better', 'relief', 'sleep', 'health', 'wellness', 'benefits', 'feel'];
+  const benefits = extractSentencesWithWords(content, benefitWords).slice(0, 10);
+  
+  // Find keyword mentions
+  const foundKeywords: string[] = [];
+  targetKeywords.forEach(keyword => {
+    if (contentLower.includes(keyword.toLowerCase())) {
+      foundKeywords.push(keyword);
+    }
+  });
+  
+  // Extract additional relevant keywords
+  const additionalKeywords = extractImportantWords(content, targetKeywords);
+  
+  return {
+    valuePropositions,
+    features,
+    benefits,
+    keywords: [...foundKeywords, ...additionalKeywords].slice(0, 15)
+  };
+}
+
+function extractSentencesWithWords(content: string, targetWords: string[]): string[] {
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
+  const matchingSentences: string[] = [];
+  
+  sentences.forEach(sentence => {
+    const sentenceLower = sentence.toLowerCase();
+    const hasTargetWord = targetWords.some(word => sentenceLower.includes(word.toLowerCase()));
+    
+    if (hasTargetWord && sentence.trim().length > 30 && sentence.trim().length < 200) {
+      matchingSentences.push(sentence.trim());
+    }
+  });
+  
+  return [...new Set(matchingSentences)]; // Remove duplicates
+}
+
+function extractImportantWords(content: string, targetKeywords: string[]): string[] {
+  // Look for product-related terms
+  const productTerms = content.match(/\b(grounding|earthing|conductive|organic|cotton|silver|copper|sheet|mat|pad|wellness|sleep|health|natural|therapy|healing)\b/gi) || [];
+  
+  // Clean and deduplicate
+  const uniqueTerms = [...new Set(productTerms.map(term => term.toLowerCase()))];
+  
+  return uniqueTerms.slice(0, 10);
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { jobId, websiteUrl, targetKeywords } = await request.json();
+
+    if (!jobId || !websiteUrl) {
+      return NextResponse.json({ 
+        error: 'Job ID and website URL are required' 
+      }, { status: 400 });
+    }
+
+    console.log(`Starting website crawl for job ${jobId}: ${websiteUrl}`);
+    
+    await updateJobStatus(jobId, 'processing');
+    
+    // Parse keywords
+    const keywords = typeof targetKeywords === 'string' 
+      ? targetKeywords.split(',').map(k => k.trim())
+      : targetKeywords || [];
+    
+    // Crawl the website directly
+    const websiteData = await crawlWebsiteDirectly(websiteUrl, keywords);
+    
+    if (!websiteData) {
+      console.log('Website crawl failed - no data collected');
+      await saveJobData(jobId, 'website', {
+        url: websiteUrl,
+        error: 'Failed to crawl website',
+        metadata: { timestamp: new Date().toISOString() }
+      });
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Website crawl completed (no data collected)',
+        data: { url: websiteUrl, contentLength: 0 }
+      });
+    }
+
+    // Save the website data
+    await saveJobData(jobId, 'website', websiteData);
+
+    console.log(`Website crawl completed for job ${jobId}. Collected ${websiteData.content.length} characters.`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Website crawl completed successfully',
+      data: {
+        url: websiteUrl,
+        title: websiteData.title,
+        contentLength: websiteData.content.length,
+        valuePropositions: websiteData.valuePropositions.length,
+        features: websiteData.features.length,
+        benefits: websiteData.benefits.length,
+        keywords: websiteData.keywords.length,
+        preview: websiteData.content.substring(0, 200) + '...'
+      }
+    });
+
+  } catch (error) {
+    console.error('Website crawler error:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json(
+      { error: 'Website crawl failed', details: errorMessage },
+      { status: 500 }
+    );
+  }
+}
