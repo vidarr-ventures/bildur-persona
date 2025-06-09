@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createJob, updateJobStatus } from '@/lib/db';
+import { createJob, updateJobStatus, getJobData } from '@/lib/db';
 
 // Execute all workers for a job
 async function processJobAutomatically(jobId: string, websiteUrl: string, targetKeywords: string, amazonUrl?: string) {
@@ -13,42 +13,117 @@ async function processJobAutomatically(jobId: string, websiteUrl: string, target
       ? `https://${process.env.VERCEL_URL}` 
       : 'http://localhost:3000';
 
-    const workers = [
-      '/api/workers/website-crawler',
-      '/api/workers/reviews-collector', 
-      '/api/workers/amazon-competitors',
-      '/api/workers/persona-generator'
-    ];
+    // Initialize data collectors
+    let websiteData = null;
+    let reviewsData = null;
+    let competitorsData = null;
 
-    // Execute workers sequentially
-    for (const worker of workers) {
-      try {
-        console.log(`Executing ${worker} for job ${jobId}`);
-        
-        const response = await fetch(`${baseUrl}${worker}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jobId,
-            websiteUrl,
-            targetKeywords,
-            amazonUrl,
-          }),
-        });
+    // Step 1: Website Crawler
+    try {
+      console.log(`Executing website crawler for job ${jobId}`);
+      
+      const response = await fetch(`${baseUrl}/api/workers/website-crawler`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId,
+          websiteUrl,
+          targetKeywords,
+        }),
+      });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Worker ${worker} failed:`, response.status, errorText);
-          throw new Error(`Worker ${worker} failed: ${response.status}`);
-        }
-
+      if (response.ok) {
         const result = await response.json();
-        console.log(`Worker ${worker} completed successfully for job ${jobId}`);
+        console.log(`Website crawler completed successfully for job ${jobId}`);
         
-      } catch (workerError) {
-        console.error(`Error in worker ${worker}:`, workerError);
-        // Continue with other workers even if one fails
+        // Get the actual website data from the database
+        websiteData = await getJobData(jobId, 'website');
+        console.log('Retrieved website data:', websiteData ? 'success' : 'failed');
+      } else {
+        console.error(`Website crawler failed: ${response.status}`);
       }
+    } catch (error) {
+      console.error('Website crawler error:', error);
+    }
+
+    // Step 2: Reviews Collector
+    try {
+      console.log(`Executing reviews collector for job ${jobId}`);
+      
+      const response = await fetch(`${baseUrl}/api/workers/reviews-collector`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId,
+          targetKeywords,
+        }),
+      });
+
+      if (response.ok) {
+        reviewsData = await getJobData(jobId, 'reviews');
+        console.log(`Reviews collector completed for job ${jobId}`);
+      } else {
+        console.error(`Reviews collector failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Reviews collector error:', error);
+    }
+
+    // Step 3: Amazon Competitors
+    try {
+      console.log(`Executing amazon competitors for job ${jobId}`);
+      
+      const response = await fetch(`${baseUrl}/api/workers/amazon-competitors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId,
+          amazonUrl,
+        }),
+      });
+
+      if (response.ok) {
+        competitorsData = await getJobData(jobId, 'amazon_competitors');
+        console.log(`Amazon competitors completed for job ${jobId}`);
+      } else {
+        console.error(`Amazon competitors failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Amazon competitors error:', error);
+    }
+
+    // Step 4: Persona Generator with ACTUAL DATA
+    try {
+      console.log(`Executing persona generator for job ${jobId} with collected data`);
+      console.log('Passing data to persona generator:', {
+        websiteData: websiteData ? 'available' : 'missing',
+        reviewsData: reviewsData ? 'available' : 'missing',
+        competitorsData: competitorsData ? 'available' : 'missing'
+      });
+      
+      const response = await fetch(`${baseUrl}/api/workers/persona-generator`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId,
+          websiteUrl,
+          targetKeywords,
+          // PASS THE ACTUAL COLLECTED DATA
+          websiteData: websiteData,
+          reviewsData: reviewsData, 
+          competitorsData: competitorsData
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`Persona generator completed successfully for job ${jobId}`);
+        console.log('Persona preview:', result.data?.persona?.substring(0, 200));
+      } else {
+        console.error(`Persona generator failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Persona generator error:', error);
     }
 
     // Mark job as completed
