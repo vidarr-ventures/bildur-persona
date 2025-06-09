@@ -126,7 +126,7 @@ async function scrapePageComprehensively(url: string): Promise<PageContent | nul
       ...(data.prices || []),
       ...(data.descriptions || []),
       ...(data.features || []),
-      ...(data.image_alts || []).filter(alt => alt && alt.trim()),
+...(data.image_alts || []).filter((alt: string) => alt && alt.trim()),
     ].filter(text => text && text.trim() && text.length > 2);
 
     // Clean and deduplicate text
