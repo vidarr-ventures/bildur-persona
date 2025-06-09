@@ -12,208 +12,164 @@ interface RedditThread {
   timestamp: string;
 }
 
-async function searchRedditDirectly(keywords: string): Promise<string[]> {
+async function searchRedditJSON(keywords: string): Promise<RedditThread[]> {
   try {
-    console.log(`Searching Reddit directly for: ${keywords}`);
+    console.log(`Searching Reddit JSON API for: ${keywords}`);
     
-    // Search multiple relevant subreddits
+    // Search relevant subreddits using Reddit's JSON API
     const subreddits = [
-      'sleep', 'insomnia', 'sleeptips', 'biohacking', 'health', 'wellness', 
-      'grounding', 'earthing', 'EMF', 'naturalhealth', 'alternative_health',
-      'reviews', 'BuyItForLife', 'productivity', 'lifehacks'
+      'Earthing', 'sleep', 'insomnia', 'biohacking', 'health', 'wellness',
+      'naturalhealth', 'alternative_health', 'sleeptips', 'BuyItForLife'
     ];
     
-    const redditUrls: string[] = [];
+    const allThreads: RedditThread[] = [];
     
-    for (const subreddit of subreddits.slice(0, 8)) { // Limit to 8 subreddits
+    for (const subreddit of subreddits.slice(0, 6)) { // Limit to 6 subreddits
       try {
-        console.log(`Searching r/${subreddit} for "${keywords}"`);
+        console.log(`Searching r/${subreddit} via JSON API`);
         
-        // Use Reddit's search URL directly
-        const searchUrl = `https://old.reddit.com/r/${subreddit}/search?q=${encodeURIComponent(keywords)}&restrict_sr=1&sort=relevance&t=all`;
+        // Use Reddit's JSON search endpoint
+        const searchUrl = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodeURIComponent(keywords)}&restrict_sr=1&sort=relevance&limit=10`;
         
-        const response = await fetch('https://api.scrapeowl.com/v1/scrape', {
-          method: 'POST',
+        const response = await fetch(searchUrl, {
           headers: {
-            'Authorization': `Token ${process.env.SCRAPEOWL_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            api_key: process.env.SCRAPEOWL_API_KEY,
-            url: searchUrl,
-            render_js: false, // Old Reddit doesn't need JS
-            elements: [
-              { name: 'thread_links', selector: 'a[href*="/comments/"]', multiple: true, attribute: 'href' },
-              { name: 'post_titles', selector: '.search-result-link', multiple: true },
-              { name: 'result_links', selector: '.search-result .entry a', multiple: true, attribute: 'href' }
-            ],
-          }),
+            'User-Agent': 'PersonaBot/1.0 (by /u/researcher)'
+          }
         });
 
         if (response.ok) {
           const data = await response.json();
-          const links = [
-            ...(data.thread_links || []),
-            ...(data.result_links || [])
-          ].filter(link => link && link.includes('/comments/'))
-           .map(link => link.startsWith('http') ? link : `https://old.reddit.com${link}`)
-           .slice(0, 3); // Max 3 threads per subreddit
-
-          redditUrls.push(...links);
-          console.log(`Found ${links.length} threads in r/${subreddit}`);
+          
+          if (data.data && data.data.children) {
+            for (const post of data.data.children) {
+              const postData = post.data;
+              
+              // Get the thread details
+              const thread = await getRedditThreadJSON(postData.permalink, postData);
+              if (thread) {
+                allThreads.push(thread);
+              }
+            }
+          }
+        } else {
+          console.log(`Failed to search r/${subreddit}: ${response.status}`);
         }
       } catch (error) {
         console.error(`Error searching r/${subreddit}:`, error);
       }
     }
     
-    // Also try searching popular threads manually with known patterns
-    const manualUrls = await searchPopularThreads(keywords);
-    redditUrls.push(...manualUrls);
-    
-    const uniqueUrls = [...new Set(redditUrls)].slice(0, 10);
-    console.log(`Total Reddit URLs found: ${uniqueUrls.length}`);
-    return uniqueUrls;
-    
-  } catch (error) {
-    console.error('Error searching Reddit directly:', error);
-    return [];
-  }
-}
-
-async function searchPopularThreads(keywords: string): Promise<string[]> {
-  try {
-    // Search Reddit's front page and popular for our keywords
-    const searchPages = [
-      `https://old.reddit.com/search?q=${encodeURIComponent(keywords)}&sort=relevance&t=all`,
-      `https://old.reddit.com/search?q=${encodeURIComponent(keywords)}&sort=top&t=year`
-    ];
-    
-    const urls: string[] = [];
-    
-    for (const searchUrl of searchPages) {
-      try {
-        const response = await fetch('https://api.scrapeowl.com/v1/scrape', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Token ${process.env.SCRAPEOWL_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            api_key: process.env.SCRAPEOWL_API_KEY,
-            url: searchUrl,
-            render_js: false,
-            elements: [
-              { name: 'thread_links', selector: 'a[href*="/comments/"]', multiple: true, attribute: 'href' },
-              { name: 'post_links', selector: '.search-result-link', multiple: true, attribute: 'href' }
-            ],
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const links = [
-            ...(data.thread_links || []),
-            ...(data.post_links || [])
-          ].filter(link => link && link.includes('/comments/'))
-           .map(link => link.startsWith('http') ? link : `https://old.reddit.com${link}`)
-           .slice(0, 5);
-
-          urls.push(...links);
+    // Also search Reddit's general search
+    try {
+      console.log('Searching Reddit general search');
+      const generalSearchUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(keywords)}&sort=relevance&limit=20`;
+      
+      const response = await fetch(generalSearchUrl, {
+        headers: {
+          'User-Agent': 'PersonaBot/1.0 (by /u/researcher)'
         }
-      } catch (error) {
-        console.error(`Error searching popular threads:`, error);
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.data && data.data.children) {
+          for (const post of data.data.children.slice(0, 10)) {
+            const postData = post.data;
+            
+            const thread = await getRedditThreadJSON(postData.permalink, postData);
+            if (thread) {
+              allThreads.push(thread);
+            }
+          }
+        }
       }
+    } catch (error) {
+      console.error('Error with general Reddit search:', error);
     }
     
-    return urls;
+    // Remove duplicates and return
+    const uniqueThreads = allThreads.filter((thread, index, array) => 
+      array.findIndex(t => t.url === thread.url) === index
+    );
+    
+    console.log(`Found ${uniqueThreads.length} unique Reddit threads via JSON API`);
+    return uniqueThreads.slice(0, 15); // Limit to top 15 threads
+    
   } catch (error) {
-    console.error('Error searching popular Reddit threads:', error);
+    console.error('Error searching Reddit JSON:', error);
     return [];
   }
 }
 
-async function scrapeRedditThread(url: string): Promise<RedditThread | null> {
+async function getRedditThreadJSON(permalink: string, postData: any): Promise<RedditThread | null> {
   try {
-    console.log(`Scraping Reddit thread: ${url}`);
+    // Get thread with comments using Reddit's JSON API
+    const threadUrl = `https://www.reddit.com${permalink}.json?limit=50`;
     
-    // Convert to old.reddit.com for better scraping
-    const oldRedditUrl = url.replace('www.reddit.com', 'old.reddit.com').replace('reddit.com', 'old.reddit.com');
-    
-    const response = await fetch('https://api.scrapeowl.com/v1/scrape', {
-      method: 'POST',
+    const response = await fetch(threadUrl, {
       headers: {
-        'Authorization': `Token ${process.env.SCRAPEOWL_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        api_key: process.env.SCRAPEOWL_API_KEY,
-        url: oldRedditUrl,
-        render_js: false, // Old Reddit works without JS
-        elements: [
-          // Get thread title
-          { name: 'title', selector: '.title .may-blank, .title a', multiple: false },
-          
-          // Get original post content
-          { name: 'post_content', selector: '.usertext-body .md', multiple: false },
-          
-          // Get all comments
-          { name: 'comments', selector: '.comment .usertext-body .md', multiple: true },
-          
-          // Get subreddit
-          { name: 'subreddit', selector: '.subreddit' },
-          
-          // Get score
-          { name: 'score', selector: '.score.unvoted' },
-          
-          // Get comment scores and content together
-          { name: 'comment_bodies', selector: '.comment .entry .usertext .usertext-body', multiple: true }
-        ],
-      }),
+        'User-Agent': 'PersonaBot/1.0 (by /u/researcher)'
+      }
     });
 
     if (!response.ok) {
-      console.error(`Failed to scrape Reddit thread ${url}:`, response.status);
+      console.log(`Failed to get thread ${permalink}: ${response.status}`);
       return null;
     }
 
     const data = await response.json();
     
-    // Extract and clean content
-    const title = data.title || 'No title found';
-    const postContent = data.post_content || '';
+    if (!data || !Array.isArray(data) || data.length < 2) {
+      return null;
+    }
+
+    // Extract post content
+    const post = data[0].data.children[0].data;
+    const title = post.title || 'No title';
+    const content = post.selftext || '';
+    const subreddit = post.subreddit || 'unknown';
+    const score = post.score || 0;
     
-    // Combine all comment content
-    const comments = [
-      ...(data.comments || []),
-      ...(data.comment_bodies || [])
-    ].filter(comment => comment && comment.trim().length > 10)
-     .map(comment => comment.trim().replace(/\s+/g, ' '))
-     .slice(0, 50); // Limit to top 50 comments
+    // Extract comments
+    const comments: string[] = [];
+    const commentsData = data[1].data.children;
     
-    // Extract subreddit name
-    const subredditMatch = url.match(/reddit\.com\/r\/([^\/]+)/);
-    const subreddit = subredditMatch ? subredditMatch[1] : 'unknown';
+    function extractComments(commentList: any[], depth = 0) {
+      if (depth > 3) return; // Limit comment depth
+      
+      for (const comment of commentList) {
+        if (comment.kind === 't1' && comment.data.body) {
+          const commentText = comment.data.body.trim();
+          if (commentText.length > 10 && !commentText.includes('[deleted]') && !commentText.includes('[removed]')) {
+            comments.push(commentText);
+          }
+          
+          // Process replies
+          if (comment.data.replies && comment.data.replies.data && comment.data.replies.data.children) {
+            extractComments(comment.data.replies.data.children, depth + 1);
+          }
+        }
+      }
+    }
     
-    // Parse score
-    const scoreStr = data.score || '1';
-    const score = parseInt(scoreStr.toString().replace(/[^\d]/g, '')) || 1;
+    extractComments(commentsData);
     
     const thread: RedditThread = {
-      url: url,
+      url: `https://www.reddit.com${permalink}`,
       title: title,
-      content: postContent,
-      comments: comments,
+      content: content,
+      comments: comments.slice(0, 100), // Limit to 100 comments
       subreddit: subreddit,
       score: score,
-      timestamp: new Date().toISOString()
+      timestamp: new Date(post.created_utc * 1000).toISOString()
     };
 
-    console.log(`Scraped thread "${title.substring(0, 50)}..." with ${comments.length} comments from r/${subreddit}`);
+    console.log(`Extracted thread "${title.substring(0, 50)}..." with ${comments.length} comments from r/${subreddit}`);
     return thread;
     
   } catch (error) {
-    console.error(`Error scraping Reddit thread ${url}:`, error);
+    console.error(`Error getting Reddit thread ${permalink}:`, error);
     return null;
   }
 }
@@ -350,18 +306,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Job ID and target keywords are required' }, { status: 400 });
     }
 
-    console.log(`Starting direct Reddit customer voice collection for job ${jobId} with keywords: ${targetKeywords}`);
+    console.log(`Starting Reddit JSON API customer voice collection for job ${jobId} with keywords: ${targetKeywords}`);
     
     await updateJobStatus(jobId, 'processing');
     
-    // Step 1: Search Reddit directly (no Google)
-    const redditUrls = await searchRedditDirectly(targetKeywords);
+    // Search Reddit using JSON API
+    const threads = await searchRedditJSON(targetKeywords);
     
-    if (redditUrls.length === 0) {
-      console.log('No Reddit threads found via direct search');
+    if (threads.length === 0) {
+      console.log('No Reddit threads found via JSON API');
       await saveJobData(jobId, 'reviews', {
         threads: [],
-        analysis: { message: 'No relevant Reddit discussions found via direct search' },
+        analysis: { message: 'No relevant Reddit discussions found via JSON API' },
         metadata: { timestamp: new Date().toISOString(), keywords: targetKeywords }
       });
       
@@ -372,33 +328,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Step 2: Scrape each Reddit thread
-    console.log(`Scraping ${redditUrls.length} Reddit threads...`);
-    const threads: RedditThread[] = [];
-    
-    for (const url of redditUrls) {
-      const thread = await scrapeRedditThread(url);
-      if (thread && (thread.content.length > 20 || thread.comments.length > 0)) {
-        threads.push(thread);
-      }
-    }
-
-    if (threads.length === 0) {
-      console.log('No meaningful content extracted from Reddit threads');
-      await saveJobData(jobId, 'reviews', {
-        threads: [],
-        analysis: { message: 'Reddit threads found but no meaningful content extracted' },
-        metadata: { timestamp: new Date().toISOString(), keywords: targetKeywords, urlsFound: redditUrls.length }
-      });
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Customer voice collection completed (no meaningful content)',
-        data: { threadCount: 0, commentCount: 0 }
-      });
-    }
-
-    // Step 3: Analyze customer voice
+    // Analyze customer voice
     const voiceAnalysis = analyzeCustomerVoice(threads, targetKeywords);
     
     const reviewsData = {
@@ -407,15 +337,14 @@ export async function POST(request: NextRequest) {
       metadata: {
         timestamp: new Date().toISOString(),
         keywords: targetKeywords,
-        directSearchResults: redditUrls.length,
         successfulScrapes: threads.length,
-        dataType: 'reddit_customer_voice_direct'
+        dataType: 'reddit_json_api'
       }
     };
 
     await saveJobData(jobId, 'reviews', reviewsData);
 
-    console.log(`Direct Reddit customer voice collection completed for job ${jobId}. Found ${threads.length} threads with ${voiceAnalysis.totalComments} comments.`);
+    console.log(`Reddit JSON API customer voice collection completed for job ${jobId}. Found ${threads.length} threads with ${voiceAnalysis.totalComments} comments.`);
 
     return NextResponse.json({
       success: true,
