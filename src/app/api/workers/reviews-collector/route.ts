@@ -1,4 +1,4 @@
-// src/app/api/workers/reviews-collector/route.ts
+k// src/app/api/workers/reviews-collector/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/db';
 import { saveJobData } from '@/lib/db';
