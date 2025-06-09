@@ -1,3 +1,4 @@
+// src/app/api/workers/reviews-collector/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/db';
 import { saveJobData } from '@/lib/db';
@@ -12,141 +13,148 @@ interface RedditThread {
   timestamp: string;
 }
 
-async function searchRedditJSON(keywords: string): Promise<RedditThread[]> {
+async function searchRedditDirectly(keywords: string): Promise<RedditThread[]> {
   try {
-    console.log(`Searching Reddit JSON API for: ${keywords}`);
-    
-    // Search relevant subreddits using Reddit's JSON API
-    const subreddits = [
-      'Earthing', 'sleep', 'insomnia', 'biohacking', 'health', 'wellness',
-      'naturalhealth', 'alternative_health', 'sleeptips', 'BuyItForLife'
-    ];
+    console.log(`Starting direct Reddit search for: ${keywords}`);
     
     const allThreads: RedditThread[] = [];
     
-    for (const subreddit of subreddits.slice(0, 6)) { // Limit to 6 subreddits
+    // Test URLs that work (based on your debug results)
+    const searchUrls = [
+      `https://www.reddit.com/search.json?q=${encodeURIComponent(keywords)}&sort=relevance&limit=25`,
+      `https://www.reddit.com/r/sleep/search.json?q=${encodeURIComponent(keywords)}&restrict_sr=1&sort=relevance&limit=10`,
+      `https://www.reddit.com/r/Earthing/search.json?q=${encodeURIComponent(keywords)}&restrict_sr=1&sort=relevance&limit=10`,
+      `https://www.reddit.com/r/insomnia/search.json?q=${encodeURIComponent(keywords)}&restrict_sr=1&sort=relevance&limit=10`
+    ];
+    
+    for (const searchUrl of searchUrls) {
       try {
-        console.log(`Searching r/${subreddit} via JSON API`);
-        
-        // Use Reddit's JSON search endpoint
-        const searchUrl = `https://www.reddit.com/r/${subreddit}/search.json?q=${encodeURIComponent(keywords)}&restrict_sr=1&sort=relevance&limit=10`;
+        console.log(`Searching: ${searchUrl}`);
         
         const response = await fetch(searchUrl, {
           headers: {
-            'User-Agent': 'PersonaBot/1.0 (by /u/researcher)'
+            'User-Agent': 'PersonaBot/1.0 (Research purposes)'
           }
         });
 
         if (response.ok) {
           const data = await response.json();
+          console.log(`Response received, processing data...`);
           
-          if (data.data && data.data.children) {
-            for (const post of data.data.children) {
-              const postData = post.data;
-              
-              // Get the thread details
-              const thread = await getRedditThreadJSON(postData.permalink, postData);
-              if (thread) {
-                allThreads.push(thread);
+          if (data?.data?.children) {
+            console.log(`Found ${data.data.children.length} posts in this search`);
+            
+            for (const post of data.data.children.slice(0, 5)) { // Limit per search
+              if (post?.data) {
+                const thread = await processRedditPost(post.data);
+                if (thread) {
+                  allThreads.push(thread);
+                }
               }
             }
           }
         } else {
-          console.log(`Failed to search r/${subreddit}: ${response.status}`);
+          console.log(`Search failed with status: ${response.status}`);
         }
-      } catch (error) {
-        console.error(`Error searching r/${subreddit}:`, error);
-      }
-    }
-    
-    // Also search Reddit's general search
-    try {
-      console.log('Searching Reddit general search');
-      const generalSearchUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(keywords)}&sort=relevance&limit=20`;
-      
-      const response = await fetch(generalSearchUrl, {
-        headers: {
-          'User-Agent': 'PersonaBot/1.0 (by /u/researcher)'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
         
-        if (data.data && data.data.children) {
-          for (const post of data.data.children.slice(0, 10)) {
-            const postData = post.data;
-            
-            const thread = await getRedditThreadJSON(postData.permalink, postData);
-            if (thread) {
-              allThreads.push(thread);
-            }
-          }
-        }
+        // Rate limiting delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        console.error(`Error with search URL ${searchUrl}:`, error);
       }
-    } catch (error) {
-      console.error('Error with general Reddit search:', error);
     }
     
-    // Remove duplicates and return
+    // Remove duplicates
     const uniqueThreads = allThreads.filter((thread, index, array) => 
       array.findIndex(t => t.url === thread.url) === index
     );
     
-    console.log(`Found ${uniqueThreads.length} unique Reddit threads via JSON API`);
-    return uniqueThreads.slice(0, 15); // Limit to top 15 threads
+    console.log(`Total unique threads found: ${uniqueThreads.length}`);
+    return uniqueThreads;
     
   } catch (error) {
-    console.error('Error searching Reddit JSON:', error);
+    console.error('Error in searchRedditDirectly:', error);
     return [];
   }
 }
 
-async function getRedditThreadJSON(permalink: string, postData: any): Promise<RedditThread | null> {
+async function processRedditPost(postData: any): Promise<RedditThread | null> {
   try {
-    // Get thread with comments using Reddit's JSON API
-    const threadUrl = `https://www.reddit.com${permalink}.json?limit=50`;
+    const title = postData.title || '';
+    const content = postData.selftext || '';
+    const permalink = postData.permalink || '';
+    const subreddit = postData.subreddit || 'unknown';
+    const score = postData.score || 0;
+    const created = postData.created_utc || 0;
     
-    const response = await fetch(threadUrl, {
+    if (!title || !permalink) {
+      return null;
+    }
+    
+    console.log(`Processing post: "${title.substring(0, 50)}..."`);
+    
+    // Get comments for this post
+    const comments = await getPostComments(permalink);
+    
+    const thread: RedditThread = {
+      url: `https://www.reddit.com${permalink}`,
+      title: title,
+      content: content,
+      comments: comments,
+      subreddit: subreddit,
+      score: score,
+      timestamp: new Date(created * 1000).toISOString()
+    };
+    
+    console.log(`Created thread with ${comments.length} comments`);
+    return thread;
+    
+  } catch (error) {
+    console.error('Error processing Reddit post:', error);
+    return null;
+  }
+}
+
+async function getPostComments(permalink: string): Promise<string[]> {
+  try {
+    const commentsUrl = `https://www.reddit.com${permalink}.json?limit=50`;
+    
+    const response = await fetch(commentsUrl, {
       headers: {
-        'User-Agent': 'PersonaBot/1.0 (by /u/researcher)'
+        'User-Agent': 'PersonaBot/1.0 (Research purposes)'
       }
     });
 
     if (!response.ok) {
-      console.log(`Failed to get thread ${permalink}: ${response.status}`);
-      return null;
+      console.log(`Failed to get comments for ${permalink}: ${response.status}`);
+      return [];
     }
 
     const data = await response.json();
     
-    if (!data || !Array.isArray(data) || data.length < 2) {
-      return null;
+    if (!Array.isArray(data) || data.length < 2) {
+      return [];
     }
 
-    // Extract post content
-    const post = data[0].data.children[0].data;
-    const title = post.title || 'No title';
-    const content = post.selftext || '';
-    const subreddit = post.subreddit || 'unknown';
-    const score = post.score || 0;
-    
-    // Extract comments
     const comments: string[] = [];
-    const commentsData = data[1].data.children;
+    const commentsData = data[1]?.data?.children || [];
     
     function extractComments(commentList: any[], depth = 0) {
-      if (depth > 3) return; // Limit comment depth
+      if (depth > 2 || comments.length > 50) return; // Limit depth and total
       
       for (const comment of commentList) {
-        if (comment.kind === 't1' && comment.data.body) {
+        if (comment?.kind === 't1' && comment?.data?.body) {
           const commentText = comment.data.body.trim();
-          if (commentText.length > 10 && !commentText.includes('[deleted]') && !commentText.includes('[removed]')) {
+          if (commentText.length > 20 && 
+              !commentText.includes('[deleted]') && 
+              !commentText.includes('[removed]') &&
+              !commentText.startsWith('AutoModerator')) {
             comments.push(commentText);
           }
           
           // Process replies
-          if (comment.data.replies && comment.data.replies.data && comment.data.replies.data.children) {
+          if (comment.data.replies?.data?.children && depth < 2) {
             extractComments(comment.data.replies.data.children, depth + 1);
           }
         }
@@ -154,23 +162,12 @@ async function getRedditThreadJSON(permalink: string, postData: any): Promise<Re
     }
     
     extractComments(commentsData);
-    
-    const thread: RedditThread = {
-      url: `https://www.reddit.com${permalink}`,
-      title: title,
-      content: content,
-      comments: comments.slice(0, 100), // Limit to 100 comments
-      subreddit: subreddit,
-      score: score,
-      timestamp: new Date(post.created_utc * 1000).toISOString()
-    };
-
-    console.log(`Extracted thread "${title.substring(0, 50)}..." with ${comments.length} comments from r/${subreddit}`);
-    return thread;
+    console.log(`Extracted ${comments.length} comments from ${permalink}`);
+    return comments;
     
   } catch (error) {
-    console.error(`Error getting Reddit thread ${permalink}:`, error);
-    return null;
+    console.error(`Error getting comments for ${permalink}:`, error);
+    return [];
   }
 }
 
@@ -178,124 +175,39 @@ function analyzeCustomerVoice(threads: RedditThread[], keywords: string): any {
   const totalThreads = threads.length;
   const totalComments = threads.reduce((sum, thread) => sum + thread.comments.length, 0);
   
-  // Combine all text content
-  const allContent = threads.map(thread => 
+  // Combine all text for analysis
+  const allText = threads.map(thread => 
     `${thread.title} ${thread.content} ${thread.comments.join(' ')}`
   ).join(' ').toLowerCase();
   
-  console.log(`Analyzing ${allContent.length} characters of Reddit content from ${totalThreads} threads`);
+  // Simple sentiment analysis
+  const positiveWords = ['great', 'amazing', 'love', 'excellent', 'recommend', 'perfect', 'happy', 'satisfied', 'works', 'helped'];
+  const negativeWords = ['terrible', 'awful', 'hate', 'disappointed', 'frustrated', 'useless', 'waste', 'broken', 'failed'];
   
-  // Analyze emotions and sentiment
-  const emotionKeywords = {
-    frustration: ['frustrated', 'annoying', 'hate', 'terrible', 'awful', 'disappointed', 'angry', 'mad'],
-    satisfaction: ['love', 'great', 'amazing', 'excellent', 'recommend', 'perfect', 'happy', 'satisfied'],
-    confusion: ['confused', 'unclear', 'complicated', 'difficult', 'hard to understand', 'dont get it'],
-    excitement: ['excited', 'thrilled', 'amazing', 'incredible', 'blown away', 'awesome', 'fantastic'],
-    skepticism: ['skeptical', 'doubt', 'suspicious', 'scam', 'fake', 'bullshit', 'not sure'],
-    relief: ['relief', 'finally', 'thank god', 'godsend', 'lifesaver', 'game changer']
-  };
+  const positiveCount = positiveWords.reduce((count, word) => 
+    count + (allText.match(new RegExp(word, 'g')) || []).length, 0);
+  const negativeCount = negativeWords.reduce((count, word) => 
+    count + (allText.match(new RegExp(word, 'g')) || []).length, 0);
   
-  const emotions = Object.keys(emotionKeywords).reduce((acc, emotion) => {
-    const keywords = emotionKeywords[emotion as keyof typeof emotionKeywords];
-    acc[emotion] = keywords.reduce((count, keyword) => {
-      return count + (allContent.match(new RegExp(keyword, 'g')) || []).length;
-    }, 0);
-    return acc;
-  }, {} as Record<string, number>);
-  
-  // Extract customer insights
-  const customerNeeds = extractCustomerNeeds(allContent);
-  const painPoints = extractPainPoints(allContent);
-  const solutions = extractSolutions(allContent);
-  const commonPhrases = extractCommonPhrases(allContent);
-  
-  // Analyze subreddit distribution
-  const subredditCounts = threads.reduce((acc, thread) => {
-    acc[thread.subreddit] = (acc[thread.subreddit] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Extract customer voice snippets
+  const customerVoice = threads.flatMap(thread => [
+    thread.title,
+    ...thread.comments.slice(0, 3)
+  ]).filter(text => text.length > 30).slice(0, 20);
   
   return {
     totalThreads,
     totalComments,
-    totalTextLength: allContent.length,
-    emotions,
-    customerNeeds,
-    painPoints,
-    solutions,
-    commonPhrases,
-    subredditDistribution: subredditCounts,
-    topSubreddits: Object.entries(subredditCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([subreddit, count]) => ({ subreddit, threadCount: count })),
-    averageScore: threads.length > 0 ? threads.reduce((sum, thread) => sum + thread.score, 0) / threads.length : 0
+    totalTextLength: allText.length,
+    sentiment: {
+      positive: positiveCount,
+      negative: negativeCount,
+      ratio: positiveCount > 0 ? (positiveCount / (positiveCount + negativeCount)) : 0
+    },
+    customerVoiceData: customerVoice,
+    topSubreddits: [...new Set(threads.map(t => t.subreddit))].slice(0, 5),
+    averageScore: threads.length > 0 ? Math.round(threads.reduce((sum, t) => sum + t.score, 0) / threads.length) : 0
   };
-}
-
-function extractCustomerNeeds(content: string): string[] {
-  const needPatterns = [
-    /(?:need|want|looking for|searching for|require|must have|wish|hope for)[\s\w]{10,100}/gi,
-    /(?:i need|i want|i'm looking for|i require)[\s\w]{10,80}/gi,
-    /(?:help me|can someone|does anyone know)[\s\w]{10,80}/gi
-  ];
-  
-  const needs: string[] = [];
-  needPatterns.forEach(pattern => {
-    const matches = content.match(pattern) || [];
-    needs.push(...matches.slice(0, 10));
-  });
-  
-  return [...new Set(needs)].slice(0, 15);
-}
-
-function extractPainPoints(content: string): string[] {
-  const painPatterns = [
-    /(?:problem|issue|trouble|difficult|hard|annoying|frustrating|struggling|can't|unable to)[\s\w]{10,100}/gi,
-    /(?:doesn't work|not working|failed|broken|useless|waste)[\s\w]{10,80}/gi,
-    /(?:hate|terrible|awful|worst|disappointed)[\s\w]{10,80}/gi
-  ];
-  
-  const pains: string[] = [];
-  painPatterns.forEach(pattern => {
-    const matches = content.match(pattern) || [];
-    pains.push(...matches.slice(0, 10));
-  });
-  
-  return [...new Set(pains)].slice(0, 15);
-}
-
-function extractSolutions(content: string): string[] {
-  const solutionPatterns = [
-    /(?:solved|fixed|works|helped|improved|better|solution|answer)[\s\w]{10,100}/gi,
-    /(?:try|use|get|buy|recommend|suggest)[\s\w]{10,80}/gi,
-    /(?:this worked|this helps|this is great)[\s\w]{10,80}/gi
-  ];
-  
-  const solutions: string[] = [];
-  solutionPatterns.forEach(pattern => {
-    const matches = content.match(pattern) || [];
-    solutions.push(...matches.slice(0, 10));
-  });
-  
-  return [...new Set(solutions)].slice(0, 15);
-}
-
-function extractCommonPhrases(content: string): string[] {
-  const words = content.split(/\s+/)
-    .map(word => word.replace(/[^\w]/g, '').toLowerCase())
-    .filter(word => word.length > 3 && word.length < 20);
-    
-  const wordCounts = words.reduce((acc, word) => {
-    acc[word] = (acc[word] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  return Object.entries(wordCounts)
-    .filter(([word, count]) => count >= 3)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 25)
-    .map(([word]) => word);
 }
 
 export async function POST(request: NextRequest) {
@@ -303,21 +215,23 @@ export async function POST(request: NextRequest) {
     const { jobId, targetKeywords } = await request.json();
 
     if (!jobId || !targetKeywords) {
-      return NextResponse.json({ error: 'Job ID and target keywords are required' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'Job ID and target keywords are required' 
+      }, { status: 400 });
     }
 
-    console.log(`Starting Reddit JSON API customer voice collection for job ${jobId} with keywords: ${targetKeywords}`);
+    console.log(`Starting direct Reddit search for job ${jobId} with keywords: ${targetKeywords}`);
     
     await updateJobStatus(jobId, 'processing');
     
-    // Search Reddit using JSON API
-    const threads = await searchRedditJSON(targetKeywords);
+    // Search Reddit directly (no ScrapeOwl)
+    const threads = await searchRedditDirectly(targetKeywords);
     
     if (threads.length === 0) {
-      console.log('No Reddit threads found via JSON API');
+      console.log('No Reddit threads found');
       await saveJobData(jobId, 'reviews', {
         threads: [],
-        analysis: { message: 'No relevant Reddit discussions found via JSON API' },
+        analysis: { message: 'No relevant Reddit discussions found' },
         metadata: { timestamp: new Date().toISOString(), keywords: targetKeywords }
       });
       
@@ -328,40 +242,39 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Analyze customer voice
-    const voiceAnalysis = analyzeCustomerVoice(threads, targetKeywords);
+    // Analyze the customer voice data
+    const analysis = analyzeCustomerVoice(threads, targetKeywords);
     
     const reviewsData = {
       threads: threads,
-      analysis: voiceAnalysis,
+      analysis: analysis,
       metadata: {
         timestamp: new Date().toISOString(),
         keywords: targetKeywords,
         successfulScrapes: threads.length,
-        dataType: 'reddit_json_api'
+        dataType: 'reddit_direct_api'
       }
     };
 
     await saveJobData(jobId, 'reviews', reviewsData);
 
-    console.log(`Reddit JSON API customer voice collection completed for job ${jobId}. Found ${threads.length} threads with ${voiceAnalysis.totalComments} comments.`);
+    console.log(`Reddit search completed for job ${jobId}. Found ${threads.length} threads with ${analysis.totalComments} comments.`);
 
     return NextResponse.json({
       success: true,
-      message: 'Customer voice collection completed',
+      message: 'Customer voice collection completed successfully',
       data: {
         threadCount: threads.length,
-        commentCount: voiceAnalysis.totalComments,
-        subreddits: voiceAnalysis.topSubreddits.length,
-        textLength: voiceAnalysis.totalTextLength,
-        emotions: voiceAnalysis.emotions,
-        needsFound: voiceAnalysis.customerNeeds.length,
-        painPointsFound: voiceAnalysis.painPoints.length
+        commentCount: analysis.totalComments,
+        textLength: analysis.totalTextLength,
+        sentiment: analysis.sentiment,
+        topSubreddits: analysis.topSubreddits,
+        customerVoiceData: analysis.customerVoiceData.slice(0, 5) // Preview
       }
     });
 
   } catch (error) {
-    console.error('Customer voice collection error:', error);
+    console.error('Reddit worker error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
