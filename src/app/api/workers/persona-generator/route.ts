@@ -84,13 +84,13 @@ ACTUAL WEBSITE CONTENT TO USE:
 "${websiteContent}"
 
 ACTUAL VALUE PROPOSITIONS FOUND:
-${valueProps.map(vp => `- ${vp}`).join('\n')}
+${valueProps.map((vp: string) => `- ${vp}`).join('\n')}
 
 ACTUAL FEATURES FOUND:
-${features.map(f => `- ${f}`).join('\n')}
+${features.map((f: string) => `- ${f}`).join('\n')}
 
 ACTUAL BENEFITS FOUND:
-${benefits.map(b => `- ${b}`).join('\n')}
+${benefits.map((b: string) => `- ${b}`).join('\n')}
 
 ACTUAL KEYWORDS FOUND:
 ${keywords.join(', ')}
