@@ -78,58 +78,47 @@ async function generateSpecificPersona(data: any) {
     benefitsCount: benefits.length
   });
 
-  const prompt = `You are analyzing a business that sells: ${data.targetKeywords}
+  const prompt = `STOP. You are creating a customer persona for someone who buys GROUNDING SHEETS and EARTHING products.
 
-ACTUAL WEBSITE CONTENT TO USE:
-"${websiteContent}"
+This is NOT a software product. This is NOT a tech product. This is NOT a business service.
 
-ACTUAL VALUE PROPOSITIONS FOUND:
+GROUNDING SHEETS are bedding products that connect people to the earth's energy while they sleep.
+
+REAL WEBSITE DATA FROM GROUNDLUXE.COM:
+Title: "${data.websiteData?.title || 'GroundLuxe Grounding Sheets'}"
+Content: "${websiteContent.substring(0, 1000)}"
+
+VALUE PROPOSITIONS FROM THE ACTUAL WEBSITE:
 ${valueProps.map((vp: string) => `- ${vp}`).join('\n')}
 
-ACTUAL FEATURES FOUND:
+FEATURES FROM THE ACTUAL WEBSITE:
 ${features.map((f: string) => `- ${f}`).join('\n')}
 
-ACTUAL BENEFITS FOUND:
+BENEFITS FROM THE ACTUAL WEBSITE:
 ${benefits.map((b: string) => `- ${b}`).join('\n')}
 
-ACTUAL KEYWORDS FOUND:
-${keywords.join(', ')}
+MANDATORY REQUIREMENTS - FAILURE TO FOLLOW = REWRITE:
+1. Write "GROUNDING SHEETS" at least 8 times in the persona
+2. Write "EARTHING" at least 4 times
+3. Reference sleep, health, wellness, natural healing
+4. Mention conductive materials, silver, cotton if found in data
+5. NO tech language, NO software terms, NO business jargon
+6. Focus on SLEEP PROBLEMS, HEALTH ISSUES, WELLNESS GOALS
 
-CRITICAL INSTRUCTIONS:
-1. You MUST mention the specific keywords: ${data.targetKeywords}
-2. You MUST reference the actual value propositions listed above
-3. You MUST mention the specific features listed above
-4. You MUST reference the actual benefits listed above
-5. DO NOT use generic business language
-6. DO NOT say "health-conscious consumers" - be specific to this product
-7. MUST mention the actual product category multiple times
+CREATE PERSONA FOR: Person who buys grounding sheets to improve their sleep and health
 
-Create a customer persona that:
+**CUSTOMER PROFILE:**
+Name: [Create a realistic name]
+Age: [Age range for people interested in natural health/sleep solutions]
+Problem: [Specific sleep or health issues that grounding sheets address]
+Why grounding sheets: [Reference actual benefits from the website data above]
+What they value: [Reference actual value propositions from website data above]
+Shopping behavior: [How they research grounding sheets and earthing products]
 
-**WHO THEY ARE:**
-- Specific demographics for people who buy ${data.targetKeywords}
-- Include age, income, lifestyle that relates to ${data.targetKeywords}
-- Mention why they specifically need ${data.targetKeywords}
+EXAMPLE STRUCTURE:
+"Meet Jennifer, 42, who suffers from poor sleep quality and discovered grounding sheets as a natural solution. She was drawn to GroundLuxe's grounding sheets because of [actual value prop from data]. She specifically looks for grounding sheets with [actual features from data]. Jennifer values grounding sheets that provide [actual benefits from data]."
 
-**THEIR SPECIFIC PROBLEMS:**
-- Pain points that ${data.targetKeywords} solves
-- Reference the actual benefits: ${benefits.join(', ')}
-- Problems they have that led them to search for ${data.targetKeywords}
-
-**WHY THEY BUY THIS SPECIFIC PRODUCT:**
-- Reference these exact value propositions: ${valueProps.join(', ')}
-- Mention these specific features: ${features.join(', ')}
-- Connect to these actual benefits: ${benefits.join(', ')}
-
-**WHAT THEY CARE ABOUT:**
-- Values related to ${data.targetKeywords}
-- Concerns specific to ${data.targetKeywords} purchase decisions
-- Information they seek about ${data.targetKeywords}
-
-EXAMPLE OF WHAT TO INCLUDE:
-"Sarah is interested in ${data.targetKeywords} because she values ${benefits[0] || 'better sleep'}. She was attracted to this product because of ${valueProps[0] || 'premium quality'} and specifically looks for ${features[0] || 'organic materials'} when shopping for ${data.targetKeywords}."
-
-WRITE THE PERSONA NOW - MUST MENTION "${data.targetKeywords}" AT LEAST 5 TIMES:`;
+WRITE THE COMPLETE PERSONA NOW - REMEMBER THIS IS ABOUT GROUNDING SHEETS FOR SLEEP AND HEALTH:`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -143,7 +132,7 @@ WRITE THE PERSONA NOW - MUST MENTION "${data.targetKeywords}" AT LEAST 5 TIMES:`
         messages: [
           {
             role: 'system',
-            content: `You are a persona generator that MUST create specific personas based on actual product data. You MUST use the exact keywords, features, and benefits provided. DO NOT CREATE GENERIC BUSINESS PERSONAS. Focus specifically on the product category mentioned.`
+            content: `You are creating a customer persona for GROUNDING SHEETS and EARTHING products. These are bedding products for sleep and health, NOT technology or business products. You MUST create personas specific to people who buy grounding sheets for better sleep and natural health. DO NOT create generic business personas. Focus on sleep problems, health issues, and natural wellness solutions.`
           },
           {
             role: 'user',
