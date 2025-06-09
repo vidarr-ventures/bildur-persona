@@ -45,8 +45,7 @@ async function crawlWebsiteMultipleWays(websiteUrl: string, targetKeywords: stri
           'Sec-Fetch-Mode': 'navigate',
           'Sec-Fetch-Site': 'none',
           'Cache-Control': 'max-age=0',
-        },
-        timeout: 20000 // 20 seconds
+        }
       });
 
       if (response.ok) {
@@ -91,7 +90,6 @@ async function crawlWebsiteMultipleWays(websiteUrl: string, targetKeywords: stri
             { name: 'paragraphs', selector: 'p', multiple: true }
           ],
         }),
-        timeout: 30000
       });
 
       if (response.ok) {
