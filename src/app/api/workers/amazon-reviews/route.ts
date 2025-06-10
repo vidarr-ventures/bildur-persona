@@ -160,58 +160,6 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
   }
 }
 
-function generateMinimalFallbackReviews(asin: string, existingCount: number) {
-  // Generic fallback reviews (only used if real extraction completely fails)
-  const genericTemplates = [
-    {
-      title: "Product works as described",
-      text: "Received the product and it functions as advertised. Good build quality and materials. Shipping was prompt and packaging was secure. Would consider purchasing again.",
-      rating: 4,
-      verified: true
-    },
-    {
-      title: "Good value for the price point",
-      text: "Not the cheapest option available but the quality seems to justify the cost. Product arrived on time and matches the description. Customer service was responsive to my questions.",
-      rating: 4,
-      verified: true
-    },
-    {
-      title: "Meets expectations",
-      text: "Does what it's supposed to do. Quality seems solid and construction is good. Easy to use and setup was straightforward. Happy with the purchase overall.",
-      rating: 4,
-      verified: true
-    },
-    {
-      title: "Decent product with room for improvement",
-      text: "Product works fine but there are a few areas that could be better. For the price it's acceptable. Delivery was on schedule and item was well packaged.",
-      rating: 3,
-      verified: true
-    },
-    {
-      title: "Satisfied with purchase",
-      text: "Product quality is good and it serves its intended purpose well. Would recommend to others looking for this type of item. Good customer support when I had questions.",
-      rating: 4,
-      verified: true
-    }
-  ];
-  
-  const fallbackCount = Math.min(15, Math.max(15 - existingCount, 5));
-  const fallbackReviews = [];
-  
-  for (let i = 0; i < fallbackCount; i++) {
-    const template = genericTemplates[i % genericTemplates.length];
-    fallbackReviews.push({
-      ...template,
-      reviewer_name: `Verified Customer ${i + existingCount + 1}`,
-      date: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-      helpful_votes: Math.floor(Math.random() * 8),
-      source: 'generic_fallback'
-    });
-  }
-  
-  return fallbackReviews;
-}
-
 function analyzeMultiPageReviews(reviews: any[], productInfo: any, targetKeywords: string, realCount: number, extractionFailed: boolean) {
   const totalReviews = reviews.length;
   
@@ -248,7 +196,7 @@ function analyzeMultiPageReviews(reviews: any[], productInfo: any, targetKeyword
   return {
     totalReviews,
     realReviews: realCount,
-    supplementalReviews: supplementalCount,
+    extractionStatus: 'SUCCESS',
     averageRating: Math.round(averageRating * 10) / 10,
     painPoints,
     positives,
@@ -344,7 +292,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`Starting MULTI-PAGE Amazon extraction for job ${jobId}`);
+    console.log(`Starting Amazon reviews extraction for job ${jobId}`);
     
     await updateJobStatus(jobId, 'processing');
     
@@ -401,11 +349,11 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Multi-page Amazon extraction error:', error);
+    console.error('Amazon reviews extraction error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Multi-page Amazon extraction failed', details: errorMessage },
+      { error: 'Amazon reviews extraction failed', details: errorMessage },
       { status: 500 }
     );
   }
