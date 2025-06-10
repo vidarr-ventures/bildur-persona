@@ -1,288 +1,373 @@
-// src/app/api/workers/website-crawler/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus, saveJobData } from '@/lib/db';
 
 interface WebsiteData {
-  url: string;
-  title: string;
-  content: string;
+  homePageContent: string;
+  productPagesContent: string[];
+  customerReviews: CustomerReview[];
+  testimonials: string[];
   valuePropositions: string[];
   features: string[];
-  benefits: string[];
-  keywords: string[];
-  metadata: {
-    timestamp: string;
-    contentLength: number;
-    extractionMethod: string;
-    success: boolean;
-  };
+  brandMessaging: string;
+  contactInfo: any;
 }
 
-async function crawlWebsiteMultipleWays(websiteUrl: string, targetKeywords: string[]): Promise<WebsiteData | null> {
-  console.log(`Starting multi-method crawl for: ${websiteUrl}`);
-  
-  // Method 1: Direct fetch with multiple user agents
-  const userAgents = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0'
-  ];
-  
-  for (const userAgent of userAgents) {
-    try {
-      console.log(`Trying direct fetch with user agent: ${userAgent.substring(0, 50)}...`);
-      
-      const response = await fetch(websiteUrl, {
-        headers: {
-          'User-Agent': userAgent,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'DNT': '1',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1',
-          'Sec-Fetch-Dest': 'document',
-          'Sec-Fetch-Mode': 'navigate',
-          'Sec-Fetch-Site': 'none',
-          'Cache-Control': 'max-age=0',
-        }
-      });
-
-      if (response.ok) {
-        const html = await response.text();
-        console.log(`Direct fetch successful! Got ${html.length} characters`);
-        
-        if (html.length > 1000) { // Reasonable content length
-          const result = processHTML(html, websiteUrl, targetKeywords, 'direct_fetch');
-          if (result && result.content.length > 100) {
-            return result;
-          }
-        }
-      } else {
-        console.log(`Direct fetch failed: ${response.status} ${response.statusText}`);
-      }
-    } catch (error) {
-      console.log(`Direct fetch error:`, error);
-    }
-  }
-  
-  // Method 2: Try with ScrapeOwl as fallback (if available)
-  if (process.env.SCRAPEOWL_API_KEY) {
-    try {
-      console.log('Trying ScrapeOwl as fallback...');
-      
-      const response = await fetch('https://api.scrapeowl.com/v1/scrape', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Token ${process.env.SCRAPEOWL_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          api_key: process.env.SCRAPEOWL_API_KEY,
-          url: websiteUrl,
-          render_js: true,
-          wait_for: 2000,
-          elements: [
-            { name: 'page_content', selector: 'body' },
-            { name: 'title', selector: 'title' },
-            { name: 'meta_description', selector: 'meta[name="description"]', attribute: 'content' },
-            { name: 'headings', selector: 'h1, h2, h3', multiple: true },
-            { name: 'paragraphs', selector: 'p', multiple: true }
-          ],
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('ScrapeOwl successful!');
-        
-        if (data.page_content) {
-          const html = data.page_content;
-          const result = processHTML(html, websiteUrl, targetKeywords, 'scrapeowl');
-          if (result && result.content.length > 100) {
-            return result;
-          }
-        }
-      } else {
-        const errorText = await response.text();
-        console.log('ScrapeOwl failed:', response.status, errorText);
-      }
-    } catch (error) {
-      console.log('ScrapeOwl error:', error);
-    }
-  }
-  
-  // Method 3: Create minimal data from URL and keywords if all else fails
-  console.log('All crawling methods failed, creating minimal data...');
-  return createMinimalWebsiteData(websiteUrl, targetKeywords);
+interface CustomerReview {
+  content: string;
+  rating?: number;
+  reviewer?: string;
+  date?: string;
+  source: string; // Which page it was found on
 }
 
-function processHTML(html: string, websiteUrl: string, targetKeywords: string[], method: string): WebsiteData | null {
+async function crawlWebsiteForContentAndReviews(websiteUrl: string): Promise<WebsiteData> {
   try {
-    // Extract text content
-    const textContent = extractTextFromHTML(html);
-    const title = extractTitle(html);
+    console.log(`Enhanced website crawling: ${websiteUrl}`);
     
-    if (textContent.length < 100) {
-      console.log(`Insufficient content extracted: ${textContent.length} characters`);
-      return null;
-    }
-    
-    // Analyze content for key information
-    const analysis = analyzeWebsiteContent(textContent, targetKeywords);
-    
+    const domain = extractDomain(websiteUrl);
+    const discoveredPages: string[] = [];
     const websiteData: WebsiteData = {
-      url: websiteUrl,
-      title: title,
-      content: textContent.substring(0, 5000), // First 5000 chars
-      valuePropositions: analysis.valuePropositions,
-      features: analysis.features,
-      benefits: analysis.benefits,
-      keywords: analysis.keywords,
-      metadata: {
-        timestamp: new Date().toISOString(),
-        contentLength: textContent.length,
-        extractionMethod: method,
-        success: true
-      }
+      homePageContent: '',
+      productPagesContent: [],
+      customerReviews: [],
+      testimonials: [],
+      valuePropositions: [],
+      features: [],
+      brandMessaging: '',
+      contactInfo: {}
     };
 
-    console.log(`Content processed via ${method}:`, {
-      titleLength: title.length,
-      contentLength: textContent.length,
-      valuePropsFound: analysis.valuePropositions.length,
-      featuresFound: analysis.features.length,
-      benefitsFound: analysis.benefits.length,
-      keywordsFound: analysis.keywords.length
+    // Step 1: Crawl home page
+    const homePageData = await crawlSinglePage(websiteUrl, 'home');
+    if (homePageData) {
+      websiteData.homePageContent = homePageData.content;
+      websiteData.customerReviews.push(...homePageData.reviews);
+      websiteData.testimonials.push(...homePageData.testimonials);
+      websiteData.valuePropositions.push(...homePageData.valueProps);
+      websiteData.features.push(...homePageData.features);
+      websiteData.brandMessaging = homePageData.brandMessage;
+      
+      // Discover additional pages from home page
+      discoveredPages.push(...homePageData.discoveredUrls);
+    }
+
+    // Step 2: Find and crawl key pages (products, reviews, testimonials, about)
+    const keyPages = findKeyPages(discoveredPages, domain);
+    
+    for (const pageUrl of keyPages.slice(0, 8)) { // Limit to 8 additional pages
+      try {
+        console.log(`Crawling key page: ${pageUrl}`);
+        const pageData = await crawlSinglePage(pageUrl, 'product');
+        
+        if (pageData) {
+          websiteData.productPagesContent.push(pageData.content);
+          websiteData.customerReviews.push(...pageData.reviews);
+          websiteData.testimonials.push(...pageData.testimonials);
+          websiteData.valuePropositions.push(...pageData.valueProps);
+          websiteData.features.push(...pageData.features);
+        }
+      } catch (pageError) {
+        console.error(`Error crawling ${pageUrl}:`, pageError);
+      }
+    }
+
+    // Step 3: Clean and deduplicate data
+    websiteData.customerReviews = deduplicateReviews(websiteData.customerReviews);
+    websiteData.testimonials = [...new Set(websiteData.testimonials)];
+    websiteData.valuePropositions = [...new Set(websiteData.valuePropositions)];
+    websiteData.features = [...new Set(websiteData.features)];
+
+    console.log(`Website crawling completed: ${websiteData.customerReviews.length} reviews, ${websiteData.testimonials.length} testimonials found`);
+    
+    return websiteData;
+
+  } catch (error) {
+    console.error('Error in website crawling:', error);
+    return {
+      homePageContent: '',
+      productPagesContent: [],
+      customerReviews: [],
+      testimonials: [],
+      valuePropositions: [],
+      features: [],
+      brandMessaging: '',
+      contactInfo: {}
+    };
+  }
+}
+
+async function crawlSinglePage(url: string, pageType: string) {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
     });
 
-    return websiteData;
+    if (!response.ok) {
+      console.log(`Failed to fetch ${url}: ${response.status}`);
+      return null;
+    }
+
+    const html = await response.text();
+    
+    return {
+      content: extractMainContent(html),
+      reviews: extractCustomerReviews(html, url),
+      testimonials: extractTestimonials(html),
+      valueProps: extractValuePropositions(html),
+      features: extractFeatures(html),
+      brandMessage: extractBrandMessaging(html),
+      discoveredUrls: pageType === 'home' ? extractInternalUrls(html, extractDomain(url)) : []
+    };
+
   } catch (error) {
-    console.error('Error processing HTML:', error);
+    console.error(`Error crawling ${url}:`, error);
     return null;
   }
 }
 
-function extractTextFromHTML(html: string): string {
-  // Remove script and style tags completely
-  let text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-  text = text.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-  text = text.replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, '');
+function extractCustomerReviews(html: string, sourceUrl: string): CustomerReview[] {
+  const reviews: CustomerReview[] = [];
   
-  // Remove HTML tags but keep the text
-  text = text.replace(/<[^>]*>/g, ' ');
-  
-  // Decode HTML entities
-  text = text.replace(/&nbsp;/g, ' ');
-  text = text.replace(/&amp;/g, '&');
-  text = text.replace(/&lt;/g, '<');
-  text = text.replace(/&gt;/g, '>');
-  text = text.replace(/&quot;/g, '"');
-  text = text.replace(/&#39;/g, "'");
-  text = text.replace(/&apos;/g, "'");
-  
-  // Clean up whitespace
-  text = text.replace(/\s+/g, ' ').trim();
-  
-  return text;
-}
-
-function extractTitle(html: string): string {
-  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  if (titleMatch) return titleMatch[1].trim();
-  
-  const h1Match = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-  if (h1Match) return h1Match[1].replace(/<[^>]*>/g, '').trim();
-  
-  return 'Website Title';
-}
-
-function analyzeWebsiteContent(content: string, targetKeywords: string[]): {
-  valuePropositions: string[];
-  features: string[];
-  benefits: string[];
-  keywords: string[];
-} {
-  const contentLower = content.toLowerCase();
-  
-  // Extract value propositions (sentences with key value words)
-  const valueWords = ['premium', 'best', 'quality', 'professional', 'certified', 'proven', 'guaranteed', 'exclusive', 'advanced', 'superior', 'leading', 'trusted', 'award-winning', 'scientifically', 'clinically'];
-  const valuePropositions = extractSentencesWithWords(content, valueWords, 150).slice(0, 6);
-  
-  // Extract features (sentences with feature/specification words)
-  const featureWords = ['made', 'includes', 'features', 'contains', 'designed', 'built', 'comes with', 'equipped', 'material', 'fabric', 'thread', 'cotton', 'silver', 'conductive', 'organic'];
-  const features = extractSentencesWithWords(content, featureWords, 120).slice(0, 8);
-  
-  // Extract benefits (sentences with benefit words)
-  const benefitWords = ['helps', 'improves', 'reduces', 'increases', 'better', 'enhanced', 'relief', 'healing', 'sleep', 'health', 'wellness', 'benefits', 'feel', 'experience', 'achieve'];
-  const benefits = extractSentencesWithWords(content, benefitWords, 120).slice(0, 8);
-  
-  // Find target keyword mentions
-  const foundKeywords: string[] = [];
-  targetKeywords.forEach(keyword => {
-    const keywordLower = keyword.toLowerCase().trim();
-    if (contentLower.includes(keywordLower)) {
-      foundKeywords.push(keyword.trim());
-    }
-  });
-  
-  // Extract product-specific keywords
-  const productKeywords = extractProductKeywords(content, targetKeywords);
-  
-  return {
-    valuePropositions,
-    features,
-    benefits,
-    keywords: [...foundKeywords, ...productKeywords].slice(0, 15)
-  };
-}
-
-function extractSentencesWithWords(content: string, targetWords: string[], maxLength: number = 150): string[] {
-  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 30);
-  const matchingSentences: string[] = [];
-  
-  sentences.forEach(sentence => {
-    const sentenceLower = sentence.toLowerCase();
-    const hasTargetWord = targetWords.some(word => sentenceLower.includes(word.toLowerCase()));
+  // Common review patterns on websites
+  const reviewPatterns = [
+    // Standard review structures
+    /<div[^>]*class="[^"]*review[^"]*"[^>]*>(.*?)<\/div>/gis,
+    /<article[^>]*class="[^"]*review[^"]*"[^>]*>(.*?)<\/article>/gis,
+    /<section[^>]*class="[^"]*testimonial[^"]*"[^>]*>(.*?)<\/section>/gis,
     
-    if (hasTargetWord && sentence.trim().length > 40 && sentence.trim().length < maxLength) {
-      matchingSentences.push(sentence.trim());
+    // Review aggregator widgets
+    /<div[^>]*class="[^"]*trustpilot[^"]*"[^>]*>(.*?)<\/div>/gis,
+    /<div[^>]*class="[^"]*reviews-io[^"]*"[^>]*>(.*?)<\/div>/gis,
+    /<div[^>]*class="[^"]*yotpo[^"]*"[^>]*>(.*?)<\/div>/gis,
+    
+    // Common review text patterns
+    /"[^"]{50,500}"\s*[-—]\s*\w+/g,
+    /★+\s*[4-5]\/5.*?"[^"]{30,300}"/g
+  ];
+
+  reviewPatterns.forEach(pattern => {
+    const matches = html.match(pattern) || [];
+    matches.forEach(match => {
+      const cleanReview = cleanHtmlContent(match);
+      if (cleanReview.length > 30 && cleanReview.length < 1000) {
+        
+        // Try to extract rating
+        const ratingMatch = match.match(/(?:★+|(\d+(?:\.\d)?)\s*\/\s*5|(\d+)\s*stars?)/i);
+        let rating = undefined;
+        if (ratingMatch) {
+          rating = ratingMatch[1] ? parseFloat(ratingMatch[1]) : 
+                   ratingMatch[2] ? parseInt(ratingMatch[2]) : 5;
+        }
+
+        // Try to extract reviewer name
+        const reviewerMatch = match.match(/[-—]\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]*)?)\s*$/i);
+        const reviewer = reviewerMatch ? reviewerMatch[1] : undefined;
+
+        reviews.push({
+          content: cleanReview,
+          rating: rating,
+          reviewer: reviewer,
+          source: sourceUrl
+        });
+      }
+    });
+  });
+
+  return reviews.slice(0, 20); // Limit per page
+}
+
+function extractTestimonials(html: string): string[] {
+  const testimonials: string[] = [];
+  
+  const testimonialPatterns = [
+    /<div[^>]*class="[^"]*testimonial[^"]*"[^>]*>(.*?)<\/div>/gis,
+    /<blockquote[^>]*>(.*?)<\/blockquote>/gis,
+    /"[^"]{50,400}"\s*[-—]\s*\w+[^<]*(?:CEO|Founder|Customer|Client)/gi
+  ];
+
+  testimonialPatterns.forEach(pattern => {
+    const matches = html.match(pattern) || [];
+    matches.forEach(match => {
+      const cleanTestimonial = cleanHtmlContent(match);
+      if (cleanTestimonial.length > 40 && cleanTestimonial.length < 500) {
+        testimonials.push(cleanTestimonial);
+      }
+    });
+  });
+
+  return [...new Set(testimonials)].slice(0, 15);
+}
+
+function extractValuePropositions(html: string): string[] {
+  const valueProps: string[] = [];
+  
+  const valuePatterns = [
+    // Headlines and value prop sections
+    /<h[1-3][^>]*>(.*?)<\/h[1-3]>/gi,
+    /<div[^>]*class="[^"]*(?:value|benefit|feature|advantage)[^"]*"[^>]*>(.*?)<\/div>/gis,
+    
+    // Common value prop phrases
+    /(?:we help|our solution|unique|proven|guaranteed|results|benefits?|advantages?)[^.!?]{10,100}[.!?]/gi
+  ];
+
+  valuePatterns.forEach(pattern => {
+    const matches = html.match(pattern) || [];
+    matches.forEach(match => {
+      const cleanValue = cleanHtmlContent(match);
+      if (cleanValue.length > 15 && cleanValue.length < 200) {
+        valueProps.push(cleanValue);
+      }
+    });
+  });
+
+  return [...new Set(valueProps)].slice(0, 10);
+}
+
+function extractFeatures(html: string): string[] {
+  const features: string[] = [];
+  
+  const featurePatterns = [
+    /<li[^>]*>(.*?)<\/li>/gi,
+    /<div[^>]*class="[^"]*(?:feature|spec|benefit)[^"]*"[^>]*>(.*?)<\/div>/gis,
+    /✓\s*[^<\n]{10,100}/g,
+    /•\s*[^<\n]{10,100}/g
+  ];
+
+  featurePatterns.forEach(pattern => {
+    const matches = html.match(pattern) || [];
+    matches.forEach(match => {
+      const cleanFeature = cleanHtmlContent(match);
+      if (cleanFeature.length > 10 && cleanFeature.length < 150) {
+        features.push(cleanFeature);
+      }
+    });
+  });
+
+  return [...new Set(features)].slice(0, 20);
+}
+
+function extractBrandMessaging(html: string): string {
+  // Look for main brand message in hero sections, taglines, etc.
+  const messagePatterns = [
+    /<h1[^>]*>(.*?)<\/h1>/gi,
+    /<div[^>]*class="[^"]*(?:hero|tagline|headline)[^"]*"[^>]*>(.*?)<\/div>/gis,
+    /<meta[^>]*name="description"[^>]*content="([^"]+)"/gi
+  ];
+
+  for (const pattern of messagePatterns) {
+    const matches = html.match(pattern);
+    if (matches && matches.length > 0) {
+      const cleanMessage = cleanHtmlContent(matches[0]);
+      if (cleanMessage.length > 20 && cleanMessage.length < 300) {
+        return cleanMessage;
+      }
     }
+  }
+
+  return '';
+}
+
+function extractMainContent(html: string): string {
+  // Remove scripts, styles, nav, footer
+  let content = html.replace(/<script[^>]*>.*?<\/script>/gis, '');
+  content = content.replace(/<style[^>]*>.*?<\/style>/gis, '');
+  content = content.replace(/<nav[^>]*>.*?<\/nav>/gis, '');
+  content = content.replace(/<footer[^>]*>.*?<\/footer>/gis, '');
+  content = content.replace(/<header[^>]*>.*?<\/header>/gis, '');
+  
+  // Extract main content area
+  const mainContent = content.match(/<main[^>]*>(.*?)<\/main>/is) ||
+                     content.match(/<article[^>]*>(.*?)<\/article>/is) ||
+                     content.match(/<div[^>]*class="[^"]*content[^"]*"[^>]*>(.*?)<\/div>/is);
+  
+  if (mainContent) {
+    return cleanHtmlContent(mainContent[1]).substring(0, 2000);
+  }
+  
+  return cleanHtmlContent(content).substring(0, 2000);
+}
+
+function extractInternalUrls(html: string, domain: string): string[] {
+  const urlPattern = /href="([^"]+)"/gi;
+  const urls: string[] = [];
+  let match;
+  
+  while ((match = urlPattern.exec(html)) !== null) {
+    const url = match[1];
+    if (url.includes(domain) || (url.startsWith('/') && !url.startsWith('//'))) {
+      const fullUrl = url.startsWith('/') ? `https://${domain}${url}` : url;
+      urls.push(fullUrl);
+    }
+  }
+  
+  return [...new Set(urls)];
+}
+
+function findKeyPages(urls: string[], domain: string): string[] {
+  const keywordPriority = [
+    'review', 'testimonial', 'customer', 'product', 'shop', 'store',
+    'about', 'story', 'features', 'benefits', 'how-it-works'
+  ];
+  
+  const scoredUrls = urls.map(url => {
+    let score = 0;
+    const urlLower = url.toLowerCase();
+    
+    keywordPriority.forEach((keyword, index) => {
+      if (urlLower.includes(keyword)) {
+        score += (keywordPriority.length - index);
+      }
+    });
+    
+    return { url, score };
   });
   
-  return [...new Set(matchingSentences)]; // Remove duplicates
+  return scoredUrls
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map(item => item.url);
 }
 
-function extractProductKeywords(content: string, targetKeywords: string[]): string[] {
-  // Base keywords from target
-  const baseKeywords = targetKeywords.flatMap(k => k.toLowerCase().split(/[\s,]+/));
-  
-  // Common product-related terms
-  const productTerms = content.match(/\b(grounding|earthing|conductive|organic|cotton|silver|copper|sheet|mat|pad|wellness|sleep|health|natural|therapy|healing|premium|quality|certified|proven|warranty|guarantee)\b/gi) || [];
-  
-  // Clean and deduplicate
-  const uniqueTerms = [...new Set([...baseKeywords, ...productTerms.map(term => term.toLowerCase())])];
-  
-  return uniqueTerms.slice(0, 12);
+function extractDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace('www.', '');
+  } catch {
+    return '';
+  }
 }
 
-function createMinimalWebsiteData(websiteUrl: string, targetKeywords: string[]): WebsiteData {
-  console.log('Creating minimal fallback data...');
-  
+function cleanHtmlContent(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/&[^;]+;/g, ' ')
+    .trim();
+}
+
+function deduplicateReviews(reviews: CustomerReview[]): CustomerReview[] {
+  const seen = new Set();
+  return reviews.filter(review => {
+    const key = review.content.substring(0, 50);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function analyzeWebsiteData(data: WebsiteData): any {
   return {
-    url: websiteUrl,
-    title: 'Website Content',
-    content: `Website content for ${targetKeywords.join(', ')} products. This website offers ${targetKeywords.join(' and ')} with various features and benefits.`,
-    valuePropositions: [`Quality ${targetKeywords.join(' and ')} products`],
-    features: [`${targetKeywords.join(' and ')} available`],
-    benefits: [`Benefits of ${targetKeywords.join(' and ')}`],
-    keywords: targetKeywords,
-    metadata: {
-      timestamp: new Date().toISOString(),
-      contentLength: 0,
-      extractionMethod: 'minimal_fallback',
-      success: false
-    }
+    totalReviews: data.customerReviews.length,
+    totalTestimonials: data.testimonials.length,
+    averageReviewLength: data.customerReviews.length > 0 ? 
+      data.customerReviews.reduce((sum, r) => sum + r.content.length, 0) / data.customerReviews.length : 0,
+    valuePropositionsFound: data.valuePropositions.length,
+    featuresFound: data.features.length,
+    brandMessagingPresent: !!data.brandMessaging,
+    pagesCrawled: 1 + data.productPagesContent.length,
+    dataQuality: data.customerReviews.length > 5 ? 'high' : 
+                 data.customerReviews.length > 2 ? 'medium' : 'low'
   };
 }
 
@@ -291,71 +376,53 @@ export async function POST(request: NextRequest) {
     const { jobId, websiteUrl, targetKeywords } = await request.json();
 
     if (!jobId || !websiteUrl) {
-      return NextResponse.json({ 
-        error: 'Job ID and website URL are required' 
-      }, { status: 400 });
+      return NextResponse.json({ error: 'Job ID and website URL are required' }, { status: 400 });
     }
 
-    console.log(`Starting robust website crawl for job ${jobId}: ${websiteUrl}`);
+    console.log(`Starting enhanced website crawling for job ${jobId}: ${websiteUrl}`);
     
     await updateJobStatus(jobId, 'processing');
     
-    // Parse keywords
-    const keywords = typeof targetKeywords === 'string' 
-      ? targetKeywords.split(',').map(k => k.trim())
-      : targetKeywords || [];
+    // Enhanced crawling for content + reviews
+    const websiteData = await crawlWebsiteForContentAndReviews(websiteUrl);
     
-    console.log('Target keywords:', keywords);
+    // Analyze the collected data
+    const analysis = analyzeWebsiteData(websiteData);
     
-    // Crawl the website using multiple methods
-    const websiteData = await crawlWebsiteMultipleWays(websiteUrl, keywords);
-    
-    if (!websiteData) {
-      console.log('All website crawl methods failed');
-      const fallbackData = createMinimalWebsiteData(websiteUrl, keywords);
-      await saveJobData(jobId, 'website', fallbackData);
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Website crawl completed with minimal data',
-        data: { 
-          url: websiteUrl, 
-          contentLength: 0,
-          method: 'fallback',
-          valuePropositions: fallbackData.valuePropositions.length,
-          features: fallbackData.features.length,
-          benefits: fallbackData.benefits.length
-        }
-      });
-    }
+    const crawlerData = {
+      websiteData: websiteData,
+      analysis: analysis,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        websiteUrl: websiteUrl,
+        targetKeywords: targetKeywords,
+        crawlType: 'enhanced_content_and_reviews'
+      }
+    };
 
-    // Save the website data
-    await saveJobData(jobId, 'website', websiteData);
+    await saveJobData(jobId, 'website', crawlerData);
 
-    console.log(`Website crawl completed for job ${jobId} using ${websiteData.metadata.extractionMethod}`);
+    console.log(`Enhanced website crawling completed for job ${jobId}: ${analysis.totalReviews} reviews, ${analysis.totalTestimonials} testimonials`);
 
     return NextResponse.json({
       success: true,
-      message: 'Website crawl completed successfully',
+      message: 'Enhanced website crawling completed',
       data: {
-        url: websiteUrl,
-        title: websiteData.title,
-        contentLength: websiteData.content.length,
-        method: websiteData.metadata.extractionMethod,
-        valuePropositions: websiteData.valuePropositions.length,
-        features: websiteData.features.length,
-        benefits: websiteData.benefits.length,
-        keywords: websiteData.keywords.length,
-        preview: websiteData.content.substring(0, 200) + '...'
+        reviewsFound: analysis.totalReviews,
+        testimonialsFound: analysis.totalTestimonials,
+        valuePropsFound: analysis.valuePropositionsFound,
+        featuresFound: analysis.featuresFound,
+        pagesCrawled: analysis.pagesCrawled,
+        dataQuality: analysis.dataQuality
       }
     });
 
   } catch (error) {
-    console.error('Website crawler error:', error);
+    console.error('Enhanced website crawling error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Website crawl failed', details: errorMessage },
+      { error: 'Enhanced website crawling failed', details: errorMessage },
       { status: 500 }
     );
   }

@@ -15,9 +15,9 @@ async function processJobAutomatically(jobId: string, websiteUrl: string, target
 
     const workers = [
       '/api/workers/website-crawler',
-      '/api/workers/reviews-collector', 
-      '/api/workers/amazon-reviews',    // NEW: Amazon reviews worker
-      '/api/workers/amazon-competitors',
+      // '/api/workers/reviews-collector',     // TEMPORARILY DISABLED - Reddit worker
+      '/api/workers/amazon-reviews',
+      // '/api/workers/amazon-competitors',    // TEMPORARILY DISABLED - Amazon competitors
       '/api/workers/persona-generator'
     ];
 
@@ -73,9 +73,7 @@ async function processJobAutomatically(jobId: string, websiteUrl: string, target
       
       // Fetch all collected data
       const websiteData = await getJobData(jobId, 'website');
-      const redditData = await getJobData(jobId, 'reviews');
       const amazonReviews = await getJobData(jobId, 'amazon_reviews');
-      const competitorsData = await getJobData(jobId, 'amazon_competitors');
       
       const enhancedPersonaResponse = await fetch(`${baseUrl}/api/workers/persona-generator`, {
         method: 'POST',
@@ -87,9 +85,7 @@ async function processJobAutomatically(jobId: string, websiteUrl: string, target
           amazonUrl,
           // Pass collected data directly
           websiteData,
-          redditData,
           amazonReviews,
-          competitorsData,
         }),
       });
 
@@ -190,10 +186,11 @@ export async function POST(request: NextRequest) {
       message: 'Job created and processing started automatically',
       dataSourcesEnabled: {
         website: true,
-        reddit: true,
         amazonReviews: !!amazonUrl,
-        amazonCompetitors: !!amazonUrl,
-        personaGeneration: true
+        personaGeneration: true,
+        // Temporarily disabled
+        reddit: false,
+        amazonCompetitors: false
       }
     });
 
