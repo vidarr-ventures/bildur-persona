@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
         new URL(amazonUrl);
         
         // Check if it's actually an Amazon URL
-        if (!amazonUrl.includes('amazon.')) {
+if (!amazonUrl.includes('amazon.com')) {
           return NextResponse.json(
             { error: 'Please provide a valid Amazon product URL' },
             { status: 400 }
