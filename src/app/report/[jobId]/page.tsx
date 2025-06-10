@@ -1,4 +1,3 @@
-Social Discussions: 8 social media posts
 'use client';
 
 import { useState, useEffect } from 'react';
