@@ -24,10 +24,10 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
     if (process.env.SCRAPEOWL_API_KEY) {
       console.log('Attempting multi-page ScrapeOwl extraction...');
       
-      // Extract from multiple pages (up to 10 pages = ~100 reviews)
-      const pagesToScrape = 10;
+      // Extract from ALL available pages - no artificial limit
+      const maxPagesToScrape = 100; // Safety limit to prevent infinite loops
       
-      for (let page = 1; page <= pagesToScrape; page++) {
+      for (let page = 1; page <= maxPagesToScrape; page++) {
         try {
           console.log(`Scraping Amazon reviews page ${page}...`);
           
@@ -111,15 +111,15 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
             allReviews = allReviews.concat(pageReviews);
             console.log(`Total reviews collected so far: ${allReviews.length}`);
             
-            // If we got less than 5 reviews on this page, probably no more pages
-            if (pageReviews.length < 5) {
-              console.log(`Only ${pageReviews.length} reviews on page ${page}, stopping pagination`);
+            // If we got less than 3 reviews on this page, we've reached the end
+            if (pageReviews.length < 3) {
+              console.log(`Only ${pageReviews.length} reviews on page ${page}, reached end of reviews`);
               break;
             }
             
             // Add delay between requests to avoid rate limiting
-            if (page < pagesToScrape) {
-              await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+            if (page < maxPagesToScrape) {
+              await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 second delay
             }
             
           } else {
@@ -137,19 +137,15 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
       console.log(`ScrapeOwl multi-page extraction completed: ${allReviews.length} total reviews`);
     }
     
-    // If we still don't have enough reviews, supplement with realistic ones
-    if (allReviews.length < 50) {
-      console.log(`Only got ${allReviews.length} real reviews, supplementing with category-specific insights...`);
-      const supplementalReviews = generateSupplementalReviews(targetKeywords, asin, allReviews.length);
-      allReviews = allReviews.concat(supplementalReviews);
-    }
+    // Don't add fake reviews - just report what we actually extracted
+    console.log(`Amazon extraction completed: ${allReviews.length} real reviews extracted`);
     
     return {
       reviews: allReviews,
       productInfo: productInfo,
-      extractionMethod: allReviews.some(r => r.source === 'amazon_scrapeowl') ? 'multi_page_scrapeowl' : 'category_enhanced',
-      realReviewsCount: allReviews.filter(r => r.source === 'amazon_scrapeowl').length,
-      supplementalCount: allReviews.filter(r => r.source !== 'amazon_scrapeowl').length
+      extractionMethod: allReviews.length > 0 ? 'multi_page_scrapeowl' : 'extraction_failed',
+      realReviewsCount: allReviews.length,
+      extractionFailed: allReviews.length === 0
     };
     
   } catch (error) {
@@ -157,126 +153,82 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
     return {
       reviews: [],
       productInfo: {},
-      extractionMethod: 'failed',
+      extractionMethod: 'extraction_failed',
       realReviewsCount: 0,
-      supplementalCount: 0
+      extractionFailed: true
     };
   }
 }
 
-function generateSupplementalReviews(targetKeywords: string, asin: string, existingCount: number) {
-  const keywords = targetKeywords.toLowerCase();
-  const isGroundingProduct = keywords.includes('grounding') || keywords.includes('earthing');
-  
-  const supplementCount = Math.max(50 - existingCount, 20); // Ensure we have at least 50 total reviews
-  
-  if (isGroundingProduct) {
-    const groundingReviewTemplates = [
-      {
-        title: "Finally sleeping through the night",
-        text: "I've had chronic insomnia for 8 years. Tried melatonin, magnesium, sleep hygiene, meditation - nothing worked consistently. This grounding sheet has been a game changer. Within 5 nights I was sleeping 7-8 hours straight. I wake up feeling actually rested. The material is soft and breathable. My husband was skeptical but now he wants one for his side of the bed too.",
-        rating: 5,
-        verified: true
-      },
-      {
-        title: "Skeptical but it works for inflammation",
-        text: "I'll be honest, I thought earthing was pseudoscience. My naturopath recommended it for my rheumatoid arthritis. After 3 weeks of using this sheet, my morning joint stiffness is noticeably reduced. My inflammation markers improved at my last blood test. I'm still not sure about the science but the results are undeniable.",
-        rating: 4,
-        verified: true
-      },
-      {
-        title: "Great quality, took time to work",
-        text: "The sheet itself is excellent quality - organic cotton blend, fits my queen mattress perfectly, washes well. It took about 2 weeks before I started noticing changes in my sleep. My chronic back pain is better in the mornings. The grounding cord connection feels secure. Worth the investment for natural healing.",
-        rating: 4,
-        verified: true
-      },
-      {
-        title: "Life changing for my fibromyalgia",
-        text: "I have fibromyalgia and chronic fatigue syndrome. This grounding sheet has significantly reduced my daily pain levels. I'm sleeping deeper and my energy is more stable throughout the day. I've been able to reduce my pain medication. It's expensive but consider it a health investment.",
-        rating: 5,
-        verified: true
-      },
-      {
-        title: "Helped with anxiety and stress",
-        text: "Bought this primarily for sleep issues but noticed it's helped with my anxiety too. I feel more grounded (no pun intended) and less stressed. My nervous system seems calmer. The earthing effect feels real based on my experience. Good customer service when I had questions about setup.",
-        rating: 5,
-        verified: true
-      },
-      {
-        title: "Works but durability concerns",
-        text: "The grounding benefits are real - better sleep, less inflammation. However after 8 months the conductive silver threads are showing wear despite careful washing. For this price point I expected it to last longer. Still recommend but be very gentle with care.",
-        rating: 3,
-        verified: true
-      },
-      {
-        title: "Amazing for recovery after workouts",
-        text: "I'm an athlete and recovery is crucial. Since using this grounding sheet my muscle soreness is reduced and I recover faster between training sessions. Sleep quality improved dramatically. Other athletes need to know about this natural recovery method.",
-        rating: 5,
-        verified: true
-      }
-    ];
-    
-    // Generate variations of these templates
-    const supplementalReviews = [];
-    for (let i = 0; i < supplementCount; i++) {
-      const template = groundingReviewTemplates[i % groundingReviewTemplates.length];
-      supplementalReviews.push({
-        ...template,
-        reviewer_name: `Customer ${i + existingCount + 1}`,
-        date: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-        helpful_votes: Math.floor(Math.random() * 20),
-        source: 'supplemental_insight'
-      });
+function generateMinimalFallbackReviews(asin: string, existingCount: number) {
+  // Generic fallback reviews (only used if real extraction completely fails)
+  const genericTemplates = [
+    {
+      title: "Product works as described",
+      text: "Received the product and it functions as advertised. Good build quality and materials. Shipping was prompt and packaging was secure. Would consider purchasing again.",
+      rating: 4,
+      verified: true
+    },
+    {
+      title: "Good value for the price point",
+      text: "Not the cheapest option available but the quality seems to justify the cost. Product arrived on time and matches the description. Customer service was responsive to my questions.",
+      rating: 4,
+      verified: true
+    },
+    {
+      title: "Meets expectations",
+      text: "Does what it's supposed to do. Quality seems solid and construction is good. Easy to use and setup was straightforward. Happy with the purchase overall.",
+      rating: 4,
+      verified: true
+    },
+    {
+      title: "Decent product with room for improvement",
+      text: "Product works fine but there are a few areas that could be better. For the price it's acceptable. Delivery was on schedule and item was well packaged.",
+      rating: 3,
+      verified: true
+    },
+    {
+      title: "Satisfied with purchase",
+      text: "Product quality is good and it serves its intended purpose well. Would recommend to others looking for this type of item. Good customer support when I had questions.",
+      rating: 4,
+      verified: true
     }
-    
-    return supplementalReviews;
-  } else {
-    // Generic supplemental reviews for non-grounding products
-    const genericTemplates = [
-      {
-        title: "Good quality product",
-        text: "Product arrived quickly and works as described. Good build quality and materials. Customer service was responsive when I had questions. Would recommend to others.",
-        rating: 4,
-        verified: true
-      },
-      {
-        title: "Decent value for money",
-        text: "Not the cheapest option but the quality justifies the price. Does what it's supposed to do. Shipping was fast and packaging was secure.",
-        rating: 4,
-        verified: true
-      }
-    ];
-    
-    const supplementalReviews = [];
-    for (let i = 0; i < Math.min(supplementCount, 20); i++) {
-      const template = genericTemplates[i % genericTemplates.length];
-      supplementalReviews.push({
-        ...template,
-        reviewer_name: `Customer ${i + existingCount + 1}`,
-        date: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
-        helpful_votes: Math.floor(Math.random() * 10),
-        source: 'supplemental_insight'
-      });
-    }
-    
-    return supplementalReviews;
+  ];
+  
+  const fallbackCount = Math.min(15, Math.max(15 - existingCount, 5));
+  const fallbackReviews = [];
+  
+  for (let i = 0; i < fallbackCount; i++) {
+    const template = genericTemplates[i % genericTemplates.length];
+    fallbackReviews.push({
+      ...template,
+      reviewer_name: `Verified Customer ${i + existingCount + 1}`,
+      date: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString(),
+      helpful_votes: Math.floor(Math.random() * 8),
+      source: 'generic_fallback'
+    });
   }
+  
+  return fallbackReviews;
 }
 
-function analyzeMultiPageReviews(reviews: any[], productInfo: any, targetKeywords: string, realCount: number, supplementalCount: number) {
+function analyzeMultiPageReviews(reviews: any[], productInfo: any, targetKeywords: string, realCount: number, extractionFailed: boolean) {
   const totalReviews = reviews.length;
   
-  if (totalReviews === 0) {
+  if (totalReviews === 0 || extractionFailed) {
     return {
       totalReviews: 0,
-      realReviews: 0,
-      supplementalReviews: 0,
+      realReviews: realCount,
+      extractionStatus: extractionFailed ? 'AMAZON_EXTRACTION_FAILED' : 'NO_REVIEWS_FOUND',
       averageRating: 0,
       painPoints: [],
       positives: [],
       customerNeeds: [],
       emotions: {},
-      verifiedPurchaseRatio: 0
+      verifiedPurchaseRatio: 0,
+      errorMessage: extractionFailed ? 
+        'Amazon review extraction failed - unable to access review data' : 
+        'No reviews found for this product'
     };
   }
   
@@ -405,7 +357,7 @@ export async function POST(request: NextRequest) {
       extractionResult.productInfo, 
       targetKeywords,
       extractionResult.realReviewsCount,
-      extractionResult.supplementalCount
+      extractionResult.extractionFailed || false
     );
     
     const amazonReviewsData = {
@@ -417,32 +369,34 @@ export async function POST(request: NextRequest) {
         targetKeywords: targetKeywords,
         extractionMethod: extractionResult.extractionMethod,
         realReviewsExtracted: extractionResult.realReviewsCount,
-        supplementalReviewsAdded: extractionResult.supplementalCount,
-        dataType: 'amazon_reviews_multi_page',
+        extractionStatus: analysis.extractionStatus,
+        dataType: 'amazon_reviews_extraction',
         scrapeOwlUsed: !!process.env.SCRAPEOWL_API_KEY
       }
     };
 
     await saveJobData(jobId, 'amazon_reviews', amazonReviewsData);
 
-    console.log(`MULTI-PAGE Amazon extraction completed for job ${jobId}:`);
-    console.log(`- Real reviews: ${extractionResult.realReviewsCount}`);
-    console.log(`- Supplemental reviews: ${extractionResult.supplementalCount}`);
-    console.log(`- Total reviews: ${extractionResult.reviews.length}`);
+    console.log(`Amazon extraction completed for job ${jobId}:`);
+    console.log(`- Real reviews extracted: ${extractionResult.realReviewsCount}`);
+    console.log(`- Extraction status: ${analysis.extractionStatus}`);
 
     return NextResponse.json({
       success: true,
-      message: 'Multi-page Amazon extraction completed',
+      message: analysis.extractionStatus === 'SUCCESS' ? 
+        'Amazon reviews extraction completed successfully' : 
+        'Amazon reviews extraction completed with issues',
       data: {
         totalReviews: extractionResult.reviews.length,
         realReviews: extractionResult.realReviewsCount,
-        supplementalReviews: extractionResult.supplementalCount,
+        extractionStatus: analysis.extractionStatus,
         averageRating: analysis.averageRating,
         verifiedRatio: analysis.verifiedPurchaseRatio,
         painPointsFound: analysis.painPoints.length,
         positivesFound: analysis.positives.length,
         method: extractionResult.extractionMethod,
-        emotions: analysis.emotions
+        emotions: analysis.emotions,
+        errorMessage: analysis.errorMessage
       }
     });
 
