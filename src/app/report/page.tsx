@@ -1,4 +1,3 @@
-Social Discussions: 8 social media posts
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -22,9 +21,9 @@ interface PersonaData {
     score: number;
   };
   sources: {
-    reviews: number;
+    amazonReviews: number;
+    reddit: number;
     website: string;
-    social: number;
     competitors: string;
   };
   metadata: {
@@ -38,6 +37,7 @@ export default function ReportPage() {
   const jobId = params.jobId as string;
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [personaData, setPersonaData] = useState<PersonaData | null>(null);
+  const [actualDataCounts, setActualDataCounts] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>('overview');
@@ -64,6 +64,24 @@ export default function ReportPage() {
           return;
         }
 
+        // Fetch actual data counts from database
+        const dataCountsPromises = [
+          fetch(`/api/debug?jobId=${jobId}&dataType=amazon_reviews`).then(r => r.json()).catch(() => ({ success: false })),
+          fetch(`/api/debug?jobId=${jobId}&dataType=reviews`).then(r => r.json()).catch(() => ({ success: false })),
+          fetch(`/api/debug?jobId=${jobId}&dataType=website`).then(r => r.json()).catch(() => ({ success: false }))
+        ];
+
+        const [amazonData, redditData, websiteData] = await Promise.all(dataCountsPromises);
+
+        const actualCounts = {
+          amazonReviews: amazonData.success && amazonData.data?.analysis?.totalReviews ? amazonData.data.analysis.totalReviews : 0,
+          reddit: redditData.success && redditData.data?.analysis?.totalComments ? redditData.data.analysis.totalComments : 0,
+          website: websiteData.success ? 'analyzed' : 'limited',
+          competitors: 'limited' // Update this when competitor analysis is implemented
+        };
+
+        setActualDataCounts(actualCounts);
+
         // Fetch the actual persona data from the database
         try {
           const personaResponse = await fetch(`/api/debug?jobId=${jobId}&dataType=persona_profile`);
@@ -72,12 +90,12 @@ export default function ReportPage() {
           if (personaResult.success && personaResult.data) {
             setPersonaData(personaResult.data);
           } else {
-            // Fallback to sample report if no persona data found
-            setPersonaData(generateSamplePersona(job.user_inputs));
+            // Fallback to sample report with REAL data counts
+            setPersonaData(generateSamplePersona(job.user_inputs, actualCounts));
           }
         } catch (personaError) {
           console.error('Error fetching persona data:', personaError);
-          setPersonaData(generateSamplePersona(job.user_inputs));
+          setPersonaData(generateSamplePersona(job.user_inputs, actualCounts));
         }
 
       } catch (err) {
@@ -91,12 +109,20 @@ export default function ReportPage() {
     fetchReportData();
   }, [jobId]);
 
-  // Generate sample persona for fallback
-  const generateSamplePersona = (userInputs: any): PersonaData => {
+  // Generate sample persona for fallback using REAL data counts
+  const generateSamplePersona = (userInputs: any, realDataCounts: any): PersonaData => {
     const keywords = userInputs?.targetKeywords || 'wellness products';
     const isGroundingProduct = keywords.toLowerCase().includes('grounding') || 
                               keywords.toLowerCase().includes('earthing') ||
                               userInputs?.primaryProductUrl?.toLowerCase().includes('ground');
+    
+    // Use real data counts or defaults
+    const sources = realDataCounts || {
+      amazonReviews: 0,
+      reddit: 0,
+      website: 'limited',
+      competitors: 'limited'
+    };
     
     if (isGroundingProduct) {
       return {
@@ -156,15 +182,16 @@ export default function ReportPage() {
 - Appreciates companies that prioritize customer health over profits
         `,
         dataQuality: {
-          confidence: 'high',
-          score: 85
+          confidence: sources.amazonReviews > 10 ? 'high' : sources.amazonReviews > 0 ? 'medium' : 'low',
+          score: Math.min(
+            (sources.amazonReviews > 0 ? 40 : 0) + 
+            (sources.reddit > 0 ? 25 : 0) + 
+            (sources.website === 'analyzed' ? 20 : 10) + 
+            (sources.competitors === 'analyzed' ? 15 : 5), 
+            100
+          )
         },
-        sources: {
-          reviews: 15,
-          website: 'analyzed',
-          social: 8,
-          competitors: 'analyzed'
-        },
+        sources: sources,
         metadata: {
           generated: new Date().toISOString(),
           jobId: jobId
@@ -220,15 +247,16 @@ export default function ReportPage() {
 - Responsive customer service
         `,
         dataQuality: {
-          confidence: 'medium',
-          score: 70
+          confidence: sources.amazonReviews > 10 ? 'high' : sources.amazonReviews > 0 ? 'medium' : 'low',
+          score: Math.min(
+            (sources.amazonReviews > 0 ? 40 : 0) + 
+            (sources.reddit > 0 ? 25 : 0) + 
+            (sources.website === 'analyzed' ? 20 : 10) + 
+            (sources.competitors === 'analyzed' ? 15 : 5), 
+            100
+          )
         },
-        sources: {
-          reviews: 5,
-          website: 'analyzed',
-          social: 3,
-          competitors: 'limited'
-        },
+        sources: sources,
         metadata: {
           generated: new Date().toISOString(),
           jobId: jobId
@@ -348,8 +376,13 @@ export default function ReportPage() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Data Collection Summary</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-2">Customer Reviews</h4>
-                    <p className="text-gray-600">{personaData.sources.reviews} reviews analyzed</p>
+                    <h4 className="font-medium text-gray-900 mb-2">Amazon Reviews</h4>
+                    <p className="text-gray-600">
+                      {personaData.sources.amazonReviews > 0 
+                        ? `${personaData.sources.amazonReviews} reviews analyzed`
+                        : 'No Amazon reviews extracted'
+                      }
+                    </p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Website Content</h4>
@@ -357,7 +390,12 @@ export default function ReportPage() {
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Social Discussions</h4>
-                    <p className="text-gray-600">{personaData.sources.social} social media posts</p>
+                    <p className="text-gray-600">
+                      {personaData.sources.reddit > 0 
+                        ? `${personaData.sources.reddit} social media posts analyzed`
+                        : 'No social media data extracted'
+                      }
+                    </p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Competitor Analysis</h4>
