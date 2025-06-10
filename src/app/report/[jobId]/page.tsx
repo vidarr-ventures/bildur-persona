@@ -348,8 +348,7 @@ export default function ReportPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Customer Reviews</h4>
-                    <p className="text-gray-600">{personaData.sources.reviews} reviews analyzed</p>
-                  </div>
+<p className="text-gray-600">{personaData.sources.amazonReviews || personaData.sources.reviews || 0} reviews analyzed</p>                  </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Website Content</h4>
                     <p className="text-gray-600">{personaData.sources.website}</p>
