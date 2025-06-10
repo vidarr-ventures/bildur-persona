@@ -1,133 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createJob, updateJobStatus, getJobData } from '@/lib/db';
-
-// Execute all workers for a job
-async function processJobAutomatically(jobId: string, websiteUrl: string, targetKeywords: string, amazonUrl?: string) {
-  try {
-    console.log(`Starting automatic processing for job ${jobId}`);
-    
-    // Update status to processing
-    await updateJobStatus(jobId, 'processing');
-    
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : 'http://localhost:3000';
-
-    const workers = [
-      '/api/workers/website-crawler',
-      // '/api/workers/reviews-collector',     // TEMPORARILY DISABLED - Reddit worker
-      '/api/workers/amazon-reviews',
-      // '/api/workers/amazon-competitors',    // TEMPORARILY DISABLED - Amazon competitors
-      '/api/workers/persona-generator'
-    ];
-
-    // Store worker results for passing to persona generator
-    const workerResults: Record<string, any> = {};
-
-    // Execute workers sequentially
-    for (const worker of workers) {
-      try {
-        console.log(`Executing ${worker} for job ${jobId}`);
-        
-        // Skip Amazon reviews worker if no Amazon URL provided
-        if (worker === '/api/workers/amazon-reviews' && !amazonUrl) {
-          console.log('Skipping Amazon reviews - no Amazon URL provided');
-          continue;
-        }
-        
-        const response = await fetch(`${baseUrl}${worker}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jobId,
-            websiteUrl,
-            targetKeywords,
-            amazonUrl,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Worker ${worker} failed:`, response.status, errorText);
-          throw new Error(`Worker ${worker} failed: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log(`Worker ${worker} completed successfully for job ${jobId}`);
-        
-        // Store result for persona generator
-        const workerName = worker.split('/').pop()?.replace('-', '_');
-        if (workerName) {
-          workerResults[workerName] = result.data || result;
-        }
-        
-      } catch (workerError) {
-        console.error(`Error in worker ${worker}:`, workerError);
-        // Continue with other workers even if one fails
-      }
-    }
-
-    // Enhanced persona generation with collected data
-    try {
-      console.log('Starting enhanced persona generation with collected data...');
-      
-      // Fetch all collected data
-      const websiteData = await getJobData(jobId, 'website');
-      const amazonReviews = await getJobData(jobId, 'amazon_reviews');
-      
-      const enhancedPersonaResponse = await fetch(`${baseUrl}/api/workers/persona-generator`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId,
-          websiteUrl,
-          targetKeywords,
-          amazonUrl,
-          // Pass collected data directly
-          websiteData,
-          amazonReviews,
-        }),
-      });
-
-      if (enhancedPersonaResponse.ok) {
-        const personaResult = await enhancedPersonaResponse.json();
-        console.log('Enhanced persona generation completed successfully');
-      } else {
-        console.error('Enhanced persona generation failed:', enhancedPersonaResponse.status);
-      }
-    } catch (personaError) {
-      console.error('Enhanced persona generation error:', personaError);
-    }
-
-    // Mark job as completed
-    await updateJobStatus(jobId, 'completed');
-    console.log(`Job ${jobId} processing completed successfully`);
-    
-  } catch (error) {
-    console.error(`Error processing job ${jobId}:`, error);
-    await updateJobStatus(jobId, 'failed');
-  }
-}
+import { createJob } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    
-    // Extract fields that the form sends
-    const { primaryProductUrl, targetKeywords, amazonProductUrl } = body;
-    
-    // Map to expected variable names
-    const websiteUrl = primaryProductUrl;
-    const amazonUrl = amazonProductUrl;
-    
-    console.log('Received form data:', { primaryProductUrl, targetKeywords, amazonProductUrl });
-    
-    if (!websiteUrl || !targetKeywords) {
+    const { websiteUrl, targetKeywords, amazonUrl } = await request.json();
+
+    // Validate required fields
+    if (!websiteUrl) {
       return NextResponse.json(
-        { 
-          error: 'Website URL and target keywords are required',
-          received: { websiteUrl, targetKeywords, amazonUrl }
-        },
+        { error: 'Website URL is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!targetKeywords) {
+      return NextResponse.json(
+        { error: 'Target keywords are required' },
         { status: 400 }
       );
     }
@@ -148,7 +36,7 @@ export async function POST(request: NextRequest) {
         new URL(amazonUrl);
         
         // Check if it's actually an Amazon URL
-if (!amazonUrl.includes('amazon.com')) {
+        if (!amazonUrl.match(/amazon\.(com|ca|co\.uk|de|fr|it|es|co\.jp|in|com\.au|com\.mx|com\.br)/)) {
           return NextResponse.json(
             { error: 'Please provide a valid Amazon product URL' },
             { status: 400 }
@@ -164,7 +52,7 @@ if (!amazonUrl.includes('amazon.com')) {
 
     // Create job in database
     console.log('Creating job with data:', { websiteUrl, targetKeywords, amazonUrl });
-    
+
     const job = await createJob({
       website_url: websiteUrl,
       target_keywords: targetKeywords,
@@ -172,41 +60,86 @@ if (!amazonUrl.includes('amazon.com')) {
       status: 'pending'
     });
 
-    console.log('Job created in database:', job);
+    console.log('Job created successfully:', job.id);
 
-    // Start processing automatically (don't wait for it to complete)
-    processJobAutomatically(job.id, websiteUrl, targetKeywords, amazonUrl)
-      .catch(error => {
-        console.error('Auto-processing failed:', error);
-      });
+    // Start processing workflow
+    await initiateJobProcessing(job.id, websiteUrl, targetKeywords, amazonUrl);
 
     return NextResponse.json({
       success: true,
       jobId: job.id,
-      message: 'Job created and processing started automatically',
-      dataSourcesEnabled: {
-        website: true,
-        amazonReviews: !!amazonUrl,
-        personaGeneration: true,
-        // Temporarily disabled
-        reddit: false,
-        amazonCompetitors: false
-      }
+      message: 'Analysis started successfully'
     });
 
   } catch (error) {
     console.error('Job creation error:', error);
-    
-    // Type-safe error handling
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
     return NextResponse.json(
-      { 
-        error: 'Failed to create job', 
-        details: errorMessage,
-        step: 'general_error'
-      },
+      { error: 'Failed to create analysis job', details: errorMessage },
       { status: 500 }
     );
+  }
+}
+
+async function initiateJobProcessing(jobId: string, websiteUrl: string, targetKeywords: string, amazonUrl?: string) {
+  try {
+    console.log(`Starting job processing workflow for ${jobId}`);
+
+    // Start with website crawling
+    const websiteResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/workers/website-crawler`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jobId,
+        websiteUrl,
+        targetKeywords
+      })
+    });
+
+    if (!websiteResponse.ok) {
+      console.error('Website crawler failed:', await websiteResponse.text());
+    }
+
+    // Start Amazon reviews extraction if URL provided
+    if (amazonUrl) {
+      const amazonResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/workers/amazon-reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId,
+          amazonUrl,
+          targetKeywords
+        })
+      });
+
+      if (!amazonResponse.ok) {
+        console.error('Amazon reviews worker failed:', await amazonResponse.text());
+      }
+    }
+
+    // Wait a bit for data collection, then start persona generation
+    setTimeout(async () => {
+      try {
+        const personaResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/workers/persona-generator`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jobId,
+            websiteUrl,
+            targetKeywords,
+            amazonUrl
+          })
+        });
+
+        if (!personaResponse.ok) {
+          console.error('Persona generator failed:', await personaResponse.text());
+        }
+      } catch (error) {
+        console.error('Error in persona generation:', error);
+      }
+    }, 15000); // Wait 15 seconds for data collection
+
+  } catch (error) {
+    console.error('Error in job processing workflow:', error);
   }
 }
