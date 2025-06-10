@@ -20,18 +20,15 @@ interface PersonaData {
     confidence: string;
     score: number;
   };
-    reviews: number;
-  website: string;
-  social: number;
-  competitors: string;
-sources: {
-  reviews?: number;
-  amazonReviews?: number;
-  reddit?: number;
-  website: string;
-  social?: number;
-  competitors: string;
-};  metadata: {
+  sources: {
+    reviews?: number;
+    amazonReviews?: number;
+    reddit?: number;
+    website: string;
+    social?: number;
+    competitors: string;
+  };
+  metadata: {
     generated: string;
     jobId: string;
   };
@@ -164,9 +161,9 @@ export default function ReportPage() {
           score: 85
         },
         sources: {
-          reviews: 15,
+          amazonReviews: 15,
           website: 'analyzed',
-          social: 8,
+          reddit: 8,
           competitors: 'analyzed'
         },
         metadata: {
@@ -228,9 +225,9 @@ export default function ReportPage() {
           score: 70
         },
         sources: {
-          reviews: 5,
+          amazonReviews: 5,
           website: 'analyzed',
-          social: 3,
+          reddit: 3,
           competitors: 'limited'
         },
         metadata: {
@@ -353,14 +350,15 @@ export default function ReportPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Customer Reviews</h4>
-<p className="text-gray-600">{personaData.sources.amazonReviews || personaData.sources.reviews || 0} reviews analyzed</p>                  </div>
+                    <p className="text-gray-600">{personaData.sources.amazonReviews || personaData.sources.reviews || 0} reviews analyzed</p>
+                  </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Website Content</h4>
                     <p className="text-gray-600">{personaData.sources.website}</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Social Discussions</h4>
-                    <p className="text-gray-600">{personaData.sources.social} social media posts</p>
+                    <p className="text-gray-600">{personaData.sources.reddit || personaData.sources.social || 0} social media posts</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">Competitor Analysis</h4>
