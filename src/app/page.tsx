@@ -54,7 +54,7 @@ export default function Home() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Your Product URL
+              Amazon Product URL
             </label>
             <input
               type="url"
@@ -68,7 +68,7 @@ export default function Home() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Amazon Product URL (Optional)
+              Website URL (Optional)
             </label>
             <input
               type="url"
