@@ -1,22 +1,29 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+interface FormData {
+  primaryProductUrl: string;
+  amazonProductUrl: string;
+  targetKeywords: string;
+}
 
 export default function Home() {
-  const [formData, setFormData] = useState({
+  const router = useRouter();
+  const [formData, setFormData] = useState<FormData>({
     primaryProductUrl: '',
     amazonProductUrl: '',
-    targetKeywords: '',
+    targetKeywords: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    console.log('Form data being sent:', formData); // Debug line
-    
+    setError(null);
+
     try {
       const response = await fetch('/api/jobs/create', {
         method: 'POST',
@@ -25,20 +32,17 @@ export default function Home() {
         },
         body: JSON.stringify(formData),
       });
-      
-      console.log('Response status:', response.status); // Debug line
+
       const data = await response.json();
-      console.log('Response data:', data); // Debug line
-      
-      setResult(data);
-      
+
       if (data.success) {
-        // Redirect to dashboard
-        window.location.href = `/dashboard/${data.jobId}`;
+        router.push(`/dashboard/${data.jobId}`);
+      } else {
+        setError(data.error || 'Failed to start analysis');
       }
-    } catch (error) {
-      console.error('Error:', error);
-      setResult({ error: 'Failed to submit form' });
+    } catch (err) {
+      setError('Network error. Please try again.');
+      console.error('Submission error:', err);
     } finally {
       setIsSubmitting(false);
     }
@@ -50,11 +54,11 @@ export default function Home() {
         <h1 className="text-2xl font-bold text-gray-900 mb-6">
           Customer Persona Research
         </h1>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Amazon Product URL
+              Website URL
             </label>
             <input
               type="url"
@@ -62,13 +66,13 @@ export default function Home() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={formData.primaryProductUrl}
               onChange={(e) => setFormData({...formData, primaryProductUrl: e.target.value})}
-              placeholder="https://yoursite.com/product"
+              placeholder="https://yoursite.com"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Website URL (Optional)
+              Amazon Product URL (Optional)
             </label>
             <input
               type="url"
@@ -93,21 +97,20 @@ export default function Home() {
             />
           </div>
 
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={isSubmitting}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
           >
-            {isSubmitting ? 'Creating Analysis...' : 'Start Customer Research'}
+            {isSubmitting ? 'Starting Analysis...' : 'Start Customer Research'}
           </button>
         </form>
-
-        {result && (
-          <div className="mt-6 p-4 rounded-md bg-gray-100">
-            <h3 className="font-medium mb-2">Response:</h3>
-            <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(result, null, 2)}</pre>
-          </div>
-        )}
       </div>
     </div>
   );

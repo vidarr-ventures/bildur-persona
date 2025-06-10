@@ -3,7 +3,10 @@ import { createJob } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    const { websiteUrl, targetKeywords, amazonUrl } = await request.json();
+const body = await request.json();
+const websiteUrl = body.primaryProductUrl; // Website URL
+const amazonUrl = body.amazonProductUrl; // Amazon URL  
+const targetKeywords = body.targetKeywords;
 
     // Validate required fields
     if (!websiteUrl) {
