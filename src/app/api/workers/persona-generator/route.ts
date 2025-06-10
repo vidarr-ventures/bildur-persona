@@ -257,10 +257,11 @@ function extractAmazonInsights(amazonData: any) {
     painPoints: (analysis.painPoints || []).slice(0, 8),
     positives: (analysis.positives || []).slice(0, 8),
     customerNeeds: (analysis.customerNeeds || []).slice(0, 6),
-    emotions: Object.entries(analysis.emotions || {})
-      .filter(([emotion, count]) => (count as number) > 0)
-      .map(([emotion, count]) => `${emotion}: ${count} mentions`)
-      .join(', ') || 'No emotional data',
+      .filter(([emotion, count]) => count > 0)
+  .map(([emotion, count]) => `${emotion}: ${count} mentions`)
+emotions: Object.entries(analysis.emotions || {})
+  .filter(([emotion, count]) => (count as number) > 0)
+  .map(([emotion, count]) => `${emotion}: ${count as number} mentions`)      .join(', ') || 'No emotional data',
     sampleReviews: reviews.slice(0, 3).map((review: any) => 
       `"${review.title}" (${review.rating}/5): ${review.text.substring(0, 150)}...`
     ).join('\n\n') || 'No sample reviews'
@@ -280,10 +281,9 @@ function extractRedditInsights(redditData: any) {
     totalComments: analysis.totalComments || 0,
     painPoints: (analysis.painPoints || []).slice(0, 6),
     solutions: (analysis.solutions || []).slice(0, 6),
-    emotions: Object.entries(analysis.emotions || {})
-      .filter(([emotion, count]) => (count as number) > 0)
-      .map(([emotion, count]) => `${emotion}: ${count} mentions`)
-      .join(', ') || 'No emotional data'
+emotions: Object.entries(analysis.emotions || {})
+  .filter(([emotion, count]) => (count as number) > 0)
+  .map(([emotion, count]) => `${emotion}: ${count as number} mentions`)      .join(', ') || 'No emotional data'
   };
 }
 
