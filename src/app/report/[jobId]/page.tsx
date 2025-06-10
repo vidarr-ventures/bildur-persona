@@ -20,13 +20,18 @@ interface PersonaData {
     confidence: string;
     score: number;
   };
-  sources: {
     reviews: number;
-    website: string;
-    social: number;
-    competitors: string;
-  };
-  metadata: {
+  website: string;
+  social: number;
+  competitors: string;
+sources: {
+  reviews?: number;
+  amazonReviews?: number;
+  reddit?: number;
+  website: string;
+  social?: number;
+  competitors: string;
+};  metadata: {
     generated: string;
     jobId: string;
   };
