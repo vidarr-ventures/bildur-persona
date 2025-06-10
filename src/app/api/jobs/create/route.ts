@@ -13,117 +13,94 @@ async function processJobAutomatically(jobId: string, websiteUrl: string, target
       ? `https://${process.env.VERCEL_URL}` 
       : 'http://localhost:3000';
 
-    // Initialize data collectors
-    let websiteData = null;
-    let reviewsData = null;
-    let competitorsData = null;
+    const workers = [
+      '/api/workers/website-crawler',
+      '/api/workers/reviews-collector', 
+      '/api/workers/amazon-reviews',    // NEW: Amazon reviews worker
+      '/api/workers/amazon-competitors',
+      '/api/workers/persona-generator'
+    ];
 
-    // Step 1: Website Crawler
-    try {
-      console.log(`Executing website crawler for job ${jobId}`);
-      
-      const response = await fetch(`${baseUrl}/api/workers/website-crawler`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId,
-          websiteUrl,
-          targetKeywords,
-        }),
-      });
+    // Store worker results for passing to persona generator
+    const workerResults: Record<string, any> = {};
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log(`Website crawler completed successfully for job ${jobId}`);
+    // Execute workers sequentially
+    for (const worker of workers) {
+      try {
+        console.log(`Executing ${worker} for job ${jobId}`);
         
-        // Get the actual website data from the database
-        websiteData = await getJobData(jobId, 'website');
-        console.log('Retrieved website data:', websiteData ? 'success' : 'failed');
-      } else {
-        console.error(`Website crawler failed: ${response.status}`);
+        // Skip Amazon reviews worker if no Amazon URL provided
+        if (worker === '/api/workers/amazon-reviews' && !amazonUrl) {
+          console.log('Skipping Amazon reviews - no Amazon URL provided');
+          continue;
+        }
+        
+        const response = await fetch(`${baseUrl}${worker}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jobId,
+            websiteUrl,
+            targetKeywords,
+            amazonUrl,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Worker ${worker} failed:`, response.status, errorText);
+          throw new Error(`Worker ${worker} failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log(`Worker ${worker} completed successfully for job ${jobId}`);
+        
+        // Store result for persona generator
+        const workerName = worker.split('/').pop()?.replace('-', '_');
+        if (workerName) {
+          workerResults[workerName] = result.data || result;
+        }
+        
+      } catch (workerError) {
+        console.error(`Error in worker ${worker}:`, workerError);
+        // Continue with other workers even if one fails
       }
-    } catch (error) {
-      console.error('Website crawler error:', error);
     }
 
-    // Step 2: Reviews Collector
+    // Enhanced persona generation with collected data
     try {
-      console.log(`Executing reviews collector for job ${jobId}`);
+      console.log('Starting enhanced persona generation with collected data...');
       
-      const response = await fetch(`${baseUrl}/api/workers/reviews-collector`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId,
-          targetKeywords,
-        }),
-      });
-
-      if (response.ok) {
-        reviewsData = await getJobData(jobId, 'reviews');
-        console.log(`Reviews collector completed for job ${jobId}`);
-      } else {
-        console.error(`Reviews collector failed: ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Reviews collector error:', error);
-    }
-
-    // Step 3: Amazon Competitors
-    try {
-      console.log(`Executing amazon competitors for job ${jobId}`);
+      // Fetch all collected data
+      const websiteData = await getJobData(jobId, 'website');
+      const redditData = await getJobData(jobId, 'reviews');
+      const amazonReviews = await getJobData(jobId, 'amazon_reviews');
+      const competitorsData = await getJobData(jobId, 'amazon_competitors');
       
-      const response = await fetch(`${baseUrl}/api/workers/amazon-competitors`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId,
-          amazonUrl,
-        }),
-      });
-
-      if (response.ok) {
-        competitorsData = await getJobData(jobId, 'amazon_competitors');
-        console.log(`Amazon competitors completed for job ${jobId}`);
-      } else {
-        console.error(`Amazon competitors failed: ${response.status}`);
-      }
-    } catch (error) {
-      console.error('Amazon competitors error:', error);
-    }
-
-    // Step 4: Persona Generator with ACTUAL DATA
-    try {
-      console.log(`Executing persona generator for job ${jobId} with collected data`);
-      console.log('Passing data to persona generator:', {
-        websiteData: websiteData ? 'available' : 'missing',
-        reviewsData: reviewsData ? 'available' : 'missing',
-        competitorsData: competitorsData ? 'available' : 'missing'
-      });
-      
-      const response = await fetch(`${baseUrl}/api/workers/persona-generator`, {
+      const enhancedPersonaResponse = await fetch(`${baseUrl}/api/workers/persona-generator`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jobId,
           websiteUrl,
           targetKeywords,
-          // PASS THE ACTUAL COLLECTED DATA
-          websiteData: websiteData,
-          reviewsData: reviewsData, 
-          competitorsData: competitorsData
+          amazonUrl,
+          // Pass collected data directly
+          websiteData,
+          redditData,
+          amazonReviews,
+          competitorsData,
         }),
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log(`Persona generator completed successfully for job ${jobId}`);
-        console.log('Persona preview:', result.data?.persona?.substring(0, 200));
+      if (enhancedPersonaResponse.ok) {
+        const personaResult = await enhancedPersonaResponse.json();
+        console.log('Enhanced persona generation completed successfully');
       } else {
-        console.error(`Persona generator failed: ${response.status}`);
+        console.error('Enhanced persona generation failed:', enhancedPersonaResponse.status);
       }
-    } catch (error) {
-      console.error('Persona generator error:', error);
+    } catch (personaError) {
+      console.error('Enhanced persona generation error:', personaError);
     }
 
     // Mark job as completed
@@ -173,6 +150,14 @@ export async function POST(request: NextRequest) {
     if (amazonUrl) {
       try {
         new URL(amazonUrl);
+        
+        // Check if it's actually an Amazon URL
+        if (!amazonUrl.includes('amazon.')) {
+          return NextResponse.json(
+            { error: 'Please provide a valid Amazon product URL' },
+            { status: 400 }
+          );
+        }
       } catch {
         return NextResponse.json(
           { error: 'Invalid Amazon URL format' },
@@ -202,7 +187,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       jobId: job.id,
-      message: 'Job created and processing started automatically'
+      message: 'Job created and processing started automatically',
+      dataSourcesEnabled: {
+        website: true,
+        reddit: true,
+        amazonReviews: !!amazonUrl,
+        amazonCompetitors: !!amazonUrl,
+        personaGeneration: true
+      }
     });
 
   } catch (error) {

@@ -4,42 +4,62 @@ import { getJobData, saveJobData } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    const { jobId, websiteUrl, targetKeywords, websiteData, redditData, reviewsData, competitorsData } = await request.json();
+    const { 
+      jobId, 
+      websiteUrl, 
+      targetKeywords, 
+      amazonUrl,
+      websiteData, 
+      redditData, 
+      amazonReviews, 
+      competitorsData 
+    } = await request.json();
 
     if (!jobId) {
       return NextResponse.json({ error: 'Job ID is required' }, { status: 400 });
     }
 
-    console.log(`Starting SPECIFIC persona generation for job ${jobId}`);
-    console.log('Website data received:', websiteData);
+    console.log(`Starting ENHANCED persona generation for job ${jobId} with Amazon reviews`);
     
     await updateJobStatus(jobId, 'processing');
     
     // Use provided data OR fallback to database
-    const rawReviews = reviewsData || await getJobData(jobId, 'reviews');
     const websiteDataFinal = websiteData || await getJobData(jobId, 'website');
-    const redditDataFinal = redditData || await getJobData(jobId, 'reddit'); 
-    const competitors = competitorsData || await getJobData(jobId, 'amazon_competitors');
+    const redditDataFinal = redditData || await getJobData(jobId, 'reviews');
+    const amazonReviewsFinal = amazonReviews || await getJobData(jobId, 'amazon_reviews');
+    const competitorsDataFinal = competitorsData || await getJobData(jobId, 'amazon_competitors');
     
-    // Generate SPECIFIC persona
-    const personaProfile = await generateSpecificPersona({
+    console.log('Data sources available:', {
+      website: !!websiteDataFinal,
+      reddit: !!redditDataFinal,
+      amazonReviews: !!amazonReviewsFinal,
+      competitors: !!competitorsDataFinal
+    });
+
+    // Generate enhanced persona with all data sources
+    const personaProfile = await generateEnhancedPersona({
       jobId,
       websiteUrl,
       targetKeywords,
+      amazonUrl,
       websiteData: websiteDataFinal,
       redditData: redditDataFinal,
-      rawReviews,
-      competitors
+      amazonReviews: amazonReviewsFinal,
+      competitorsData: competitorsDataFinal
     });
 
+    await updateJobStatus(jobId, 'processing');
+
+    // Save the enhanced persona analysis
     await saveJobData(jobId, 'persona_profile', personaProfile);
+
     await updateJobStatus(jobId, 'completed');
 
-    console.log(`SPECIFIC persona generation completed for job ${jobId}`);
+    console.log(`Enhanced persona generation completed for job ${jobId}`);
 
     return NextResponse.json({
       success: true,
-      message: 'Specific persona generation completed',
+      message: 'Enhanced persona generation with Amazon reviews completed',
       data: personaProfile,
     });
 
@@ -63,62 +83,106 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateSpecificPersona(data: any) {
-  // Extract the actual content
-  const websiteContent = data.websiteData?.content || '';
-  const valueProps = data.websiteData?.valuePropositions || [];
-  const features = data.websiteData?.features || [];
-  const benefits = data.websiteData?.benefits || [];
-  const keywords = data.websiteData?.keywords || [];
-  
-  console.log('Creating persona with data:', {
-    contentLength: websiteContent.length,
-    valuePropsCount: valueProps.length,
-    featuresCount: features.length,
-    benefitsCount: benefits.length
-  });
+async function generateEnhancedPersona(data: any) {
+  // Extract key insights from all data sources
+  const websiteInsights = extractWebsiteInsights(data.websiteData);
+  const redditInsights = extractRedditInsights(data.redditData);
+  const amazonInsights = extractAmazonInsights(data.amazonReviews);
+  const competitorInsights = extractCompetitorInsights(data.competitorsData);
 
-  const prompt = `STOP. You are creating a customer persona for someone who buys GROUNDING SHEETS and EARTHING products.
+  const prompt = `You are generating a detailed customer persona for: ${data.targetKeywords}
 
-This is NOT a software product. This is NOT a tech product. This is NOT a business service.
+CRITICAL: Create a SPECIFIC, NAMED persona (like "Sarah Thompson") with detailed characteristics, NOT generic categories.
 
-GROUNDING SHEETS are bedding products that connect people to the earth's energy while they sleep.
+=== REAL CUSTOMER DATA SOURCES ===
 
-REAL WEBSITE DATA FROM GROUNDLUXE.COM:
-Title: "${data.websiteData?.title || 'GroundLuxe Grounding Sheets'}"
-Content: "${websiteContent.substring(0, 1000)}"
+${amazonInsights.available ? `
+🔥 AMAZON REVIEWS DATA (PRIMARY SOURCE):
+Total Reviews Analyzed: ${amazonInsights.totalReviews}
+Average Rating: ${amazonInsights.averageRating}/5 stars
+Verified Purchase Ratio: ${amazonInsights.verifiedRatio}%
 
-VALUE PROPOSITIONS FROM THE ACTUAL WEBSITE:
-${valueProps.map((vp: string) => `- ${vp}`).join('\n')}
+REAL CUSTOMER PAIN POINTS FROM AMAZON:
+${amazonInsights.painPoints.map((pain: string) => `• ${pain}`).join('\n')}
 
-FEATURES FROM THE ACTUAL WEBSITE:
-${features.map((f: string) => `- ${f}`).join('\n')}
+REAL POSITIVE FEEDBACK FROM AMAZON:
+${amazonInsights.positives.map((positive: string) => `• ${positive}`).join('\n')}
 
-BENEFITS FROM THE ACTUAL WEBSITE:
-${benefits.map((b: string) => `- ${b}`).join('\n')}
+CUSTOMER EMOTIONS FROM AMAZON REVIEWS:
+${amazonInsights.emotions}
 
-MANDATORY REQUIREMENTS - FAILURE TO FOLLOW = REWRITE:
-1. Write "GROUNDING SHEETS" at least 8 times in the persona
-2. Write "EARTHING" at least 4 times
-3. Reference sleep, health, wellness, natural healing
-4. Mention conductive materials, silver, cotton if found in data
-5. NO tech language, NO software terms, NO business jargon
-6. Focus on SLEEP PROBLEMS, HEALTH ISSUES, WELLNESS GOALS
+CUSTOMER NEEDS EXPRESSED IN AMAZON REVIEWS:
+${amazonInsights.customerNeeds.map((need: string) => `• ${need}`).join('\n')}
 
-CREATE PERSONA FOR: Person who buys grounding sheets to improve their sleep and health
+SAMPLE ACTUAL AMAZON REVIEWS:
+${amazonInsights.sampleReviews}
+` : 'No Amazon reviews data available'}
 
-**CUSTOMER PROFILE:**
-Name: [Create a realistic name]
-Age: [Age range for people interested in natural health/sleep solutions]
-Problem: [Specific sleep or health issues that grounding sheets address]
-Why grounding sheets: [Reference actual benefits from the website data above]
-What they value: [Reference actual value propositions from website data above]
-Shopping behavior: [How they research grounding sheets and earthing products]
+${redditInsights.available ? `
+SOCIAL MEDIA DISCUSSIONS (REDDIT):
+Total Discussions: ${redditInsights.totalThreads}
+Total Comments: ${redditInsights.totalComments}
 
-EXAMPLE STRUCTURE:
-"Meet Jennifer, 42, who suffers from poor sleep quality and discovered grounding sheets as a natural solution. She was drawn to GroundLuxe's grounding sheets because of [actual value prop from data]. She specifically looks for grounding sheets with [actual features from data]. Jennifer values grounding sheets that provide [actual benefits from data]."
+SOCIAL PAIN POINTS:
+${redditInsights.painPoints.map((pain: string) => `• ${pain}`).join('\n')}
 
-WRITE THE COMPLETE PERSONA NOW - REMEMBER THIS IS ABOUT GROUNDING SHEETS FOR SLEEP AND HEALTH:`;
+SOCIAL SOLUTIONS MENTIONED:
+${redditInsights.solutions.map((solution: string) => `• ${solution}`).join('\n')}
+
+COMMUNITY EMOTIONS:
+${redditInsights.emotions}
+` : 'Limited social media data available'}
+
+${websiteInsights.available ? `
+BRAND/WEBSITE ANALYSIS:
+Value Propositions: ${websiteInsights.valueProps.join(', ')}
+Key Features: ${websiteInsights.features.join(', ')}
+Brand Messaging: ${websiteInsights.messaging}
+` : 'Limited website analysis available'}
+
+${competitorInsights.available ? `
+COMPETITIVE LANDSCAPE:
+Competitor Products Analyzed: ${competitorInsights.competitorCount}
+Market Positioning: ${competitorInsights.positioning}
+` : 'Limited competitor analysis available'}
+
+=== PERSONA GENERATION REQUIREMENTS ===
+
+Based on the REAL CUSTOMER VOICE above (especially Amazon reviews), create a comprehensive persona that includes:
+
+1. **SPECIFIC DEMOGRAPHICS**: 
+   - Full name and age range
+   - Income level, education, location
+   - Family status and lifestyle
+
+2. **PSYCHOGRAPHIC PROFILE**:
+   - Core values and attitudes
+   - Motivations and fears
+   - Shopping behaviors and preferences
+
+3. **PAIN POINTS** (based on actual customer feedback):
+   - Primary problems they're trying to solve
+   - Frustrations with existing solutions
+   - Unmet needs and desires
+
+4. **BEHAVIORAL PATTERNS**:
+   - How they research products
+   - Decision-making process
+   - Purchase triggers and hesitations
+
+5. **COMMUNICATION PREFERENCES**:
+   - Language that resonates
+   - Channels they use
+   - Content that influences them
+
+6. **BRAND RELATIONSHIP**:
+   - How they interact with brands
+   - Loyalty factors
+   - Advocacy behaviors
+
+IMPORTANT: Ground every insight in the actual customer data provided. Use specific quotes, emotions, and behaviors from the real reviews and discussions above.
+
+Generate a detailed, evidence-based persona:`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -132,7 +196,7 @@ WRITE THE COMPLETE PERSONA NOW - REMEMBER THIS IS ABOUT GROUNDING SHEETS FOR SLE
         messages: [
           {
             role: 'system',
-            content: `You are creating a customer persona for GROUNDING SHEETS and EARTHING products. These are bedding products for sleep and health, NOT technology or business products. You MUST create personas specific to people who buy grounding sheets for better sleep and natural health. DO NOT create generic business personas. Focus on sleep problems, health issues, and natural wellness solutions.`
+            content: 'You are an expert customer research analyst who creates detailed, evidence-based customer personas. Always create specific, named personas based on real customer data, not generic categories. Use actual customer quotes and insights to support your analysis.'
           },
           {
             role: 'user',
@@ -140,7 +204,7 @@ WRITE THE COMPLETE PERSONA NOW - REMEMBER THIS IS ABOUT GROUNDING SHEETS FOR SLE
           }
         ],
         temperature: 0.1,
-        max_tokens: 2000,
+        max_tokens: 4000,
       }),
     });
 
@@ -151,40 +215,129 @@ WRITE THE COMPLETE PERSONA NOW - REMEMBER THIS IS ABOUT GROUNDING SHEETS FOR SLE
     const result = await response.json();
     const analysis = result.choices[0]?.message?.content || 'No analysis generated';
 
-    // Verify the persona mentions the target keywords
-    const mentionsKeywords = data.targetKeywords.toLowerCase().split(',').some((keyword: string) => 
-      analysis.toLowerCase().includes(keyword.trim().toLowerCase())
-    );
-
-    console.log('Generated persona mentions target keywords:', mentionsKeywords);
-    console.log('Persona preview:', analysis.substring(0, 200));
-
     return {
       persona: analysis,
-      dataUsed: {
-        websiteContent: websiteContent.length > 0,
-        valuePropositions: valueProps.length,
-        features: features.length,  
-        benefits: benefits.length,
-        keywords: keywords.length,
-        mentionsTargetKeywords: mentionsKeywords
+      dataQuality: {
+        confidence: calculateConfidence(amazonInsights, redditInsights, websiteInsights, competitorInsights),
+        score: calculateDataScore(amazonInsights, redditInsights, websiteInsights, competitorInsights)
       },
       sources: {
-        website: data.websiteData ? 'analyzed' : 'not available',
-        reviews: data.rawReviews ? 'analyzed' : 'not available', 
-        social: data.redditData ? 'analyzed' : 'not available',
-        competitors: data.competitors ? 'analyzed' : 'not available'
+        amazonReviews: amazonInsights.totalReviews || 0,
+        reddit: redditInsights.totalComments || 0,
+        website: websiteInsights.available ? 'analyzed' : 'limited',
+        competitors: competitorInsights.available ? 'analyzed' : 'limited'
       },
       metadata: {
         generated: new Date().toISOString(),
         jobId: data.jobId,
-        targetKeywords: data.targetKeywords,
-        websiteUrl: data.websiteUrl
+        amazonUrl: data.amazonUrl,
+        enhancedWithAmazonReviews: amazonInsights.available
       }
     };
 
   } catch (error) {
-    console.error('Error generating persona:', error);
+    console.error('Error generating enhanced persona:', error);
     throw error;
   }
+}
+
+function extractAmazonInsights(amazonData: any) {
+  if (!amazonData || !amazonData.analysis) {
+    return { available: false };
+  }
+
+  const analysis = amazonData.analysis;
+  const reviews = amazonData.reviews || [];
+
+  return {
+    available: true,
+    totalReviews: analysis.totalReviews || 0,
+    averageRating: analysis.averageRating || 0,
+    verifiedRatio: Math.round((analysis.verifiedPurchaseRatio || 0) * 100),
+    painPoints: (analysis.painPoints || []).slice(0, 8),
+    positives: (analysis.positives || []).slice(0, 8),
+    customerNeeds: (analysis.customerNeeds || []).slice(0, 6),
+    emotions: Object.entries(analysis.emotions || {})
+      .filter(([emotion, count]) => count > 0)
+      .map(([emotion, count]) => `${emotion}: ${count} mentions`)
+      .join(', ') || 'No emotional data',
+    sampleReviews: reviews.slice(0, 3).map((review: any) => 
+      `"${review.title}" (${review.rating}/5): ${review.text.substring(0, 150)}...`
+    ).join('\n\n') || 'No sample reviews'
+  };
+}
+
+function extractRedditInsights(redditData: any) {
+  if (!redditData || !redditData.analysis) {
+    return { available: false };
+  }
+
+  const analysis = redditData.analysis;
+
+  return {
+    available: true,
+    totalThreads: analysis.totalThreads || 0,
+    totalComments: analysis.totalComments || 0,
+    painPoints: (analysis.painPoints || []).slice(0, 6),
+    solutions: (analysis.solutions || []).slice(0, 6),
+    emotions: Object.entries(analysis.emotions || {})
+      .filter(([emotion, count]) => count > 0)
+      .map(([emotion, count]) => `${emotion}: ${count} mentions`)
+      .join(', ') || 'No emotional data'
+  };
+}
+
+function extractWebsiteInsights(websiteData: any) {
+  if (!websiteData || !websiteData.analysis) {
+    return { available: false };
+  }
+
+  const analysis = websiteData.analysis;
+
+  return {
+    available: true,
+    valueProps: (analysis.valuePropositions || []).slice(0, 5),
+    features: (analysis.features || []).slice(0, 5),
+    messaging: analysis.brandMessaging || 'No brand messaging extracted'
+  };
+}
+
+function extractCompetitorInsights(competitorData: any) {
+  if (!competitorData || !competitorData.analysis) {
+    return { available: false };
+  }
+
+  return {
+    available: true,
+    competitorCount: competitorData.competitors?.length || 0,
+    positioning: 'Competitive analysis available'
+  };
+}
+
+function calculateConfidence(amazon: any, reddit: any, website: any, competitor: any): 'high' | 'medium' | 'low' {
+  let score = 0;
+  
+  if (amazon.available && amazon.totalReviews > 10) score += 40;
+  else if (amazon.available) score += 20;
+  
+  if (reddit.available && reddit.totalComments > 5) score += 25;
+  else if (reddit.available) score += 15;
+  
+  if (website.available) score += 20;
+  if (competitor.available) score += 15;
+  
+  if (score >= 75) return 'high';
+  if (score >= 50) return 'medium';
+  return 'low';
+}
+
+function calculateDataScore(amazon: any, reddit: any, website: any, competitor: any): number {
+  let score = 0;
+  
+  if (amazon.available) score += amazon.totalReviews > 10 ? 40 : 20;
+  if (reddit.available) score += reddit.totalComments > 5 ? 25 : 15;
+  if (website.available) score += 20;
+  if (competitor.available) score += 15;
+  
+  return Math.min(score, 100);
 }
