@@ -129,16 +129,16 @@ export default function DashboardPage() {
               <div className="bg-gray-50 p-6 rounded-lg">
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Analysis Parameters</h2>
                 <div className="space-y-2">
-                  {jobStatus.user_inputs.websiteUrl && (
-                    <div>
-                      <p className="text-sm text-gray-600">Website URL</p>
-                      <p className="font-medium break-all">{jobStatus.user_inputs.websiteUrl}</p>
-                    </div>
-                  )}
                   {jobStatus.user_inputs.primaryProductUrl && (
                     <div>
-                      <p className="text-sm text-gray-600">Amazon Product URL</p>
+                      <p className="text-sm text-gray-600">Website URL</p>
                       <p className="font-medium break-all">{jobStatus.user_inputs.primaryProductUrl}</p>
+                    </div>
+                  )}
+                  {jobStatus.user_inputs.amazonProductUrl && (
+                    <div>
+                      <p className="text-sm text-gray-600">Amazon Product URL</p>
+                      <p className="font-medium break-all">{jobStatus.user_inputs.amazonProductUrl}</p>
                     </div>
                   )}
                   {jobStatus.user_inputs.targetKeywords && (
