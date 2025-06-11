@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
 
     console.log('Job created successfully:', job.id);
 
-    // Process inline instead of making API calls
-    processJobInline(job.id, websiteUrl, targetKeywords, amazonUrl);
+    // Process with improved error handling
+    processJobWithTimeout(job.id, websiteUrl, targetKeywords, amazonUrl);
 
     return NextResponse.json({
       success: true,
@@ -35,143 +35,143 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function processJobInline(jobId: string, websiteUrl: string, targetKeywords: string, amazonUrl?: string) {
+async function processJobWithTimeout(jobId: string, websiteUrl: string, targetKeywords: string, amazonUrl?: string) {
   try {
-    console.log(`=== Starting inline job processing for ${jobId} ===`);
+    console.log(`=== Starting robust job processing for ${jobId} ===`);
     
     // Update status to processing
     await updateJobStatus(jobId, 'processing');
-    
-    // Website crawling inline
+    console.log('Job status updated to processing');
+
+    // Website crawling with timeout and error handling
     console.log('Starting website crawling...');
-    const websiteData = await crawlWebsite(websiteUrl);
+    let websiteData = null;
+    
+    try {
+      const websiteController = new AbortController();
+      const websiteTimeout = setTimeout(() => websiteController.abort(), 10000); // 10 second timeout
+      
+      console.log(`Crawling website: ${websiteUrl}`);
+      
+      const response = await fetch(websiteUrl, {
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (compatible; PersonaBot/1.0)',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        },
+        signal: websiteController.signal
+      });
+
+      clearTimeout(websiteTimeout);
+      
+      if (response.ok) {
+        const html = await response.text();
+        console.log(`Website crawled successfully, got ${html.length} characters`);
+        
+        // Extract content more safely
+        const cleanText = html
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        
+        websiteData = {
+          homePageContent: cleanText.substring(0, 2000),
+          brandMessaging: 'Extracted from website',
+          features: ['Website feature extraction'],
+          valuePropositions: ['Value proposition analysis'],
+          crawlStatus: 'success',
+          contentLength: cleanText.length
+        };
+        
+        console.log('Website data extracted successfully');
+      } else {
+        console.log(`Website crawling failed with status: ${response.status}`);
+        websiteData = { crawlStatus: 'failed', error: `HTTP ${response.status}` };
+      }
+      
+    } catch (websiteError) {
+      console.error('Website crawling error:', websiteError);
+      websiteData = { 
+        crawlStatus: 'error', 
+        error: websiteError instanceof Error ? websiteError.message : 'Unknown error' 
+      };
+    }
+
+    // Save website data
     await saveJobData(jobId, 'website', {
       websiteData,
       metadata: { timestamp: new Date().toISOString(), websiteUrl, targetKeywords }
     });
-    console.log('Website crawling completed');
+    console.log('Website data saved');
 
-    // Amazon reviews extraction inline
+    // Amazon reviews extraction (simplified for now)
     if (amazonUrl) {
       console.log('Starting Amazon reviews extraction...');
-      const amazonData = await extractAmazonReviews(amazonUrl, targetKeywords);
-      await saveJobData(jobId, 'amazon_reviews', {
-        reviews: amazonData.reviews,
-        analysis: amazonData.analysis,
-        metadata: { timestamp: new Date().toISOString(), amazonUrl, targetKeywords }
-      });
-      console.log('Amazon reviews extraction completed');
+      try {
+        const amazonData = {
+          reviews: [],
+          analysis: {
+            totalReviews: 0,
+            extractionStatus: 'MOCK_DATA',
+            averageRating: 0,
+            painPoints: ['Mock pain point 1', 'Mock pain point 2'],
+            positives: ['Mock positive 1', 'Mock positive 2'],
+            customerNeeds: ['Mock need 1', 'Mock need 2']
+          }
+        };
+        
+        await saveJobData(jobId, 'amazon_reviews', {
+          reviews: amazonData.reviews,
+          analysis: amazonData.analysis,
+          metadata: { timestamp: new Date().toISOString(), amazonUrl, targetKeywords }
+        });
+        console.log('Amazon reviews data saved (mock)');
+      } catch (amazonError) {
+        console.error('Amazon reviews error:', amazonError);
+      }
     }
 
-    // Persona generation inline
+    // Persona generation (simplified)
     console.log('Starting persona generation...');
-    const personaData = await generatePersona(jobId, websiteUrl, targetKeywords, amazonUrl);
-    
-    // Complete the job
-    await completeJob(jobId);
-    console.log(`Job ${jobId} completed successfully`);
+    try {
+      const mockPersona = {
+        primaryPersona: {
+          name: "Sarah Thompson",
+          age: "35-45",
+          title: "Health-Conscious Professional",
+          painPoints: websiteData?.crawlStatus === 'success' ? 
+            ["Sleep quality issues", "Natural wellness seeking", "Product authenticity concerns"] :
+            ["Website analysis limited", "Data extraction challenges"],
+          goals: ["Better sleep quality", "Natural health solutions", "Reliable product information"],
+          characteristics: ["Research-oriented", "Quality-focused", "Health-conscious"],
+          demographics: {
+            income: "$75,000 - $120,000",
+            location: "Urban/Suburban",
+            education: "College educated"
+          }
+        },
+        generationMethod: 'mock_with_website_data',
+        websiteCrawlStatus: websiteData?.crawlStatus || 'unknown'
+      };
+
+      await saveJobData(jobId, 'persona', {
+        persona: mockPersona,
+        metadata: { timestamp: new Date().toISOString(), method: 'mock_generation' }
+      });
+      console.log('Persona data saved');
+
+      // Complete the job
+      await completeJob(jobId);
+      console.log(`Job ${jobId} completed successfully`);
+
+    } catch (personaError) {
+      console.error('Persona generation error:', personaError);
+      await updateJobStatus(jobId, 'failed');
+    }
 
   } catch (error) {
     console.error(`Error processing job ${jobId}:`, error);
     await updateJobStatus(jobId, 'failed');
-  }
-}
-
-async function crawlWebsite(websiteUrl: string) {
-  try {
-    console.log(`Crawling website: ${websiteUrl}`);
-    
-    const response = await fetch(websiteUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PersonaBot/1.0)' }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch website: ${response.status}`);
-    }
-
-    const html = await response.text();
-    
-    // Extract main content
-    let content = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-    content = content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-    content = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    
-    return {
-      homePageContent: content.substring(0, 2000),
-      brandMessaging: 'Extracted brand messaging',
-      features: ['Feature 1', 'Feature 2'],
-      valuePropositions: ['Value prop 1', 'Value prop 2']
-    };
-
-  } catch (error) {
-    console.error('Website crawling error:', error);
-    return {
-      homePageContent: '',
-      brandMessaging: '',
-      features: [],
-      valuePropositions: []
-    };
-  }
-}
-
-async function extractAmazonReviews(amazonUrl: string, targetKeywords: string) {
-  try {
-    console.log(`Extracting Amazon reviews from: ${amazonUrl}`);
-    
-    // For now, return mock data since ScrapeOwl might not be configured
-    return {
-      reviews: [],
-      analysis: {
-        totalReviews: 0,
-        extractionStatus: 'NO_API_KEY',
-        averageRating: 0,
-        painPoints: [],
-        positives: [],
-        customerNeeds: []
-      }
-    };
-
-  } catch (error) {
-    console.error('Amazon extraction error:', error);
-    return {
-      reviews: [],
-      analysis: {
-        totalReviews: 0,
-        extractionStatus: 'FAILED',
-        averageRating: 0,
-        painPoints: [],
-        positives: [],
-        customerNeeds: []
-      }
-    };
-  }
-}
-
-async function generatePersona(jobId: string, websiteUrl: string, targetKeywords: string, amazonUrl?: string) {
-  try {
-    console.log(`Generating persona for job ${jobId}`);
-    
-    // Mock persona generation for now
-    const mockPersona = {
-      primaryPersona: {
-        name: "Sarah Thompson",
-        age: "35-45",
-        title: "Health-Conscious Professional",
-        painPoints: ["Sleep issues", "Stress management", "Natural wellness"],
-        goals: ["Better sleep quality", "Reduced inflammation", "Natural health solutions"],
-        characteristics: ["Research-oriented", "Values quality", "Wellness-focused"]
-      }
-    };
-
-    await saveJobData(jobId, 'persona', {
-      persona: mockPersona,
-      metadata: { timestamp: new Date().toISOString(), method: 'mock_generation' }
-    });
-
-    return mockPersona;
-
-  } catch (error) {
-    console.error('Persona generation error:', error);
-    throw error;
   }
 }
