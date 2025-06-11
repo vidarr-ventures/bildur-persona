@@ -20,13 +20,13 @@ export async function POST(request: NextRequest) {
 
     console.log('Job created successfully:', job.id);
 
-    // Process inline instead of making API calls
-    processJobInline(job.id, websiteUrl, targetKeywords, amazonUrl);
+    // Process inline and wait for completion
+    await processJobInline(job.id, websiteUrl, targetKeywords, amazonUrl);
 
     return NextResponse.json({
       success: true,
       jobId: job.id,
-      message: 'Analysis started successfully'
+      message: 'Analysis completed successfully'
     });
 
   } catch (error) {
@@ -74,6 +74,7 @@ async function processJobInline(jobId: string, websiteUrl: string, targetKeyword
   } catch (error) {
     console.error(`Error processing job ${jobId}:`, error);
     await updateJobStatus(jobId, 'failed');
+    throw error; // Re-throw to be caught by the main function
   }
 }
 
@@ -90,11 +91,14 @@ async function crawlWebsite(websiteUrl: string) {
     }
 
     const html = await response.text();
+    console.log(`Successfully fetched ${html.length} characters from ${websiteUrl}`);
     
     // Extract main content
     let content = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
     content = content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
     content = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    
+    console.log(`Extracted ${content.length} characters of clean content`);
     
     return {
       homePageContent: content.substring(0, 2000),
@@ -105,12 +109,7 @@ async function crawlWebsite(websiteUrl: string) {
 
   } catch (error) {
     console.error('Website crawling error:', error);
-    return {
-      homePageContent: '',
-      brandMessaging: '',
-      features: [],
-      valuePropositions: []
-    };
+    throw error; // Re-throw to propagate the error
   }
 }
 
@@ -168,6 +167,7 @@ async function generatePersona(jobId: string, websiteUrl: string, targetKeywords
       metadata: { timestamp: new Date().toISOString(), method: 'mock_generation' }
     });
 
+    console.log(`Persona generation completed for job ${jobId}`);
     return mockPersona;
 
   } catch (error) {
