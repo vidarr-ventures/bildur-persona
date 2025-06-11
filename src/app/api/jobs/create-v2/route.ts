@@ -51,15 +51,10 @@ async function processJobInline(jobId: string, websiteUrl: string, targetKeyword
     });
     console.log('Website crawling completed');
 
-    // Amazon reviews extraction inline
+    // Amazon reviews extraction using the real worker
     if (amazonUrl) {
       console.log('Starting Amazon reviews extraction...');
-      const amazonData = await extractAmazonReviews(amazonUrl, targetKeywords);
-      await saveJobData(jobId, 'amazon_reviews', {
-        reviews: amazonData.reviews,
-        analysis: amazonData.analysis,
-        metadata: { timestamp: new Date().toISOString(), amazonUrl, targetKeywords }
-      });
+      const amazonData = await callAmazonWorker(jobId, amazonUrl, targetKeywords);
       console.log('Amazon reviews extraction completed');
     }
 
@@ -75,6 +70,38 @@ async function processJobInline(jobId: string, websiteUrl: string, targetKeyword
     console.error(`Error processing job ${jobId}:`, error);
     await updateJobStatus(jobId, 'failed');
     throw error; // Re-throw to be caught by the main function
+  }
+}
+
+async function callAmazonWorker(jobId: string, amazonUrl: string, targetKeywords: string) {
+  try {
+    console.log(`Calling Amazon worker for job ${jobId}`);
+    
+    // Call the Amazon worker directly (internal API call)
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://persona-dhspokbiy-vidarr-ventures-42e9986b.vercel.app'}/api/workers/amazon-reviews`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jobId,
+        amazonUrl,
+        targetKeywords
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Amazon worker failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log(`Amazon worker completed: ${result.data?.totalReviews || 0} reviews extracted`);
+    
+    return result;
+
+  } catch (error) {
+    console.error('Error calling Amazon worker:', error);
+    throw error;
   }
 }
 
@@ -110,39 +137,6 @@ async function crawlWebsite(websiteUrl: string) {
   } catch (error) {
     console.error('Website crawling error:', error);
     throw error; // Re-throw to propagate the error
-  }
-}
-
-async function extractAmazonReviews(amazonUrl: string, targetKeywords: string) {
-  try {
-    console.log(`Extracting Amazon reviews from: ${amazonUrl}`);
-    
-    // For now, return mock data since ScrapeOwl might not be configured
-    return {
-      reviews: [],
-      analysis: {
-        totalReviews: 0,
-        extractionStatus: 'NO_API_KEY',
-        averageRating: 0,
-        painPoints: [],
-        positives: [],
-        customerNeeds: []
-      }
-    };
-
-  } catch (error) {
-    console.error('Amazon extraction error:', error);
-    return {
-      reviews: [],
-      analysis: {
-        totalReviews: 0,
-        extractionStatus: 'FAILED',
-        averageRating: 0,
-        painPoints: [],
-        positives: [],
-        customerNeeds: []
-      }
-    };
   }
 }
 
