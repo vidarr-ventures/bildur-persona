@@ -88,20 +88,19 @@ async function initiateJobProcessing(jobId: string, websiteUrl: string, targetKe
   try {
     console.log(`=== Starting job processing workflow for ${jobId} ===`);
     
-    // Determine the base URL more reliably for production
-    let baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-    
-    if (!baseUrl) {
-      if (process.env.NODE_ENV === 'development') {
-        baseUrl = 'http://localhost:3001';
-      } else if (process.env.VERCEL_URL) {
-        baseUrl = `https://${process.env.VERCEL_URL}`;
-      } else {
-        // Fallback to the known production URL
-        baseUrl = 'https://persona-lwnzhr6z3-vidarr-ventures-42e9986b.vercel.app';
-      }
+    // Force production URL for now to fix the issue
+    let baseUrl;
+    if (process.env.NODE_ENV === 'development') {
+      baseUrl = 'http://localhost:3001';
+    } else {
+      // Force production URL
+      baseUrl = 'https://persona-lwnzhr6z3-vidarr-ventures-42e9986b.vercel.app';
     }
     
+    console.log(`Environment check:`);
+    console.log(`- NODE_ENV: ${process.env.NODE_ENV}`);
+    console.log(`- NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL}`);
+    console.log(`- VERCEL_URL: ${process.env.VERCEL_URL}`);
     console.log(`Using base URL: ${baseUrl}`);
 
     // Update job status to processing immediately
