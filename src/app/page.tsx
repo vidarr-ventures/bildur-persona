@@ -25,7 +25,7 @@ export default function Home() {
     setError(null);
 
     try {
-      const response = await fetch('/api/jobs/create', {
+const response = await fetch('/api/jobs/create-v2', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
