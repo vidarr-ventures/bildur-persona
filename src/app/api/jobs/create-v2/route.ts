@@ -20,6 +20,51 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
     const asin = asinMatch[1];
     console.log(`Extracted ASIN: ${asin}`);
     
+    // Temporarily disable OxyLabs to preserve trial credits
+    const OXYLABS_DISABLED = true;
+    
+    if (OXYLABS_DISABLED) {
+      console.log('OxyLabs temporarily disabled - using mock data to preserve trial credits');
+      
+      // Return mock data that matches the real structure
+      return {
+        reviews: [
+          {
+            title: '5.0 out of 5 stars Amazing results!',
+            text: 'This product has changed my sleep quality dramatically. I used to wake up multiple times but now sleep through the night.',
+            rating: 5,
+            verified: true,
+            helpful_votes: 12,
+            date: '',
+            reviewer_name: 'Mock Customer',
+            source: 'mock_oxylabs',
+            page: 1
+          },
+          {
+            title: '4.0 out of 5 stars Good but expensive',
+            text: 'The quality is excellent and I do notice better sleep, but the price point is quite high for what it is.',
+            rating: 4,
+            verified: true,
+            helpful_votes: 8,
+            date: '',
+            reviewer_name: 'Mock Reviewer',
+            source: 'mock_oxylabs',
+            page: 1
+          }
+        ],
+        productInfo: {
+          title: 'Mock Product Title',
+          overallRating: 4.2,
+          totalReviews: 500,
+          price: 179.99,
+          asin: asin
+        },
+        extractionMethod: 'mock_oxylabs_disabled',
+        realReviewsCount: 2,
+        success: true
+      };
+    }
+    
     // Check for OxyLabs credentials
     if (!process.env.OXYLABS_USERNAME || !process.env.OXYLABS_PASSWORD) {
       throw new Error('Missing OxyLabs credentials (OXYLABS_USERNAME or OXYLABS_PASSWORD)');
