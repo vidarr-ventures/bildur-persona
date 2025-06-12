@@ -99,7 +99,19 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
           query: asin,
           geo_location: '90210',
           parse: true,
-          limit: 50
+          limit: 100,
+          start_page: 1,
+          pages: 5,  // Get 5 pages of reviews
+          context: [
+            {
+              key: 'sort_by',
+              value: 'recent'
+            },
+            {
+              key: 'filter_by_star_rating', 
+              value: 'all_stars'
+            }
+          ]
         }),
         signal: reviewsController.signal
       });
@@ -111,6 +123,7 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
       }
 
       const reviewsData = await reviewsResponse.json();
+console.log('Full OxyLabs reviews response:', JSON.stringify(reviewsData, null, 2));
       console.log('OxyLabs reviews response status:', reviewsData.status);
       
       if (reviewsData.results && reviewsData.results[0] && reviewsData.results[0].content) {
