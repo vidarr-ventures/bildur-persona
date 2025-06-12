@@ -144,19 +144,7 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
           query: asin,
           geo_location: '90210',
           parse: true,
-          limit: 100,
-          start_page: 1,
-          pages: 5,  // Get 5 pages of reviews
-          context: [
-            {
-              key: 'sort_by',
-              value: 'recent'
-            },
-            {
-              key: 'filter_by_star_rating', 
-              value: 'all_stars'
-            }
-          ]
+          limit: 50
         }),
         signal: reviewsController.signal
       });
@@ -168,7 +156,6 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
       }
 
       const reviewsData = await reviewsResponse.json();
-console.log('Full OxyLabs reviews response:', JSON.stringify(reviewsData, null, 2));
       console.log('OxyLabs reviews response status:', reviewsData.status);
       
       if (reviewsData.results && reviewsData.results[0] && reviewsData.results[0].content) {
@@ -199,7 +186,7 @@ console.log('Full OxyLabs reviews response:', JSON.stringify(reviewsData, null, 
       } else {
         throw new Error('Invalid reviews data structure from OxyLabs');
       }
-   } catch (error) {
+    } catch (error) {
       clearTimeout(reviewsTimeout);
       if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('Reviews request timed out');
@@ -217,13 +204,170 @@ console.log('Full OxyLabs reviews response:', JSON.stringify(reviewsData, null, 
       success: true
     };
     
- } catch (error) {
+  } catch (error) {
     console.error('Critical error in OxyLabs Amazon extraction:', error);
     if (error instanceof Error) {
       throw error;
     }
     throw new Error('Unknown error in Amazon extraction');
   }
+}
+
+// YouTube extraction function (embedded directly)
+async function extractYouTubeComments(keywords: string): Promise<{ comments: any[], analysis: any }> {
+  try {
+    console.log(`Searching YouTube for videos about: ${keywords}`);
+    
+    if (!process.env.YOUTUBE_API_KEY) {
+      throw new Error('Missing YouTube API key');
+    }
+
+    // Search for relevant videos
+    const searchResponse = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?` +
+      `part=snippet&type=video&q=${encodeURIComponent(keywords)}&` +
+      `maxResults=5&order=relevance&key=${process.env.YOUTUBE_API_KEY}`
+    );
+
+    if (!searchResponse.ok) {
+      throw new Error(`YouTube search failed: ${searchResponse.status}`);
+    }
+
+    const searchData = await searchResponse.json();
+    const videos = searchData.items || [];
+    console.log(`Found ${videos.length} videos`);
+    
+    if (videos.length === 0) {
+      throw new Error('No YouTube videos found for keywords');
+    }
+    
+    let allComments: any[] = [];
+    const videoTitles: string[] = [];
+    
+    // Extract comments from top 3 videos
+    for (const video of videos.slice(0, 3)) {
+      const videoId = video.id.videoId;
+      const videoTitle = video.snippet.title;
+      videoTitles.push(videoTitle);
+      
+      console.log(`Extracting comments from: ${videoTitle}`);
+      
+      try {
+        const commentsResponse = await fetch(
+          `https://www.googleapis.com/youtube/v3/commentThreads?` +
+          `part=snippet&videoId=${videoId}&maxResults=30&order=relevance&` +
+          `key=${process.env.YOUTUBE_API_KEY}`
+        );
+
+        if (commentsResponse.ok) {
+          const commentsData = await commentsResponse.json();
+          
+          if (commentsData.items) {
+            for (const item of commentsData.items) {
+              const comment = item.snippet.topLevelComment.snippet;
+              
+              // Filter for substantive comments
+              if (comment.textDisplay.length > 30) {
+                allComments.push({
+                  text: comment.textDisplay,
+                  author: comment.authorDisplayName,
+                  likeCount: comment.likeCount || 0,
+                  publishedAt: comment.publishedAt,
+                  videoTitle: videoTitle,
+                  videoId: videoId,
+                  source: 'youtube_api'
+                });
+              }
+            }
+          }
+        }
+      } catch (videoError) {
+        console.error(`Error extracting comments from video ${videoId}:`, videoError);
+      }
+      
+      // Add delay to respect API rate limits
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    console.log(`Total YouTube comments extracted: ${allComments.length}`);
+    
+    // Analyze comments
+    const allText = allComments.map(c => c.text).join(' ').toLowerCase();
+    
+    const analysis = {
+      totalComments: allComments.length,
+      extractionStatus: allComments.length > 0 ? 'SUCCESS' : 'NO_COMMENTS_FOUND',
+      painPoints: extractYouTubePainPoints(allText),
+      desires: extractYouTubeDesires(allText),
+      frustrations: extractYouTubeFrustrations(allText),
+      emotions: analyzeYouTubeEmotions(allText),
+      topVideos: videoTitles
+    };
+    
+    return {
+      comments: allComments.slice(0, 15), // Keep top 15 comments
+      analysis: analysis
+    };
+    
+  } catch (error) {
+    console.error('YouTube comments extraction error:', error);
+    throw error;
+  }
+}
+
+function extractYouTubePainPoints(text: string): string[] {
+  const patterns = [
+    /(?:i have|suffering from|struggle with|problem with|can't sleep|insomnia|pain|inflammation)[\s\w]{20,100}/gi,
+    /(?:chronic|constant|every night|always tired|can't seem to)[\s\w]{20,100}/gi
+  ];
+  
+  const pains: string[] = [];
+  patterns.forEach(pattern => {
+    const matches = text.match(pattern) || [];
+    pains.push(...matches.slice(0, 8));
+  });
+  
+  return [...new Set(pains)].slice(0, 10);
+}
+
+function extractYouTubeDesires(text: string): string[] {
+  const patterns = [
+    /(?:i want|i need|i wish|hoping for|looking for|trying to find)[\s\w]{20,100}/gi,
+    /(?:would love to|desperately need|if only)[\s\w]{15,80}/gi
+  ];
+  
+  const desires: string[] = [];
+  patterns.forEach(pattern => {
+    const matches = text.match(pattern) || [];
+    desires.push(...matches.slice(0, 8));
+  });
+  
+  return [...new Set(desires)].slice(0, 10);
+}
+
+function extractYouTubeFrustrations(text: string): string[] {
+  const patterns = [
+    /(?:frustrated|annoying|hate|tired of|sick of|nothing works)[\s\w]{20,100}/gi,
+    /(?:tried everything|doesn't work|waste of money|disappointed)[\s\w]{15,80}/gi
+  ];
+  
+  const frustrations: string[] = [];
+  patterns.forEach(pattern => {
+    const matches = text.match(pattern) || [];
+    frustrations.push(...matches.slice(0, 8));
+  });
+  
+  return [...new Set(frustrations)].slice(0, 10);
+}
+
+function analyzeYouTubeEmotions(text: string): Record<string, number> {
+  return {
+    desperation: (text.match(/desperate|hopeless|lost|don't know what to do/g) || []).length,
+    hope: (text.match(/hope|hopeful|optimistic|excited/g) || []).length,
+    frustration: (text.match(/frustrated|annoying|hate|angry/g) || []).length,
+    relief: (text.match(/relief|finally|thank god|breakthrough/g) || []).length,
+    skepticism: (text.match(/skeptical|doubt|suspicious|not sure/g) || []).length
+  };
 }
 
 // Analyze reviews function
@@ -400,12 +544,36 @@ async function processJobInline(jobId: string, websiteUrl: string, targetKeyword
         });
         
         console.log(`Amazon reviews extraction completed: ${amazonResult.realReviewsCount} reviews`);
-     } catch (amazonError) {
+      } catch (amazonError) {
         console.error('Amazon extraction failed:', amazonError);
         await updateJobStatus(jobId, 'failed');
         const errorMessage = amazonError instanceof Error ? amazonError.message : 'Unknown error';
         throw new Error(`Amazon review extraction failed: ${errorMessage}`);
       }
+    }
+
+    // YouTube comments extraction
+    console.log('Starting YouTube comments extraction...');
+    try {
+      const youtubeResult = await extractYouTubeComments(targetKeywords);
+      
+      await saveJobData(jobId, 'youtube_comments', {
+        comments: youtubeResult.comments,
+        analysis: youtubeResult.analysis,
+        metadata: { 
+          timestamp: new Date().toISOString(), 
+          keywords: targetKeywords,
+          extractionMethod: 'youtube_api',
+          totalCommentsFound: youtubeResult.comments.length,
+          videosAnalyzed: youtubeResult.analysis.topVideos.length
+        }
+      });
+      
+      console.log(`YouTube comments extraction completed: ${youtubeResult.comments.length} comments`);
+    } catch (youtubeError) {
+      console.error('YouTube extraction failed:', youtubeError);
+      // Don't fail the entire job for YouTube - it's supplementary data
+      console.log('Continuing job without YouTube data...');
     }
 
     // Persona generation inline
