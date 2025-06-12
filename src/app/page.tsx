@@ -6,7 +6,9 @@ import { useRouter } from 'next/navigation';
 interface FormData {
   primaryProductUrl: string;
   amazonProductUrl: string;
-  targetKeywords: string;
+  primaryKeywords: string;
+  secondaryKeywords: string;
+  additionalKeywords: string;
 }
 
 export default function Home() {
@@ -14,7 +16,9 @@ export default function Home() {
   const [formData, setFormData] = useState<FormData>({
     primaryProductUrl: '',
     amazonProductUrl: '',
-    targetKeywords: ''
+    primaryKeywords: '',
+    secondaryKeywords: '',
+    additionalKeywords: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,12 +29,25 @@ export default function Home() {
     setError(null);
 
     try {
-const response = await fetch('/api/jobs/create-v2', {
+      // Combine all keywords into the expected format for backward compatibility
+      const targetKeywords = [
+        formData.primaryKeywords,
+        formData.secondaryKeywords,
+        formData.additionalKeywords
+      ].filter(keyword => keyword.trim() !== '').join(', ');
+
+      const submitData = {
+        primaryProductUrl: formData.primaryProductUrl,
+        amazonProductUrl: formData.amazonProductUrl,
+        targetKeywords: targetKeywords
+      };
+
+      const response = await fetch('/api/jobs/create-v2', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       const data = await response.json();
@@ -83,18 +100,49 @@ const response = await fetch('/api/jobs/create-v2', {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Target Keywords (comma-separated)
-            </label>
-            <input
-              type="text"
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={formData.targetKeywords}
-              onChange={(e) => setFormData({...formData, targetKeywords: e.target.value})}
-              placeholder="bluetooth speaker, wireless audio, portable speaker"
-            />
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Primary Keywords <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={formData.primaryKeywords}
+                onChange={(e) => setFormData({...formData, primaryKeywords: e.target.value})}
+                placeholder="grounding sheets"
+              />
+              <p className="text-xs text-gray-500 mt-1">Main product or topic keywords</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Secondary Keywords (Optional)
+              </label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={formData.secondaryKeywords}
+                onChange={(e) => setFormData({...formData, secondaryKeywords: e.target.value})}
+                placeholder="earthing mats"
+              />
+              <p className="text-xs text-gray-500 mt-1">Related or alternative terms</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Additional Keywords (Optional)
+              </label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={formData.additionalKeywords}
+                onChange={(e) => setFormData({...formData, additionalKeywords: e.target.value})}
+                placeholder="sleep improvement"
+              />
+              <p className="text-xs text-gray-500 mt-1">Broader problem or benefit keywords</p>
+            </div>
           </div>
 
           {error && (
@@ -111,6 +159,13 @@ const response = await fetch('/api/jobs/create-v2', {
             {isSubmitting ? 'Starting Analysis...' : 'Start Customer Research'}
           </button>
         </form>
+
+        <div className="mt-4 p-3 bg-blue-50 rounded-md">
+          <p className="text-xs text-blue-700">
+            <strong>Tip:</strong> Use different keyword fields to capture various aspects - 
+            primary (main product), secondary (alternatives), additional (problems/benefits).
+          </p>
+        </div>
       </div>
     </div>
   );
