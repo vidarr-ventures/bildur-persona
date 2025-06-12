@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createJob, updateJobStatus, saveJobData, completeJob } from '@/lib/db';
 
-// OxyLabs Amazon extraction function
+// OxyLabs Amazon extraction function with timeout and proper error handling
 async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: string) {
+  const timeout = 60000; // 60 second timeout
+  
   try {
     console.log(`OxyLabs Amazon extraction from: ${amazonUrl}`);
     
@@ -18,121 +20,155 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
     const asin = asinMatch[1];
     console.log(`Extracted ASIN: ${asin}`);
     
-    let allReviews: any[] = [];
-    let productInfo: any = {};
-    
     // Check for OxyLabs credentials
-    if (process.env.OXYLABS_USERNAME && process.env.OXYLABS_PASSWORD) {
-      console.log('Attempting OxyLabs extraction...');
+    if (!process.env.OXYLABS_USERNAME || !process.env.OXYLABS_PASSWORD) {
+      throw new Error('Missing OxyLabs credentials (OXYLABS_USERNAME or OXYLABS_PASSWORD)');
+    }
+    
+    console.log('Attempting OxyLabs extraction...');
+    
+    let productInfo: any = {};
+    let allReviews: any[] = [];
+    
+    // Product information with timeout
+    console.log('Getting product information...');
+    const productController = new AbortController();
+    const productTimeout = setTimeout(() => productController.abort(), timeout);
+    
+    try {
+      const productResponse = await fetch('https://realtime.oxylabs.io/v1/queries', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic ' + Buffer.from(`${process.env.OXYLABS_USERNAME}:${process.env.OXYLABS_PASSWORD}`).toString('base64')
+        },
+        body: JSON.stringify({
+          source: 'amazon_product',
+          query: asin,
+          geo_location: '90210',
+          parse: true
+        }),
+        signal: productController.signal
+      });
+
+      clearTimeout(productTimeout);
+
+      if (!productResponse.ok) {
+        throw new Error(`OxyLabs product API failed with status ${productResponse.status}`);
+      }
+
+      const productData = await productResponse.json();
+      console.log('OxyLabs product response status:', productData.status);
       
-      try {
-        // First, get product information
-        console.log('Getting product information...');
-        const productResponse = await fetch('https://realtime.oxylabs.io/v1/queries', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic ' + Buffer.from(`${process.env.OXYLABS_USERNAME}:${process.env.OXYLABS_PASSWORD}`).toString('base64')
-          },
-          body: JSON.stringify({
-            source: 'amazon_product',
-            query: asin,
-            geo_location: '90210',
-            parse: true
-          })
-        });
+      if (productData.results && productData.results[0] && productData.results[0].content) {
+        const result = productData.results[0];
+        productInfo = {
+          title: result.content?.title || 'Unknown Product',
+          overallRating: result.content?.rating || 'Unknown',
+          totalReviews: result.content?.reviews_count || 'Unknown',
+          price: result.content?.price || 'Unknown',
+          asin: asin
+        };
+        
+        console.log(`Product: ${productInfo.title}, Reviews: ${productInfo.totalReviews}`);
+      } else {
+        throw new Error('Invalid product data structure from OxyLabs');
+      }
+    } catch (error) {
+      clearTimeout(productTimeout);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Product information request timed out');
+      }
+      throw error;
+    }
 
-        if (productResponse.ok) {
-          const productData = await productResponse.json();
-          console.log('OxyLabs product response status:', productData.status);
-          
-          if (productData.results && productData.results[0]) {
-            const result = productData.results[0];
-            productInfo = {
-              title: result.content?.title || 'Unknown Product',
-              overallRating: result.content?.rating || 'Unknown',
-              totalReviews: result.content?.reviews_count || 'Unknown',
-              price: result.content?.price || 'Unknown',
-              asin: asin
-            };
-            
-            console.log(`Product: ${productInfo.title}, Reviews: ${productInfo.totalReviews}`);
-          }
-        } else {
-          console.log(`Product request failed with status ${productResponse.status}`);
-        }
+    // Reviews with timeout
+    console.log('Getting product reviews...');
+    const reviewsController = new AbortController();
+    const reviewsTimeout = setTimeout(() => reviewsController.abort(), timeout);
+    
+    try {
+      const reviewsResponse = await fetch('https://realtime.oxylabs.io/v1/queries', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Basic ' + Buffer.from(`${process.env.OXYLABS_USERNAME}:${process.env.OXYLABS_PASSWORD}`).toString('base64')
+        },
+        body: JSON.stringify({
+          source: 'amazon_reviews',
+          query: asin,
+          geo_location: '90210',
+          parse: true,
+          limit: 50
+        }),
+        signal: reviewsController.signal
+      });
 
-        // Now get reviews - OxyLabs can get multiple pages
-        console.log('Getting product reviews...');
-        const reviewsResponse = await fetch('https://realtime.oxylabs.io/v1/queries', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic ' + Buffer.from(`${process.env.OXYLABS_USERNAME}:${process.env.OXYLABS_PASSWORD}`).toString('base64')
-          },
-          body: JSON.stringify({
-            source: 'amazon_reviews',
-            query: asin,
-            geo_location: '90210',
-            parse: true,
-            limit: 100  // Get up to 100 reviews
-          })
-        });
+      clearTimeout(reviewsTimeout);
 
-        if (reviewsResponse.ok) {
-          const reviewsData = await reviewsResponse.json();
-          console.log('OxyLabs reviews response status:', reviewsData.status);
-          
-          if (reviewsData.results && reviewsData.results[0] && reviewsData.results[0].content) {
-            const reviews = reviewsData.results[0].content.reviews || [];
-            console.log(`Found ${reviews.length} reviews from OxyLabs`);
-            
-            allReviews = reviews.map((review: any, index: number) => ({
-              title: review.title || '',
-              text: review.text || review.content || '',
-              rating: review.rating || 3,
-              verified: review.is_verified || false,
-              helpful_votes: review.helpful_count || 0,
-              date: review.date || '',
-              reviewer_name: review.author || 'Anonymous',
-              source: 'amazon_oxylabs',
-              page: Math.floor(index / 20) + 1
-            })).filter((review: any) => review.text && review.text.length > 15);
-            
-            console.log(`Processed ${allReviews.length} valid reviews`);
-          }
-        } else {
-          console.log(`Reviews request failed with status ${reviewsResponse.status}`);
+      if (!reviewsResponse.ok) {
+        throw new Error(`OxyLabs reviews API failed with status ${reviewsResponse.status}`);
+      }
+
+      const reviewsData = await reviewsResponse.json();
+      console.log('OxyLabs reviews response status:', reviewsData.status);
+      
+      if (reviewsData.results && reviewsData.results[0] && reviewsData.results[0].content) {
+        const reviews = reviewsData.results[0].content.reviews || [];
+        console.log(`Found ${reviews.length} reviews from OxyLabs`);
+        
+        if (reviews.length === 0) {
+          throw new Error('No reviews found for this product');
         }
         
-      } catch (oxyError) {
-        console.error('OxyLabs API error:', oxyError);
+        allReviews = reviews.map((review: any, index: number) => ({
+          title: review.title || '',
+          text: review.text || review.content || '',
+          rating: review.rating || 3,
+          verified: review.is_verified || false,
+          helpful_votes: review.helpful_count || 0,
+          date: review.date || '',
+          reviewer_name: review.author || 'Anonymous',
+          source: 'amazon_oxylabs',
+          page: Math.floor(index / 20) + 1
+        })).filter((review: any) => review.text && review.text.length > 15);
+        
+        console.log(`Processed ${allReviews.length} valid reviews`);
+        
+        if (allReviews.length === 0) {
+          throw new Error('No valid reviews after filtering');
+        }
+      } else {
+        throw new Error('Invalid reviews data structure from OxyLabs');
       }
-      
-      console.log(`OxyLabs extraction completed: ${allReviews.length} total reviews`);
-    } else {
-      console.log('Missing OxyLabs credentials (OXYLABS_USERNAME or OXYLABS_PASSWORD)');
+   } catch (error) {
+      clearTimeout(reviewsTimeout);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Reviews request timed out');
+      }
+      throw error;
     }
+    
+    console.log(`OxyLabs extraction completed successfully: ${allReviews.length} total reviews`);
     
     return {
       reviews: allReviews,
       productInfo: productInfo,
-      extractionMethod: allReviews.length > 0 ? 'oxylabs_success' : 'oxylabs_failed',
-      realReviewsCount: allReviews.length
+      extractionMethod: 'oxylabs_success',
+      realReviewsCount: allReviews.length,
+      success: true
     };
     
-  } catch (error) {
-    console.error('Error in OxyLabs Amazon extraction:', error);
-    return {
-      reviews: [],
-      productInfo: {},
-      extractionMethod: 'extraction_failed',
-      realReviewsCount: 0
-    };
+ } catch (error) {
+    console.error('Critical error in OxyLabs Amazon extraction:', error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Unknown error in Amazon extraction');
   }
 }
 
-// Analyze reviews function (same as before)
+// Analyze reviews function
 function analyzeReviews(reviews: any[], productInfo: any, targetKeywords: string) {
   const totalReviews = reviews.length;
   
@@ -288,23 +324,30 @@ async function processJobInline(jobId: string, websiteUrl: string, targetKeyword
     // Amazon reviews extraction using OxyLabs
     if (amazonUrl) {
       console.log('Starting Amazon reviews extraction with OxyLabs...');
-      const amazonResult = await extractMultiPageAmazonReviews(amazonUrl, targetKeywords);
-      const analysis = analyzeReviews(amazonResult.reviews, amazonResult.productInfo, targetKeywords);
-      
-      await saveJobData(jobId, 'amazon_reviews', {
-        reviews: amazonResult.reviews,
-        analysis: analysis,
-        productInfo: amazonResult.productInfo,
-        metadata: { 
-          timestamp: new Date().toISOString(), 
-          amazonUrl, 
-          targetKeywords,
-          extractionMethod: amazonResult.extractionMethod,
-          realReviewsCount: amazonResult.realReviewsCount
-        }
-      });
-      
-      console.log(`Amazon reviews extraction completed: ${amazonResult.realReviewsCount} reviews`);
+      try {
+        const amazonResult = await extractMultiPageAmazonReviews(amazonUrl, targetKeywords);
+        const analysis = analyzeReviews(amazonResult.reviews, amazonResult.productInfo, targetKeywords);
+        
+        await saveJobData(jobId, 'amazon_reviews', {
+          reviews: amazonResult.reviews,
+          analysis: analysis,
+          productInfo: amazonResult.productInfo,
+          metadata: { 
+            timestamp: new Date().toISOString(), 
+            amazonUrl, 
+            targetKeywords,
+            extractionMethod: amazonResult.extractionMethod,
+            realReviewsCount: amazonResult.realReviewsCount
+          }
+        });
+        
+        console.log(`Amazon reviews extraction completed: ${amazonResult.realReviewsCount} reviews`);
+     } catch (amazonError) {
+        console.error('Amazon extraction failed:', amazonError);
+        await updateJobStatus(jobId, 'failed');
+        const errorMessage = amazonError instanceof Error ? amazonError.message : 'Unknown error';
+        throw new Error(`Amazon review extraction failed: ${errorMessage}`);
+      }
     }
 
     // Persona generation inline
