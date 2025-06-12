@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createJob, updateJobStatus, saveJobData, completeJob } from '@/lib/db';
 
-// Import the Amazon extraction function directly
+// OxyLabs Amazon extraction function
 async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: string) {
   try {
-    console.log(`Multi-page Amazon extraction from: ${amazonUrl}`);
+    console.log(`OxyLabs Amazon extraction from: ${amazonUrl}`);
     
     // Extract ASIN
     const asinMatch = amazonUrl.match(/\/dp\/([A-Z0-9]{10})/i) || 
@@ -21,62 +21,108 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
     let allReviews: any[] = [];
     let productInfo: any = {};
     
-    // Try ScrapeOwl with simple debug selector
-    if (process.env.SCRAPEOWL_API_KEY) {
-      console.log('Attempting ScrapeOwl extraction with debug selectors...');
+    // Check for OxyLabs credentials
+    if (process.env.OXYLABS_USERNAME && process.env.OXYLABS_PASSWORD) {
+      console.log('Attempting OxyLabs extraction...');
       
       try {
-        console.log(`Scraping Amazon reviews page 1 for debug...`);
-        
-        const reviewUrl = `https://www.amazon.com/product-reviews/${asin}/ref=cm_cr_dp_d_show_all_btm?reviewerType=all_reviews&sortBy=recent&pageNumber=1`;
-        
-        const scrapeResponse = await fetch('https://api.scrapeowl.com/v1/scrape', {
+        // First, get product information
+        console.log('Getting product information...');
+        const productResponse = await fetch('https://realtime.oxylabs.io/v1/queries', {
           method: 'POST',
           headers: {
-            'Authorization': `Token ${process.env.SCRAPEOWL_API_KEY}`,
             'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + Buffer.from(`${process.env.OXYLABS_USERNAME}:${process.env.OXYLABS_PASSWORD}`).toString('base64')
           },
           body: JSON.stringify({
-            api_key: process.env.SCRAPEOWL_API_KEY,
-            url: reviewUrl,
-            render_js: true,
-            wait_for: 3000,
-            elements: [
-              { 
-                name: 'page_content', 
-                selector: 'body'
-              }
-            ]
-          }),
+            source: 'amazon_product',
+            query: asin,
+            geo_location: '90210',
+            parse: true
+          })
         });
 
-        if (scrapeResponse.ok) {
-          const data = await scrapeResponse.json();
-          console.log(`Debug: ScrapeOwl response keys:`, Object.keys(data));
-          console.log(`Debug: Page content length:`, data.page_content?.length || 0);
-          console.log(`Debug: First 500 chars:`, data.page_content?.substring(0, 500) || 'No content');
+        if (productResponse.ok) {
+          const productData = await productResponse.json();
+          console.log('OxyLabs product response status:', productData.status);
+          
+          if (productData.results && productData.results[0]) {
+            const result = productData.results[0];
+            productInfo = {
+              title: result.content?.title || 'Unknown Product',
+              overallRating: result.content?.rating || 'Unknown',
+              totalReviews: result.content?.reviews_count || 'Unknown',
+              price: result.content?.price || 'Unknown',
+              asin: asin
+            };
+            
+            console.log(`Product: ${productInfo.title}, Reviews: ${productInfo.totalReviews}`);
+          }
         } else {
-          console.log(`Debug: ScrapeOwl failed with status ${scrapeResponse.status}`);
+          console.log(`Product request failed with status ${productResponse.status}`);
+        }
+
+        // Now get reviews - OxyLabs can get multiple pages
+        console.log('Getting product reviews...');
+        const reviewsResponse = await fetch('https://realtime.oxylabs.io/v1/queries', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + Buffer.from(`${process.env.OXYLABS_USERNAME}:${process.env.OXYLABS_PASSWORD}`).toString('base64')
+          },
+          body: JSON.stringify({
+            source: 'amazon_reviews',
+            query: asin,
+            geo_location: '90210',
+            parse: true,
+            limit: 100  // Get up to 100 reviews
+          })
+        });
+
+        if (reviewsResponse.ok) {
+          const reviewsData = await reviewsResponse.json();
+          console.log('OxyLabs reviews response status:', reviewsData.status);
+          
+          if (reviewsData.results && reviewsData.results[0] && reviewsData.results[0].content) {
+            const reviews = reviewsData.results[0].content.reviews || [];
+            console.log(`Found ${reviews.length} reviews from OxyLabs`);
+            
+            allReviews = reviews.map((review: any, index: number) => ({
+              title: review.title || '',
+              text: review.text || review.content || '',
+              rating: review.rating || 3,
+              verified: review.is_verified || false,
+              helpful_votes: review.helpful_count || 0,
+              date: review.date || '',
+              reviewer_name: review.author || 'Anonymous',
+              source: 'amazon_oxylabs',
+              page: Math.floor(index / 20) + 1
+            })).filter((review: any) => review.text && review.text.length > 15);
+            
+            console.log(`Processed ${allReviews.length} valid reviews`);
+          }
+        } else {
+          console.log(`Reviews request failed with status ${reviewsResponse.status}`);
         }
         
-      } catch (pageError) {
-        console.error(`Debug: Error scraping:`, pageError);
+      } catch (oxyError) {
+        console.error('OxyLabs API error:', oxyError);
       }
       
-      console.log(`Debug extraction completed`);
+      console.log(`OxyLabs extraction completed: ${allReviews.length} total reviews`);
     } else {
-      console.log('No SCRAPEOWL_API_KEY found in environment');
+      console.log('Missing OxyLabs credentials (OXYLABS_USERNAME or OXYLABS_PASSWORD)');
     }
     
     return {
       reviews: allReviews,
       productInfo: productInfo,
-      extractionMethod: 'debug_mode',
+      extractionMethod: allReviews.length > 0 ? 'oxylabs_success' : 'oxylabs_failed',
       realReviewsCount: allReviews.length
     };
     
   } catch (error) {
-    console.error('Error in Amazon extraction:', error);
+    console.error('Error in OxyLabs Amazon extraction:', error);
     return {
       reviews: [],
       productInfo: {},
@@ -84,6 +130,109 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
       realReviewsCount: 0
     };
   }
+}
+
+// Analyze reviews function (same as before)
+function analyzeReviews(reviews: any[], productInfo: any, targetKeywords: string) {
+  const totalReviews = reviews.length;
+  
+  if (totalReviews === 0) {
+    return {
+      totalReviews: 0,
+      extractionStatus: 'NO_REVIEWS_FOUND',
+      averageRating: 0,
+      painPoints: [],
+      positives: [],
+      customerNeeds: [],
+      emotions: {},
+      verifiedPurchaseRatio: 0
+    };
+  }
+  
+  const averageRating = reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews;
+  const verifiedCount = reviews.filter(r => r.verified).length;
+  const verifiedRatio = verifiedCount / totalReviews;
+  
+  // Combine all review text for analysis
+  const allText = reviews.map(r => `${r.title} ${r.text}`).join(' ').toLowerCase();
+  
+  // Extract insights
+  const painPoints = extractPainPoints(allText);
+  const positives = extractPositives(allText);
+  const customerNeeds = extractNeeds(allText);
+  const emotions = analyzeEmotions(allText);
+  
+  return {
+    totalReviews,
+    extractionStatus: 'SUCCESS',
+    averageRating: Math.round(averageRating * 10) / 10,
+    painPoints,
+    positives,
+    customerNeeds,
+    emotions,
+    verifiedPurchaseRatio: Math.round(verifiedRatio * 100) / 100,
+    productInfo,
+    sampleReviews: reviews.slice(0, 5).map(r => ({
+      title: r.title,
+      rating: r.rating,
+      text: r.text.substring(0, 200) + '...',
+      verified: r.verified,
+      source: r.source
+    }))
+  };
+}
+
+function extractPainPoints(text: string): string[] {
+  const patterns = [
+    /(?:problem with|issue with|trouble with|doesn't work|not working|failed to|disappointed|poor quality)[\s\w]{20,100}/gi,
+    /(?:uncomfortable|too small|too large|doesn't fit|wrong size|cheap material)[\s\w]{15,80}/gi
+  ];
+  
+  const pains: string[] = [];
+  patterns.forEach(pattern => {
+    const matches = text.match(pattern) || [];
+    pains.push(...matches.slice(0, 10));
+  });
+  
+  return [...new Set(pains)].slice(0, 15);
+}
+
+function extractPositives(text: string): string[] {
+  const patterns = [
+    /(?:love|amazing|excellent|perfect|great|wonderful|impressed|happy|satisfied|recommend)[\s\w]{20,100}/gi,
+    /(?:comfortable|soft|good quality|works well|sleep better|worth it)[\s\w]{15,80}/gi
+  ];
+  
+  const positives: string[] = [];
+  patterns.forEach(pattern => {
+    const matches = text.match(pattern) || [];
+    positives.push(...matches.slice(0, 10));
+  });
+  
+  return [...new Set(positives)].slice(0, 15);
+}
+
+function extractNeeds(text: string): string[] {
+  const patterns = [
+    /(?:need|want|looking for|trying to|hope to|wish)[\s\w]{15,80}/gi
+  ];
+  
+  const needs: string[] = [];
+  patterns.forEach(pattern => {
+    const matches = text.match(pattern) || [];
+    needs.push(...matches.slice(0, 8));
+  });
+  
+  return [...new Set(needs)].slice(0, 10);
+}
+
+function analyzeEmotions(text: string): Record<string, number> {
+  return {
+    satisfaction: (text.match(/love|great|amazing|excellent|perfect|satisfied|happy/g) || []).length,
+    frustration: (text.match(/frustrated|annoying|hate|terrible|awful|disappointed/g) || []).length,
+    relief: (text.match(/relief|finally|thank god|godsend|lifesaver|game changer/g) || []).length,
+    skepticism: (text.match(/skeptical|doubt|suspicious|not sure|questionable/g) || []).length
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -136,13 +285,15 @@ async function processJobInline(jobId: string, websiteUrl: string, targetKeyword
     });
     console.log('Website crawling completed');
 
-    // Amazon reviews extraction using direct function call
+    // Amazon reviews extraction using OxyLabs
     if (amazonUrl) {
-      console.log('Starting Amazon reviews extraction...');
+      console.log('Starting Amazon reviews extraction with OxyLabs...');
       const amazonResult = await extractMultiPageAmazonReviews(amazonUrl, targetKeywords);
+      const analysis = analyzeReviews(amazonResult.reviews, amazonResult.productInfo, targetKeywords);
       
       await saveJobData(jobId, 'amazon_reviews', {
         reviews: amazonResult.reviews,
+        analysis: analysis,
         productInfo: amazonResult.productInfo,
         metadata: { 
           timestamp: new Date().toISOString(), 
