@@ -21,116 +21,49 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
     let allReviews: any[] = [];
     let productInfo: any = {};
     
-    // Try ScrapeOwl with multiple pages
+    // Try ScrapeOwl with simple debug selector
     if (process.env.SCRAPEOWL_API_KEY) {
-      console.log('Attempting multi-page ScrapeOwl extraction...');
+      console.log('Attempting ScrapeOwl extraction with debug selectors...');
       
-      // Extract from ALL available pages - no artificial limit
-      const maxPagesToScrape = 100; // Safety limit to prevent infinite loops
-      
-      for (let page = 1; page <= maxPagesToScrape; page++) {
-        try {
-          console.log(`Scraping Amazon reviews page ${page}...`);
-          
-          const reviewUrl = `https://www.amazon.com/product-reviews/${asin}/ref=cm_cr_dp_d_show_all_btm?reviewerType=all_reviews&sortBy=recent&pageNumber=${page}`;
-          
-          const scrapeResponse = await fetch('https://api.scrapeowl.com/v1/scrape', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Token ${process.env.SCRAPEOWL_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              api_key: process.env.SCRAPEOWL_API_KEY,
-              url: reviewUrl,
-              render_js: true,
-              wait_for: 3000,
-              elements: [
-                { 
-                  name: 'reviews', 
-                  selector: '[data-hook="review"]',
-                  multiple: true,
-                  children: [
-                    { name: 'title', selector: '[data-hook="review-title"] span:not(.cr-original-review-text)' },
-                    { name: 'rating', selector: '[data-hook="review-star-rating"] span', attribute: 'class' },
-                    { name: 'text', selector: '[data-hook="review-body"] span' },
-                    { name: 'verified', selector: '[data-hook="avp-badge"]' },
-                    { name: 'helpful', selector: '[data-hook="helpful-vote-statement"]' },
-                    { name: 'date', selector: '[data-hook="review-date"]' },
-                    { name: 'reviewer', selector: '.a-profile-name' }
-                  ]
-                },
-                // Only get product info on first page
-                ...(page === 1 ? [
-                  { name: 'product_title', selector: 'h1, .product-title, [data-hook="product-link"]' },
-                  { name: 'overall_rating', selector: '[data-hook="rating-out-of-text"]' },
-                  { name: 'total_reviews', selector: '[data-hook="total-review-count"]' }
-                ] : [])
-              ],
-            }),
-          });
+      try {
+        console.log(`Scraping Amazon reviews page 1 for debug...`);
+        
+        const reviewUrl = `https://www.amazon.com/product-reviews/${asin}/ref=cm_cr_dp_d_show_all_btm?reviewerType=all_reviews&sortBy=recent&pageNumber=1`;
+        
+        const scrapeResponse = await fetch('https://api.scrapeowl.com/v1/scrape', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Token ${process.env.SCRAPEOWL_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            api_key: process.env.SCRAPEOWL_API_KEY,
+            url: reviewUrl,
+            render_js: true,
+            wait_for: 3000,
+            elements: [
+              { 
+                name: 'page_content', 
+                selector: 'body'
+              }
+            ]
+          }),
+        });
 
-          if (scrapeResponse.ok) {
-            const data = await scrapeResponse.json();
-            console.log(`Page ${page}: Found ${data.reviews?.length || 0} reviews`);
-            
-            if (page === 1) {
-              productInfo = {
-                title: data.product_title || 'Unknown Product',
-                overallRating: data.overall_rating || 'Unknown',
-                totalReviews: data.total_reviews || 'Unknown',
-                asin: asin
-              };
-              
-              console.log(`Product: ${productInfo.title}, Total Reviews: ${productInfo.totalReviews}`);
-            }
-            
-            // Parse reviews from this page
-            const pageReviews = (data.reviews || []).map((review: any) => {
-              const ratingMatch = review.rating?.match(/a-star-(\d)/);
-              const rating = ratingMatch ? parseInt(ratingMatch[1]) : 3;
-              
-              const helpfulMatch = review.helpful?.match(/(\d+)/);
-              const helpfulVotes = helpfulMatch ? parseInt(helpfulMatch[1]) : 0;
-              
-              return {
-                title: review.title || '',
-                text: review.text || '',
-                rating: rating,
-                verified: !!review.verified,
-                helpful_votes: helpfulVotes,
-                date: review.date || '',
-                reviewer_name: review.reviewer || 'Anonymous',
-                source: 'amazon_scrapeowl',
-                page: page
-              };
-            }).filter((review: any) => review.text && review.text.length > 15);
-            
-            allReviews = allReviews.concat(pageReviews);
-            console.log(`Total reviews collected so far: ${allReviews.length}`);
-            
-            // If we got less than 3 reviews on this page, we've reached the end
-            if (pageReviews.length < 3) {
-              console.log(`Only ${pageReviews.length} reviews on page ${page}, reached end of reviews`);
-              break;
-            }
-            
-            // Add delay between requests
-            if (page < maxPagesToScrape) {
-              await new Promise(resolve => setTimeout(resolve, 1500));
-            }
-            
-          } else {
-            console.log(`Page ${page} failed with status ${scrapeResponse.status}`);
-            if (page === 1) break;
-          }
-          
-        } catch (pageError) {
-          console.error(`Error scraping page ${page}:`, pageError);
+        if (scrapeResponse.ok) {
+          const data = await scrapeResponse.json();
+          console.log(`Debug: ScrapeOwl response keys:`, Object.keys(data));
+          console.log(`Debug: Page content length:`, data.page_content?.length || 0);
+          console.log(`Debug: First 500 chars:`, data.page_content?.substring(0, 500) || 'No content');
+        } else {
+          console.log(`Debug: ScrapeOwl failed with status ${scrapeResponse.status}`);
         }
+        
+      } catch (pageError) {
+        console.error(`Debug: Error scraping:`, pageError);
       }
       
-      console.log(`ScrapeOwl multi-page extraction completed: ${allReviews.length} total reviews`);
+      console.log(`Debug extraction completed`);
     } else {
       console.log('No SCRAPEOWL_API_KEY found in environment');
     }
@@ -138,12 +71,12 @@ async function extractMultiPageAmazonReviews(amazonUrl: string, targetKeywords: 
     return {
       reviews: allReviews,
       productInfo: productInfo,
-      extractionMethod: allReviews.length > 0 ? 'multi_page_scrapeowl' : 'extraction_failed',
+      extractionMethod: 'debug_mode',
       realReviewsCount: allReviews.length
     };
     
   } catch (error) {
-    console.error('Error in multi-page Amazon extraction:', error);
+    console.error('Error in Amazon extraction:', error);
     return {
       reviews: [],
       productInfo: {},
