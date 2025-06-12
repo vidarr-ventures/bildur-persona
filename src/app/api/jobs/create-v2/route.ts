@@ -245,7 +245,7 @@ async function extractYouTubeComments(keywords: string): Promise<{ comments: any
     const videoTitles: string[] = [];
     
     // Extract comments from top 3 videos
-    for (const video of videos.slice(0, 3)) {
+    for (const video of videos.slice(0, 5)) {
       const videoId = video.id.videoId;
       const videoTitle = video.snippet.title;
       videoTitles.push(videoTitle);
@@ -255,7 +255,7 @@ async function extractYouTubeComments(keywords: string): Promise<{ comments: any
       try {
         const commentsResponse = await fetch(
           `https://www.googleapis.com/youtube/v3/commentThreads?` +
-          `part=snippet&videoId=${videoId}&maxResults=30&order=relevance&` +
+          `part=snippet&videoId=${videoId}&maxResults=50&order=relevance&` +
           `key=${process.env.YOUTUBE_API_KEY}`
         );
 
@@ -305,7 +305,7 @@ async function extractYouTubeComments(keywords: string): Promise<{ comments: any
     };
     
     return {
-      comments: allComments.slice(0, 15), // Keep top 15 comments
+      comments: allComments.slice(0, 45), // Keep top 15 comments
       analysis: analysis
     };
     
