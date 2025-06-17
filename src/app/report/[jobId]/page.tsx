@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { FileText, Database, Globe, MessageSquare, Star } from 'lucide-react';
 
 interface JobStatus {
   id: string;
@@ -238,14 +239,25 @@ export default function ReportPage() {
     }
   };
 
+  const getConfidenceColor = (confidence: string) => {
+    switch (confidence) {
+      case 'high':
+        return 'bg-green-500/10 text-green-400 border-green-500/20';
+      case 'medium':
+        return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20';
+      default:
+        return 'bg-red-500/10 text-red-400 border-red-500/20';
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+      <div className="min-h-screen bg-black py-12 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-8">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading your customer persona report...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
+              <p className="mt-4 text-gray-300">Loading your customer persona report...</p>
             </div>
           </div>
         </div>
@@ -255,15 +267,15 @@ export default function ReportPage() {
 
   if (error || !jobStatus) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+      <div className="min-h-screen bg-black py-12 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-8">
             <div className="text-center">
-              <div className="text-red-600 text-xl font-semibold mb-4">Report Not Available</div>
-              <p className="text-gray-600 mb-6">{error}</p>
+              <div className="text-red-400 text-xl font-semibold mb-4">Report Not Available</div>
+              <p className="text-gray-300 mb-6">{error}</p>
               <Link 
                 href="/" 
-                className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition-colors"
+                className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
               >
                 Create New Analysis
               </Link>
@@ -275,18 +287,20 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+    <div className="min-h-screen bg-black py-12 px-4">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="bg-gray-900 border border-gray-800 rounded-lg p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <FileText className="h-12 w-12 text-purple-400 mx-auto mb-4" />
+            <h1 className="text-3xl font-bold text-white mb-2">
               Customer Persona Analysis Report
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-400">
               Generated on {new Date(jobStatus.created_at).toLocaleDateString()}
             </p>
             {personaData?.dataQuality && (
-              <div className="mt-4 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+              <div className={`mt-4 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getConfidenceColor(personaData.dataQuality.confidence)}`}>
+                <Star className="h-4 w-4 mr-1" />
                 {personaData.dataQuality.confidence.charAt(0).toUpperCase() + personaData.dataQuality.confidence.slice(1)} Confidence 
                 ({personaData.dataQuality.score}% data completeness)
               </div>
@@ -294,14 +308,14 @@ export default function ReportPage() {
           </div>
 
           {/* Navigation */}
-          <div className="border-b border-gray-200 mb-8">
+          <div className="border-b border-gray-700 mb-8">
             <nav className="-mb-px flex space-x-8">
               <button
                 onClick={() => setActiveSection('overview')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeSection === 'overview'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-purple-500 text-purple-400'
+                    : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
                 }`}
               >
                 Customer Persona
@@ -310,8 +324,8 @@ export default function ReportPage() {
                 onClick={() => setActiveSection('methodology')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
                   activeSection === 'methodology'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-purple-500 text-purple-400'
+                    : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600'
                 }`}
               >
                 Data Sources
@@ -321,20 +335,26 @@ export default function ReportPage() {
 
           {/* Content */}
           {activeSection === 'overview' && (
-            <div className="prose max-w-none">
+            <div className="prose prose-invert max-w-none">
               {personaData?.persona ? (
                 <div 
-                  className="whitespace-pre-wrap"
+                  className="whitespace-pre-wrap text-gray-300 leading-relaxed"
                   dangerouslySetInnerHTML={{ 
-                    __html: personaData.persona.replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold text-gray-900 mt-8 mb-4">$1</h2>').replace(/^### (.*$)/gim, '<h3 class="text-xl font-semibold text-gray-800 mt-6 mb-3">$1</h3>').replace(/^- (.*$)/gim, '<li class="ml-4">$1</li>')
+                    __html: personaData.persona
+                      .replace(/\n/g, '<br />')
+                      .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')
+                      .replace(/\*(.*?)\*/g, '<em class="text-gray-300 italic">$1</em>')
+                      .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold text-white mt-8 mb-4 border-b border-gray-700 pb-2">$1</h2>')
+                      .replace(/^### (.*$)/gim, '<h3 class="text-xl font-semibold text-purple-400 mt-6 mb-3">$1</h3>')
+                      .replace(/^- (.*$)/gim, '<li class="ml-4 text-gray-300 mb-1">$1</li>')
                   }}
                 />
               ) : (
                 <div className="text-center py-12">
-                  <p className="text-gray-500">No persona data available. The analysis may still be processing.</p>
+                  <p className="text-gray-400">No persona data available. The analysis may still be processing.</p>
                   <button 
                     onClick={() => window.location.reload()} 
-                    className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
+                    className="mt-4 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
                   >
                     Refresh Report
                   </button>
@@ -346,38 +366,50 @@ export default function ReportPage() {
           {activeSection === 'methodology' && personaData && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Data Collection Summary</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-2">Customer Reviews</h4>
-                    <p className="text-gray-600">{personaData.sources.amazonReviews || personaData.sources.reviews || 0} reviews analyzed</p>
+                <h3 className="text-lg font-semibold text-white mb-4">Data Collection Summary</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-800 border border-gray-700 p-4 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <MessageSquare className="h-5 w-5 text-blue-400" />
+                      <h4 className="font-medium text-white">Customer Reviews</h4>
+                    </div>
+                    <p className="text-gray-300">{personaData.sources.amazonReviews || personaData.sources.reviews || 0} reviews analyzed</p>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-2">Website Content</h4>
-                    <p className="text-gray-600">{personaData.sources.website}</p>
+                  <div className="bg-gray-800 border border-gray-700 p-4 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Globe className="h-5 w-5 text-green-400" />
+                      <h4 className="font-medium text-white">Website Content</h4>
+                    </div>
+                    <p className="text-gray-300">{personaData.sources.website}</p>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-2">Social Discussions</h4>
-                    <p className="text-gray-600">{personaData.sources.reddit || personaData.sources.social || 0} social media posts</p>
+                  <div className="bg-gray-800 border border-gray-700 p-4 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <MessageSquare className="h-5 w-5 text-purple-400" />
+                      <h4 className="font-medium text-white">Social Discussions</h4>
+                    </div>
+                    <p className="text-gray-300">{personaData.sources.reddit || personaData.sources.social || 0} social media posts</p>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-2">Competitor Analysis</h4>
-                    <p className="text-gray-600">{personaData.sources.competitors}</p>
+                  <div className="bg-gray-800 border border-gray-700 p-4 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Database className="h-5 w-5 text-yellow-400" />
+                      <h4 className="font-medium text-white">Competitor Analysis</h4>
+                    </div>
+                    <p className="text-gray-300">{personaData.sources.competitors}</p>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Analysis Details</h3>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-600 mb-2">
-                    <strong>Generated:</strong> {new Date(personaData.metadata.generated).toLocaleString()}
+                <h3 className="text-lg font-semibold text-white mb-4">Analysis Details</h3>
+                <div className="bg-gray-800 border border-gray-700 p-4 rounded-lg">
+                  <p className="text-gray-300 mb-2">
+                    <strong className="text-white">Generated:</strong> {new Date(personaData.metadata.generated).toLocaleString()}
                   </p>
-                  <p className="text-gray-600 mb-2">
-                    <strong>Job ID:</strong> {personaData.metadata.jobId}
+                  <p className="text-gray-300 mb-2">
+                    <strong className="text-white">Job ID:</strong> {personaData.metadata.jobId}
                   </p>
-                  <p className="text-gray-600">
-                    <strong>Confidence Level:</strong> {personaData.dataQuality.confidence} 
+                  <p className="text-gray-300">
+                    <strong className="text-white">Confidence Level:</strong> {personaData.dataQuality.confidence} 
                     ({personaData.dataQuality.score}% data completeness)
                   </p>
                 </div>
@@ -386,16 +418,16 @@ export default function ReportPage() {
           )}
 
           {/* Footer */}
-          <div className="mt-12 pt-8 border-t border-gray-200 text-center">
+          <div className="mt-12 pt-8 border-t border-gray-700 flex flex-col sm:flex-row gap-4 justify-center">
             <Link 
               href="/"
-              className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition-colors mr-4"
+              className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium text-center"
             >
               Create New Analysis
             </Link>
             <Link 
               href={`/dashboard/${jobId}`}
-              className="bg-gray-200 text-gray-800 px-6 py-2 rounded-md hover:bg-gray-300 transition-colors"
+              className="bg-gray-700 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors font-medium text-center"
             >
               View Dashboard
             </Link>
