@@ -188,6 +188,12 @@ export class Queue {
       ? `https://${process.env.VERCEL_URL}` 
       : process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
+    // Import here to avoid circular dependencies
+    const { getResearchRequest } = await import('@/lib/db');
+
+    // Get research request data for email info
+    const researchRequest = await getResearchRequest(jobData.jobId);
+
     const workers = [
       '/api/workers/website-crawler',
       '/api/workers/reviews-collector', 
@@ -199,21 +205,30 @@ export class Queue {
       try {
         console.log('Executing worker:', worker);
         
+        // For persona generator, include email and plan info
+        const workerPayload = {
+          jobId: jobData.jobId,
+          websiteUrl: jobData.websiteUrl,
+          targetKeywords: jobData.targetKeywords,
+          amazonUrl: jobData.amazonUrl,
+          ...(worker.includes('persona-generator') && researchRequest ? {
+            email: researchRequest.email,
+            planName: researchRequest.plan_name
+          } : {})
+        };
+        
         const response = await fetch(`${baseUrl}${worker}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jobId: jobData.jobId,
-            websiteUrl: jobData.websiteUrl,
-            targetKeywords: jobData.targetKeywords,
-            amazonUrl: jobData.amazonUrl,
-          }),
+          body: JSON.stringify(workerPayload),
         });
 
         if (!response.ok) {
-          console.error(`Worker ${worker} failed:`, response.status);
+          console.error(`Worker ${worker} failed:`, response.status, await response.text());
         } else {
           console.log(`Worker ${worker} completed successfully`);
+          const result = await response.json();
+          console.log(`Worker ${worker} result:`, result);
         }
       } catch (error) {
         console.error(`Error executing worker ${worker}:`, error);

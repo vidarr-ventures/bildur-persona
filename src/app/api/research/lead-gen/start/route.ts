@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus, saveJobData, createResearchRequest } from '@/lib/db';
 import { PRICING_PLANS } from '@/lib/stripe';
 import { sql } from '@vercel/postgres';
+import { Queue } from '@/lib/queue';
 
 interface ResearchRequest {
   websiteUrl: string;
@@ -112,26 +113,49 @@ export async function POST(request: NextRequest) {
 
     console.log('Research request stored in database:', researchRequest.id);
 
-    // Simulate starting the research process
-    // In the real system, this would trigger your worker processes
-    setTimeout(async () => {
-      try {
-        console.log(`Starting research workers for job ${jobId}`);
-        
-        // You would typically start your worker processes here:
-        // - Website crawler
-        // - Amazon reviews extractor
-        // - Reddit scraper
-        // - YouTube comments collector
-        // - Competitor analysis
-        // - Persona generator
-        
-        // For now, we'll just create a sample response
-        console.log(`Research job ${jobId} queued successfully`);
-      } catch (error) {
-        console.error(`Error starting research job ${jobId}:`, error);
-      }
-    }, 1000);
+    // Add job to queue for processing
+    try {
+      console.log(`Adding job ${jobId} to processing queue`);
+      
+      const queueJobId = await Queue.addJob({
+        type: 'persona_research',
+        data: {
+          jobId,
+          websiteUrl,
+          targetKeywords: keywords,
+          amazonUrl
+        }
+      });
+      
+      console.log(`Research job ${jobId} added to queue with ID: ${queueJobId}`);
+      
+      // Also trigger direct processing as backup
+      setTimeout(async () => {
+        try {
+          console.log(`Triggering backup direct processing for job ${jobId}`);
+          await Queue.processQueueDirectly();
+        } catch (error) {
+          console.error(`Error in backup processing for job ${jobId}:`, error);
+        }
+      }, 2000);
+      
+    } catch (queueError) {
+      console.error(`Error adding job ${jobId} to queue:`, queueError);
+      // Fallback: trigger direct processing immediately
+      setTimeout(async () => {
+        try {
+          console.log(`Using fallback processing for job ${jobId}`);
+          await Queue.executeWorkersDirectly({
+            jobId,
+            websiteUrl,
+            targetKeywords: keywords,
+            amazonUrl
+          });
+        } catch (error) {
+          console.error(`Error in fallback processing for job ${jobId}:`, error);
+        }
+      }, 1000);
+    }
 
     return NextResponse.json({
       success: true,
