@@ -44,20 +44,61 @@ export async function POST(request: NextRequest) {
 
     // If final price is 0 (100% discount), create a free "payment" record
     if (finalPrice === 0) {
-      // Create a record in your database for the free analysis
-      const freeOrderId = `free_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Store order data (you'll need to implement this)
-      // await createFreeOrder(freeOrderId, planId, formData, discountCode);
+      try {
+        // Create a record in your database for the free analysis
+        const freeOrderId = `free_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Start the research process immediately for free orders
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://persona.bildur.ai';
+        
+        const researchData = {
+          websiteUrl: formData.websiteUrl,
+          amazonUrl: formData.amazonUrl || '',
+          keywords: formData.keywords,
+          redditKeywords: formData.redditKeywords || '',
+          email: formData.email,
+          competitorUrls: formData.competitorUrls ? formData.competitorUrls.split(',').filter(Boolean) : [],
+          planId,
+          discountCode,
+          paymentSessionId: freeOrderId,
+          amountPaid: 0,
+          originalPrice,
+          finalPrice: 0,
+          isFree: true
+        };
 
-      // Redirect to success page with free order
-      const successUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/payment/success?session_id=${freeOrderId}&free=true`;
-      
-      return NextResponse.json({
-        success: true,
-        checkoutUrl: successUrl,
-        freeOrder: true
-      });
+        // Start the research process
+        const response = await fetch(`${baseUrl}/api/research/lead-gen/start`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`, // Internal API key for free orders
+          },
+          body: JSON.stringify(researchData),
+        });
+
+        let jobId = null;
+        if (response.ok) {
+          const result = await response.json();
+          jobId = result.jobId;
+          console.log('Free research started successfully:', jobId);
+        } else {
+          console.error('Failed to start free research:', response.statusText);
+        }
+
+        // Redirect to success page with free order
+        const successUrl = `${baseUrl}/payment/success?session_id=${freeOrderId}&free=true&job_id=${jobId || ''}`;
+        
+        return NextResponse.json({
+          success: true,
+          checkoutUrl: successUrl,
+          freeOrder: true,
+          jobId
+        });
+      } catch (error) {
+        console.error('Error processing free order:', error);
+        return NextResponse.json({ error: 'Failed to process free order' }, { status: 500 });
+      }
     }
 
     // Create Stripe checkout session for paid plans
