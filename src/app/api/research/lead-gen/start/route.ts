@@ -5,7 +5,6 @@ interface ResearchRequest {
   websiteUrl: string;
   amazonUrl?: string;
   keywords: string;
-  redditKeywords?: string;
   email: string;
   competitorUrls?: string[];
   planId: string;
@@ -29,7 +28,6 @@ export async function POST(request: NextRequest) {
       websiteUrl,
       amazonUrl,
       keywords,
-      redditKeywords,
       email,
       competitorUrls = [],
       planId,
@@ -64,7 +62,6 @@ export async function POST(request: NextRequest) {
       websiteUrl,
       amazonUrl,
       keywords,
-      redditKeywords,
       email,
       competitorUrls,
       planId,

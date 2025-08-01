@@ -18,7 +18,6 @@ function PricingContent() {
     websiteUrl: searchParams.get('websiteUrl') || '',
     amazonUrl: searchParams.get('amazonUrl') || '',
     keywords: searchParams.get('keywords') || '',
-    redditKeywords: searchParams.get('redditKeywords') || '',
     email: searchParams.get('email') || '',
     competitorUrls: searchParams.get('competitorUrls') || ''
   };

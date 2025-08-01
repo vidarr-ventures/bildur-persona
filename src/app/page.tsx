@@ -2,16 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, ArrowRight, Globe, MessageSquare, Brain } from 'lucide-react';
+import { Users, ArrowRight, Globe, MessageSquare, Brain, CheckCircle, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { validateAndCorrectUrl, validateAmazonUrl } from '@/lib/url-utils';
 
 interface FormData {
   websiteUrl: string;
   amazonUrl: string;
-  primaryKeywords: string;
-  redditKeywords: string;
-  secondaryKeywords: string;
-  additionalKeywords: string;
+  keywords: string;
   customerEmail: string;
   competitor1: string;
   competitor2: string;
@@ -20,15 +18,22 @@ interface FormData {
   competitor5: string;
 }
 
+interface ValidationState {
+  websiteUrl: { isValid: boolean; message: string; wasCorrected: boolean; };
+  amazonUrl: { isValid: boolean; message: string; wasCorrected: boolean; };
+  competitor1: { isValid: boolean; message: string; wasCorrected: boolean; };
+  competitor2: { isValid: boolean; message: string; wasCorrected: boolean; };
+  competitor3: { isValid: boolean; message: string; wasCorrected: boolean; };
+  competitor4: { isValid: boolean; message: string; wasCorrected: boolean; };
+  competitor5: { isValid: boolean; message: string; wasCorrected: boolean; };
+}
+
 export default function HomePage() {
   const router = useRouter();
   const [formData, setFormData] = useState<FormData>({
     websiteUrl: '',
     amazonUrl: '',
-    primaryKeywords: '',
-    redditKeywords: '',
-    secondaryKeywords: '',
-    additionalKeywords: '',
+    keywords: '',
     customerEmail: '',
     competitor1: '',
     competitor2: '',
@@ -38,6 +43,15 @@ export default function HomePage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validation, setValidation] = useState<ValidationState>({
+    websiteUrl: { isValid: true, message: '', wasCorrected: false },
+    amazonUrl: { isValid: true, message: '', wasCorrected: false },
+    competitor1: { isValid: true, message: '', wasCorrected: false },
+    competitor2: { isValid: true, message: '', wasCorrected: false },
+    competitor3: { isValid: true, message: '', wasCorrected: false },
+    competitor4: { isValid: true, message: '', wasCorrected: false },
+    competitor5: { isValid: true, message: '', wasCorrected: false }
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,13 +59,6 @@ export default function HomePage() {
     setError(null);
 
     try {
-      // Combine all keywords for the API
-      const combinedKeywords = [
-        formData.primaryKeywords,
-        formData.secondaryKeywords,
-        formData.additionalKeywords
-      ].filter(Boolean).join(', ');
-
       // Collect competitor URLs
       const competitorUrls = [
         formData.competitor1,
@@ -65,8 +72,7 @@ export default function HomePage() {
       const searchParams = new URLSearchParams({
         websiteUrl: formData.websiteUrl,
         amazonUrl: formData.amazonUrl || '',
-        keywords: combinedKeywords,
-        redditKeywords: formData.redditKeywords || '',
+        keywords: formData.keywords,
         email: formData.customerEmail,
         competitorUrls: competitorUrls.join(',')
       });
@@ -80,8 +86,56 @@ export default function HomePage() {
     }
   };
 
+  const validateUrl = (field: string, value: string) => {
+    if (!value.trim()) {
+      setValidation(prev => ({
+        ...prev,
+        [field]: { isValid: true, message: '', wasCorrected: false }
+      }));
+      return;
+    }
+
+    let result;
+    if (field === 'amazonUrl') {
+      result = validateAmazonUrl(value);
+    } else {
+      result = validateAndCorrectUrl(value);
+    }
+
+    // Update form data with corrected URL if needed
+    if (result.isValid && result.wasCorrected) {
+      setFormData(prev => ({ ...prev, [field]: result.correctedUrl }));
+    }
+
+    // Update validation state
+    setValidation(prev => ({
+      ...prev,
+      [field]: {
+        isValid: result.isValid,
+        message: result.wasCorrected 
+          ? `Auto-corrected to: ${result.correctedUrl}`
+          : result.error || '',
+        wasCorrected: result.wasCorrected
+      }
+    }));
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    
+    // Validate URL fields on blur (we'll add onBlur handlers to inputs)
+    const urlFields = ['websiteUrl', 'amazonUrl', 'competitor1', 'competitor2', 'competitor3', 'competitor4', 'competitor5'];
+    if (urlFields.includes(field)) {
+      // Clear validation state while typing
+      setValidation(prev => ({
+        ...prev,
+        [field]: { isValid: true, message: '', wasCorrected: false }
+      }));
+    }
+  };
+
+  const handleUrlBlur = (field: string, value: string) => {
+    validateUrl(field, value);
   };
 
   return (
@@ -184,106 +238,113 @@ export default function HomePage() {
                   <label htmlFor="websiteUrl" className="text-white font-medium block">
                     Website URL <span className="text-red-400">*</span>
                   </label>
-                  <input
-                    id="websiteUrl"
-                    type="url"
-                    placeholder="https://your-website.com"
-                    value={formData.websiteUrl}
-                    onChange={(e) => handleInputChange('websiteUrl', e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      id="websiteUrl"
+                      type="text"
+                      placeholder="example.com or https://your-website.com"
+                      value={formData.websiteUrl}
+                      onChange={(e) => handleInputChange('websiteUrl', e.target.value)}
+                      onBlur={(e) => handleUrlBlur('websiteUrl', e.target.value)}
+                      className={`w-full px-4 py-3 bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 text-white placeholder-gray-400 pr-10 ${
+                        validation.websiteUrl.isValid 
+                          ? 'border-gray-700 focus:ring-purple-500' 
+                          : 'border-red-500 focus:ring-red-500'
+                      }`}
+                      required
+                    />
+                    {validation.websiteUrl.message && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        {validation.websiteUrl.isValid ? (
+                          validation.websiteUrl.wasCorrected ? (
+                            <CheckCircle className="h-5 w-5 text-green-400" />
+                          ) : null
+                        ) : (
+                          <AlertCircle className="h-5 w-5 text-red-400" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {validation.websiteUrl.message && (
+                    <p className={`text-xs mt-1 ${
+                      validation.websiteUrl.isValid 
+                        ? validation.websiteUrl.wasCorrected ? 'text-green-400' : 'text-gray-400'
+                        : 'text-red-400'
+                    }`}>
+                      {validation.websiteUrl.message}
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label htmlFor="amazonUrl" className="text-white font-medium block">
                     Amazon Product URL <span className="text-gray-400">(Optional)</span>
                   </label>
-                  <input
-                    id="amazonUrl"
-                    type="url"
-                    placeholder="https://amazon.com/your-product"
-                    value={formData.amazonUrl}
-                    onChange={(e) => handleInputChange('amazonUrl', e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
-                  />
+                  <div className="relative">
+                    <input
+                      id="amazonUrl"
+                      type="text"
+                      placeholder="amazon.com/your-product or full Amazon URL"
+                      value={formData.amazonUrl}
+                      onChange={(e) => handleInputChange('amazonUrl', e.target.value)}
+                      onBlur={(e) => handleUrlBlur('amazonUrl', e.target.value)}
+                      className={`w-full px-4 py-3 bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 text-white placeholder-gray-400 pr-10 ${
+                        validation.amazonUrl.isValid 
+                          ? 'border-gray-700 focus:ring-purple-500' 
+                          : 'border-red-500 focus:ring-red-500'
+                      }`}
+                    />
+                    {validation.amazonUrl.message && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        {validation.amazonUrl.isValid ? (
+                          validation.amazonUrl.wasCorrected ? (
+                            <CheckCircle className="h-5 w-5 text-green-400" />
+                          ) : null
+                        ) : (
+                          <AlertCircle className="h-5 w-5 text-red-400" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {validation.amazonUrl.message && (
+                    <p className={`text-xs mt-1 ${
+                      validation.amazonUrl.isValid 
+                        ? validation.amazonUrl.wasCorrected ? 'text-green-400' : 'text-gray-400'
+                        : 'text-red-400'
+                    }`}>
+                      {validation.amazonUrl.message}
+                    </p>
+                  )}
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="primaryKeywords" className="text-white font-medium block">
-                      Primary Keywords <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      id="primaryKeywords"
-                      type="text"
-                      placeholder="e.g., ecommerce platform, saas software"
-                      value={formData.primaryKeywords}
-                      onChange={(e) => handleInputChange('primaryKeywords', e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
-                      required
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Main product or topic keywords</p>
-                  </div>
-
-                  <div>
-                    <label htmlFor="secondaryKeywords" className="text-white font-medium block">
-                      Secondary Keywords <span className="text-gray-400">(Optional)</span>
-                    </label>
-                    <input
-                      id="secondaryKeywords"
-                      type="text"
-                      placeholder="e.g., online store, digital marketing"
-                      value={formData.secondaryKeywords}
-                      onChange={(e) => handleInputChange('secondaryKeywords', e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Related or alternative terms</p>
-                  </div>
-
-                  <div>
-                    <label htmlFor="additionalKeywords" className="text-white font-medium block">
-                      Additional Keywords <span className="text-gray-400">(Optional)</span>
-                    </label>
-                    <textarea
-                      id="additionalKeywords"
-                      placeholder="e.g., small business, entrepreneurs, startup, growth hacking"
-                      value={formData.additionalKeywords}
-                      onChange={(e) => handleInputChange('additionalKeywords', e.target.value)}
-                      rows={3}
-                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Broader problem or benefit keywords</p>
-                  </div>
-                </div>
-
-                {/* Reddit Research Keywords */}
-                <div className="space-y-2">
-                  <label htmlFor="redditKeywords" className="text-white font-medium block">
-                    Reddit Research Topics <span className="text-gray-400">(Recommended)</span>
+                <div>
+                  <label htmlFor="keywords" className="text-white font-medium block">
+                    Keywords <span className="text-red-400">*</span>
                   </label>
                   <input
-                    id="redditKeywords"
+                    id="keywords"
                     type="text"
-                    placeholder="e.g., project management, remote work, productivity tools, team collaboration"
-                    value={formData.redditKeywords || ''}
-                    onChange={(e) => handleInputChange('redditKeywords', e.target.value)}
+                    placeholder="Enter up to 5 keywords separated by commas (e.g., ecommerce platform, saas software, online store)"
+                    value={formData.keywords}
+                    onChange={(e) => handleInputChange('keywords', e.target.value)}
                     className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
+                    required
                   />
-                  <div className="bg-orange-900/20 border border-orange-500/30 rounded-md p-3">
-                    <div className="flex items-start space-x-2">
-                      <svg className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                      </svg>
-                      <div className="text-orange-300 text-sm">
-                        <p className="font-medium mb-1">Reddit research provides authentic customer insights:</p>
-                        <ul className="space-y-1 text-orange-200">
-                          <li>• Real user pain points and frustrations</li>
-                          <li>• Honest product discussions and comparisons</li>
-                          <li>• Community behavior patterns and preferences</li>
-                          <li>• Unfiltered feedback from target demographics</li>
-                        </ul>
-                      </div>
+                </div>
+
+                <div className="bg-orange-900/20 border border-orange-500/30 rounded-md p-3">
+                  <div className="flex items-start space-x-2">
+                    <svg className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    <div className="text-orange-300 text-sm">
+                      <p className="font-medium mb-1">Reddit research provides authentic customer insights:</p>
+                      <ul className="space-y-1 text-orange-200">
+                        <li>• Real user pain points and frustrations</li>
+                        <li>• Honest product discussions and comparisons</li>
+                        <li>• Community behavior patterns and preferences</li>
+                        <li>• Unfiltered feedback from target demographics</li>
+                      </ul>
                     </div>
                   </div>
                 </div>
@@ -306,12 +367,13 @@ export default function HomePage() {
                   {/* Enhanced Competitor URL Fields */}
                   <div className="space-y-4">
                     {[1, 2, 3, 4, 5].map((num) => {
+                      const fieldName = `competitor${num}`;
                       const placeholders = [
-                        "https://competitor1.com (e.g., main competitor)",
-                        "https://competitor2.com (e.g., similar product/service)", 
-                        "https://competitor3.com (e.g., alternative solution)",
-                        "https://competitor4.com (e.g., premium option)",
-                        "https://competitor5.com (e.g., budget alternative)"
+                        "competitor1.com or https://your-competitor.com",
+                        "competitor2.com or https://similar-product.com", 
+                        "competitor3.com or https://alternative-solution.com",
+                        "competitor4.com or https://premium-option.com",
+                        "competitor5.com or https://budget-alternative.com"
                       ];
                       
                       return (
@@ -325,14 +387,41 @@ export default function HomePage() {
                               </svg>
                             )}
                           </label>
-                          <input
-                            id={`competitor${num}`}
-                            type="url"
-                            placeholder={placeholders[num - 1]}
-                            value={formData[`competitor${num}` as keyof typeof formData]}
-                            onChange={(e) => handleInputChange(`competitor${num}`, e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400 hover:border-gray-600 transition-colors"
-                          />
+                          <div className="relative">
+                            <input
+                              id={`competitor${num}`}
+                              type="text"
+                              placeholder={placeholders[num - 1]}
+                              value={formData[`competitor${num}` as keyof typeof formData]}
+                              onChange={(e) => handleInputChange(`competitor${num}`, e.target.value)}
+                              onBlur={(e) => handleUrlBlur(`competitor${num}`, e.target.value)}
+                              className={`w-full px-4 py-3 bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 text-white placeholder-gray-400 pr-10 hover:border-gray-600 transition-colors ${
+                                validation[fieldName as keyof ValidationState].isValid 
+                                  ? 'border-gray-700 focus:ring-purple-500' 
+                                  : 'border-red-500 focus:ring-red-500'
+                              }`}
+                            />
+                            {validation[fieldName as keyof ValidationState].message && (
+                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                {validation[fieldName as keyof ValidationState].isValid ? (
+                                  validation[fieldName as keyof ValidationState].wasCorrected ? (
+                                    <CheckCircle className="h-5 w-5 text-green-400" />
+                                  ) : null
+                                ) : (
+                                  <AlertCircle className="h-5 w-5 text-red-400" />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {validation[fieldName as keyof ValidationState].message && (
+                            <p className={`text-xs mt-1 ${
+                              validation[fieldName as keyof ValidationState].isValid 
+                                ? validation[fieldName as keyof ValidationState].wasCorrected ? 'text-green-400' : 'text-gray-400'
+                                : 'text-red-400'
+                            }`}>
+                              {validation[fieldName as keyof ValidationState].message}
+                            </p>
+                          )}
                         </div>
                       );
                     })}

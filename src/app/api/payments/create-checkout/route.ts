@@ -8,7 +8,6 @@ interface CheckoutRequest {
     websiteUrl: string;
     amazonUrl?: string;
     keywords: string;
-    redditKeywords?: string;
     email: string;
     competitorUrls?: string;
   };
@@ -73,7 +72,6 @@ export async function POST(request: NextRequest) {
           websiteUrl: formData.websiteUrl,
           amazonUrl: formData.amazonUrl || '',
           keywords: formData.keywords,
-          redditKeywords: formData.redditKeywords || '',
           email: formData.email,
           competitorUrls: formData.competitorUrls ? formData.competitorUrls.split(',').filter(Boolean) : [],
           planId,
@@ -165,7 +163,6 @@ export async function POST(request: NextRequest) {
         websiteUrl: formData.websiteUrl,
         amazonUrl: formData.amazonUrl || '',
         keywords: formData.keywords,
-        redditKeywords: formData.redditKeywords || '',
         competitorUrls: formData.competitorUrls || '',
         originalPrice: originalPrice.toString(),
         finalPrice: finalPrice.toString(),
