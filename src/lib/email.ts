@@ -18,16 +18,28 @@ export interface PersonaEmailData {
 }
 
 export async function sendPersonaReport(data: PersonaEmailData): Promise<boolean> {
+  console.log('🔍 Email send attempt starting...', {
+    hasResend: !!resend,
+    email: data.email,
+    jobId: data.jobId,
+    resendKeyConfigured: !!process.env.RESEND_API_KEY,
+    resendKeyLength: process.env.RESEND_API_KEY?.length || 0
+  });
+
   if (!resend) {
-    console.error('Resend not configured - cannot send email');
+    console.error('❌ Resend not configured - cannot send email');
+    console.error('RESEND_API_KEY present:', !!process.env.RESEND_API_KEY);
+    console.error('RESEND_API_KEY length:', process.env.RESEND_API_KEY?.length || 0);
     return false;
   }
 
   try {
-    console.log(`Sending persona report to ${data.email} for job ${data.jobId}`);
+    console.log(`📧 Sending persona report to ${data.email} for job ${data.jobId}`);
     
     const htmlContent = generatePersonaEmailHTML(data);
     const textContent = generatePersonaEmailText(data);
+
+    console.log('📝 Email content generated, sending via Resend...');
 
     const result = await resend.emails.send({
       from: 'Persona Generator <reports@persona.bildur.ai>',
@@ -37,11 +49,28 @@ export async function sendPersonaReport(data: PersonaEmailData): Promise<boolean
       text: textContent,
     });
 
-    console.log('Email sent successfully:', result.data?.id);
+    console.log('✅ Resend API response:', {
+      success: !!result.data,
+      emailId: result.data?.id,
+      error: result.error
+    });
+
+    if (result.error) {
+      console.error('❌ Resend API error:', result.error);
+      return false;
+    }
+
+    console.log(`✅ Email sent successfully: ${result.data?.id}`);
     return true;
 
   } catch (error) {
-    console.error('Failed to send persona report email:', error);
+    console.error('❌ Failed to send persona report email:', error);
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
+    }
     return false;
   }
 }
