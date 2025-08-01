@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus, saveJobData, createResearchRequest } from '@/lib/db';
 import { PRICING_PLANS } from '@/lib/stripe';
+import { sql } from '@vercel/postgres';
 
 interface ResearchRequest {
   websiteUrl: string;
@@ -60,6 +61,36 @@ export async function POST(request: NextRequest) {
     // Get plan name from PRICING_PLANS
     const plan = PRICING_PLANS[planId as keyof typeof PRICING_PLANS];
     const planName = plan?.name || 'Unknown Plan';
+
+    // Ensure research_requests table exists
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS research_requests (
+          id SERIAL PRIMARY KEY,
+          job_id VARCHAR(255) UNIQUE NOT NULL,
+          website_url TEXT NOT NULL,
+          amazon_url TEXT,
+          keywords TEXT NOT NULL,
+          email VARCHAR(255) NOT NULL,
+          competitor_urls TEXT,
+          plan_id VARCHAR(50) NOT NULL,
+          plan_name VARCHAR(100) NOT NULL,
+          discount_code VARCHAR(50),
+          payment_session_id VARCHAR(255),
+          amount_paid INTEGER DEFAULT 0,
+          original_price INTEGER DEFAULT 0,
+          final_price INTEGER DEFAULT 0,
+          is_free BOOLEAN DEFAULT FALSE,
+          status VARCHAR(50) DEFAULT 'queued',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          completed_at TIMESTAMP WITH TIME ZONE,
+          persona_report_sent BOOLEAN DEFAULT FALSE
+        )
+      `;
+      console.log('✅ research_requests table ready');
+    } catch (tableError) {
+      console.warn('Table creation warning (may already exist):', tableError);
+    }
 
     // Store the research request in database
     const researchRequest = await createResearchRequest({
