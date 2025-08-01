@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     await saveJobData(jobId, 'persona_profile', personaProfile);
 
     // Send email with persona report
-    if (email && personaProfile?.content) {
+    if (email && personaProfile?.persona) {
       console.log(`Sending persona report email to ${email} for job ${jobId}`);
       try {
         const emailSent = await sendPersonaReport({
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
           email,
           websiteUrl: websiteUrl || 'Unknown',
           keywords: targetKeywords || 'Not specified',
-          personaReport: personaProfile.content,
+          personaReport: personaProfile.persona,
           planName: planName || 'Standard Analysis',
           analysisDate: new Date().toLocaleDateString()
         });
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
         console.error(`Email sending error for job ${jobId}:`, emailError);
       }
     } else {
-      console.warn(`Missing email (${email}) or persona content for job ${jobId} - skipping email`);
+      console.warn(`Missing email (${email}) or persona content (${!!personaProfile?.persona}) for job ${jobId} - skipping email`);
     }
 
     await updateJobStatus(jobId, 'completed');
