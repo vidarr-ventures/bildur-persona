@@ -61,30 +61,19 @@ export default function HomePage() {
         formData.competitor5
       ].filter(Boolean); // Remove empty strings
 
-      const response = await fetch('/api/research/lead-gen/start', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          websiteUrl: formData.websiteUrl,
-          keywords: combinedKeywords,
-          redditKeywords: formData.redditKeywords,
-          email: formData.customerEmail,
-          competitorUrls: competitorUrls
-        }),
+      // Redirect to pricing page with form data as URL parameters
+      const searchParams = new URLSearchParams({
+        websiteUrl: formData.websiteUrl,
+        amazonUrl: formData.amazonUrl || '',
+        keywords: combinedKeywords,
+        redditKeywords: formData.redditKeywords || '',
+        email: formData.customerEmail,
+        competitorUrls: competitorUrls.join(',')
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        // Redirect to progress page
-        router.push(data.redirectUrl);
-      } else {
-        setError(data.error || 'Failed to start research');
-      }
+      router.push(`/pricing?${searchParams.toString()}`);
     } catch (err) {
-      setError('Network error. Please try again.');
+      setError('Failed to proceed to payment. Please try again.');
       console.error('Submission error:', err);
     } finally {
       setIsSubmitting(false);
@@ -427,11 +416,11 @@ export default function HomePage() {
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Starting Analysis...</span>
+                      <span>Proceeding to Payment...</span>
                     </>
                   ) : (
                     <>
-                      <span>Start Customer Research</span>
+                      <span>Continue to Pricing</span>
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
