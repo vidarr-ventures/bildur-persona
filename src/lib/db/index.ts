@@ -216,7 +216,7 @@ export async function createResearchRequest(data: {
     return {
       ...row,
       competitor_urls: JSON.parse(row.competitor_urls || '[]')
-    };
+    } as ResearchRequest;
   } catch (error) {
     console.error('Error creating research request:', error);
     throw error;
@@ -236,7 +236,7 @@ export async function getResearchRequest(jobId: string): Promise<ResearchRequest
     return {
       ...row,
       competitor_urls: JSON.parse(row.competitor_urls || '[]')
-    };
+    } as ResearchRequest;
   } catch (error) {
     console.error('Error getting research request:', error);
     throw error;
