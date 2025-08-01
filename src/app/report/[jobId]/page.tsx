@@ -103,59 +103,91 @@ export default function ReportPage() {
     if (isGroundingProduct) {
       return {
         persona: `
-## Primary Customer Persona: Sarah Thompson
+## Section 1: Customer Demographics & Psychographics
 
-**Demographics:**
-- **Age:** 35-45 years old
-- **Gender:** Female (primary buyer, though appeals to both genders)
+### Demographic Profile
+**Primary Persona: Sarah Thompson - The Wellness Seeker**
+
+- **Age Range:** 35-45 years old (Millennial/Gen X cusp)
+- **Gender:** Primarily female (though appeals to health-conscious individuals of all genders)
 - **Income:** $65,000 - $120,000 annually
 - **Education:** College-educated professional
 - **Location:** Suburban areas, health-conscious communities
 - **Family Status:** Married with children, or health-conscious individual
+- **Technology Adoption:** Active online researcher, moderate social media user
 
-**Psychographic Profile:**
+### Generational Analysis
+As a Millennial/Gen X hybrid, Sarah exhibits:
+- Mix of traditional and digital media consumption
+- Strong research orientation before purchasing
+- Quality and value-seeking behavior
+- Active on Facebook and health-focused online communities
+- Email marketing effectiveness
+- Preference for authenticity over hype
 
-**Health & Wellness Mindset:**
-- Actively researches natural health solutions
-- Skeptical of pharmaceutical approaches, prefers holistic methods
-- Suffers from chronic sleep issues or inflammation
-- Has tried multiple solutions before discovering grounding
-- Values scientific backing but also trusts personal experience
+### Psychographic Deep Dive
 
-**Pain Points:**
-- Chronic insomnia affecting daily performance
-- Joint pain or inflammation issues
-- High stress levels from work/life balance
-- Fatigue despite adequate sleep hours
-- Frustration with traditional medical approaches
+#### Core Attitudes and Values
+- Values natural, holistic approaches to health over pharmaceutical solutions
+- Strong belief in personal research and self-advocacy
+- Risk-tolerant when scientific evidence supports claims
+- Prioritizes long-term health outcomes over quick fixes
 
-**Behavioral Patterns:**
-- Spends significant time researching products online
-- Reads customer reviews extensively before purchasing
-- Active in health-focused online communities (Reddit, Facebook groups)
-- Willing to invest in quality products that deliver results
-- Shares success stories with friends and family
+#### Hopes, Dreams, and Fears
+- **Primary Goal:** Achieve optimal health and wellness naturally
+- **Deep Fear:** Chronic health issues affecting quality of life and family relationships
+- **Success Definition:** Feeling energetic, sleeping well, and maintaining vitality
 
-**Decision-Making Triggers:**
-- Scientific studies or medical endorsements
-- Authentic customer testimonials and before/after stories
-- 30-60 day trial periods with money-back guarantees
-- Recommendations from trusted health practitioners
-- Natural, non-invasive approach to health problems
+#### Perceived Obstacles & Outside Forces
+- Skeptical of mainstream medical approaches
+- Frustrated by information overload in wellness space
+- Believes "natural solutions are often overlooked by traditional medicine"
 
-**Communication Preferences:**
-- Educational content about how grounding works
-- Real customer success stories and testimonials
-- Scientific explanations in accessible language
-- Clear return policies and satisfaction guarantees
-- Active customer support and community engagement
+## Section 2: Behavioral Psychology Analysis
 
-**Brand Relationship:**
-- Becomes a loyal advocate once products deliver results
-- Likely to purchase multiple grounding products (sheets, mats, etc.)
-- Recommends products to family and friends
-- Values ongoing education about grounding benefits
-- Appreciates companies that prioritize customer health over profits
+### Goal Assessment
+
+#### Functional Goals
+- Improve sleep quality and duration
+- Reduce inflammation and joint pain
+- Increase daily energy levels
+
+#### Higher-Order Goals
+- Feel confident in health choices
+- Be seen as someone who takes proactive care of health
+- Set positive example for family
+
+### Motivation Analysis
+**Primary Motivations:**
+1. **Security:** Desire to feel safe and protected from health threats
+2. **Competence:** Desire to feel capable of managing own health
+3. **Achievement:** Desire to overcome health obstacles
+
+### Cognitive Heuristics & Predictable Irrationalities
+- **Social Proof:** Heavily relies on customer reviews and testimonials
+- **Authority Bias:** Values scientific studies and expert endorsements
+- **Loss Aversion:** Focuses more on avoiding health deterioration than gaining benefits
+
+## Section 7: ICP Synthesis & Implementation Strategy
+
+### Executive Summary
+Sarah Thompson represents the informed wellness seeker who combines thorough research with openness to natural solutions. She's driven primarily by security and competence motivations, uses social proof heavily in decision-making, and becomes a powerful advocate when products deliver results.
+
+### Primary Persona Development
+**Name:** Sarah Thompson - The Informed Wellness Advocate
+**Key Quote:** "I've tried everything else, so I'm willing to try this if the science backs it up."
+**Decision Trigger:** Combination of scientific evidence and authentic customer testimonials
+**Life Event Receptivity:** Health diagnoses, sleep disruption periods, major life stress events
+
+## Bonus Section: Brand Identity Recommendations
+
+### Key Customer Quotes
+Based on typical customer feedback patterns:
+1. "I was skeptical at first, but the results speak for themselves"
+2. "Finally found something natural that actually works"
+3. "My sleep has improved dramatically since starting"
+4. "I wish I had discovered this years ago"
+5. "The science behind this makes so much sense"
         `,
         dataQuality: {
           confidence: 'high',
@@ -175,51 +207,92 @@ export default function ReportPage() {
     } else {
       return {
         persona: `
-## Primary Customer Persona: The Informed Optimizer
+## Section 1: Customer Demographics & Psychographics
 
-**Demographics:**
+### Demographic Profile
+**Primary Persona: Alex Chen - The Informed Optimizer**
+
 - **Age Range:** 28-45 years old (Millennials to Gen X)
 - **Education:** College-educated professionals
 - **Income:** $50K-$120K annually
 - **Location:** Urban and suburban professionals
 - **Family Status:** Mix of young families and established households
+- **Technology Adoption:** Digital-native with hybrid media consumption
 
-**Psychographic Profile:**
+### Generational Analysis
+As a Millennial/Gen X professional, Alex exhibits:
+- Digital-first approach with smartphone optimization
+- Strong research orientation and comparison shopping
+- Quality and value-seeking behavior
+- Active on multiple social platforms
+- Email and social media marketing effectiveness
+- Preference for authenticity and transparency
 
-**Core Values & Attitudes:**
+### Psychographic Deep Dive
+
+#### Core Attitudes and Values
 - Quality over quantity mindset
-- Research-driven decision making
+- Research-driven decision making approach
 - Value for money consciousness
 - Brand skepticism requiring proof
-- Community input reliance
+- Community input and peer validation reliance
 
-**Pain Points:**
-- Time constraints for thorough product research
-- Overwhelmed by too many product options
-- Previous disappointing purchases
-- Budget considerations vs. quality desires
-- Need for reliable product recommendations
+#### Hopes, Dreams, and Fears
+- **Primary Goal:** Make optimal choices that deliver long-term value
+- **Deep Fear:** Making poor purchasing decisions and wasting money
+- **Success Definition:** Finding products that exceed expectations and deliver ROI
 
-**Behavioral Patterns:**
-- Extensive online research before purchases
-- Comparison shopping across multiple platforms
-- Reading reviews and seeking social proof
-- Consulting online communities for recommendations
-- Preference for brands with clear value propositions
+#### Perceived Obstacles & Outside Forces
+- Time constraints limiting thorough research
+- Information overload in product selection
+- Previous disappointing purchase experiences
+- Budget constraints vs. quality desires
 
-**Decision-Making Process:**
-- Problem identification and research phase
-- Multiple option comparison
-- Review and testimonial validation
-- Price-value assessment
-- Final purchase decision with return policy consideration
+## Section 2: Behavioral Psychology Analysis
 
-**Communication Preferences:**
-- Clear, honest product descriptions
-- Authentic customer testimonials
-- Educational content about product benefits
-- Transparent pricing and policies
-- Responsive customer service
+### Goal Assessment
+
+#### Functional Goals
+- Solve specific problems efficiently
+- Maximize value for money spent
+- Save time in decision-making process
+
+#### Higher-Order Goals
+- Feel confident in purchase decisions
+- Be seen as smart, discerning consumer
+- Maintain reputation for good recommendations
+
+### Motivation Analysis
+**Primary Motivations:**
+1. **Competence:** Desire to feel capable of making optimal choices
+2. **Security:** Desire to avoid poor decisions and financial loss
+3. **Achievement:** Desire to find the best solutions available
+
+### Cognitive Heuristics & Predictable Irrationalities
+- **Social Proof:** Heavy reliance on reviews and ratings
+- **Loss Aversion:** Focuses on avoiding bad purchases over gaining benefits
+- **Choice Overload:** Can become paralyzed by too many options
+
+## Section 7: ICP Synthesis & Implementation Strategy
+
+### Executive Summary
+Alex Chen represents the methodical, research-driven consumer who combines thorough analysis with community validation. Driven by competence and security motivations, they use extensive social proof in decision-making and become loyal advocates for brands that consistently deliver value.
+
+### Primary Persona Development
+**Name:** Alex Chen - The Methodical Value Seeker
+**Key Quote:** "I never buy anything without reading the reviews first."
+**Decision Trigger:** Combination of strong reviews, clear value proposition, and risk mitigation
+**Life Event Receptivity:** Career changes, major purchases, problem-solving moments
+
+## Bonus Section: Brand Identity Recommendations
+
+### Key Customer Quotes
+Based on typical research-driven customer patterns:
+1. "The reviews convinced me this was worth trying"
+2. "Exactly what I was looking for - great value"
+3. "Does exactly what it promises, no surprises"
+4. "Would definitely recommend to others"
+5. "Glad I did my research before buying"
         `,
         dataQuality: {
           confidence: 'medium',
@@ -346,7 +419,10 @@ export default function ReportPage() {
                       .replace(/\*(.*?)\*/g, '<em class="text-gray-300 italic">$1</em>')
                       .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold text-white mt-8 mb-4 border-b border-gray-700 pb-2">$1</h2>')
                       .replace(/^### (.*$)/gim, '<h3 class="text-xl font-semibold text-purple-400 mt-6 mb-3">$1</h3>')
-                      .replace(/^- (.*$)/gim, '<li class="ml-4 text-gray-300 mb-1">$1</li>')
+                      .replace(/^#### (.*$)/gim, '<h4 class="text-lg font-medium text-blue-400 mt-4 mb-2">$1</h4>')
+                      .replace(/^\* (.*$)/gim, '<li class="ml-4 text-gray-300 mb-1 list-disc">$1</li>')
+                      .replace(/^- (.*$)/gim, '<li class="ml-4 text-gray-300 mb-1 list-disc">$1</li>')
+                      .replace(/^(\d+)\. (.*$)/gim, '<li class="ml-4 text-gray-300 mb-1 list-decimal">$2</li>')
                   }}
                 />
               ) : (
