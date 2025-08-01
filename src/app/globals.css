@@ -29,19 +29,24 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
   body {
-    @apply bg-black text-white min-h-screen;
+    background-color: black;
+    color: white;
+    min-height: 100vh;
   }
 }
 
 .gradient-text {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  background: linear-gradient(to right, rgb(168 85 247), rgb(96 165 250));
 }
 
 .gradient-bg {
-  @apply bg-gradient-to-br from-purple-900/20 to-blue-900/20;
+  background: linear-gradient(to bottom right, rgba(88 28 135, 0.2), rgba(30 58 138, 0.2));
 }
 
 .gradient-border {
