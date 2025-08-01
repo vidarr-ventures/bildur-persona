@@ -69,15 +69,20 @@ function PricingContent() {
 
       const data = await response.json();
 
+      console.log('Checkout response:', data); // Debug log
+
       if (data.success && data.checkoutUrl) {
-        // Redirect to Stripe checkout
+        // Redirect to checkout or success page
         window.location.href = data.checkoutUrl;
       } else {
+        console.error('Checkout failed:', data);
         throw new Error(data.error || 'Failed to create checkout session');
       }
     } catch (error) {
       console.error('Payment error:', error);
-      alert('Failed to start payment process. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error details:', errorMessage);
+      alert(`Failed to start payment process: ${errorMessage}. Please try again.`);
     } finally {
       setIsLoading(null);
     }
