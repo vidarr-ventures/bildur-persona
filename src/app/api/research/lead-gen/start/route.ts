@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateJobStatus, saveJobData } from '@/lib/db';
+import { updateJobStatus, saveJobData, createResearchRequest } from '@/lib/db';
+import { PRICING_PLANS } from '@/lib/stripe';
 
 interface ResearchRequest {
   websiteUrl: string;
@@ -56,8 +57,12 @@ export async function POST(request: NextRequest) {
     console.log(`Starting research job ${jobId} for ${email}`);
     console.log(`Plan: ${planId}, Amount: $${finalPrice/100}, Free: ${isFree}`);
 
-    // Store the research request
-    const researchData = {
+    // Get plan name from PRICING_PLANS
+    const plan = PRICING_PLANS[planId as keyof typeof PRICING_PLANS];
+    const planName = plan?.name || 'Unknown Plan';
+
+    // Store the research request in database
+    const researchRequest = await createResearchRequest({
       jobId,
       websiteUrl,
       amazonUrl,
@@ -65,19 +70,16 @@ export async function POST(request: NextRequest) {
       email,
       competitorUrls,
       planId,
+      planName,
       discountCode,
       paymentSessionId,
       amountPaid,
       originalPrice,
       finalPrice,
-      isFree,
-      status: 'queued',
-      createdAt: new Date().toISOString()
-    };
+      isFree
+    });
 
-    // For now, we'll use the existing job system structure
-    // In a real implementation, you'd save this to your database
-    console.log('Research request stored:', researchData);
+    console.log('Research request stored in database:', researchRequest.id);
 
     // Simulate starting the research process
     // In the real system, this would trigger your worker processes

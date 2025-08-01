@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Queue } from '@/lib/queue';
-import { updateJobStatus, getJobById } from '@/lib/db';
+import { updateJobStatus, getJobById, getResearchRequest } from '@/lib/db';
 
 // Worker execution function
 async function executeWorkers(jobId: string, websiteUrl: string, targetKeywords: string, amazonUrl?: string) {
@@ -60,6 +60,9 @@ async function executeWorkers(jobId: string, websiteUrl: string, targetKeywords:
   try {
     console.log(`Starting persona generation for job ${jobId}`);
     
+    // Get research request data for email and plan info
+    const researchRequest = await getResearchRequest(jobId);
+    
     const personaResponse = await fetch(`${baseUrl}/api/workers/persona-generator`, {
       method: 'POST',
       headers: {
@@ -70,6 +73,8 @@ async function executeWorkers(jobId: string, websiteUrl: string, targetKeywords:
         websiteUrl,
         targetKeywords,
         amazonUrl,
+        email: researchRequest?.email,
+        planName: researchRequest?.plan_name,
       }),
     });
 

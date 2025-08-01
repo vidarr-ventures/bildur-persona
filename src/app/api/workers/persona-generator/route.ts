@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/db';
-import { getJobData, saveJobData } from '@/lib/db';
+import { getJobData, saveJobData, markPersonaReportSent } from '@/lib/db';
+import { sendPersonaReport } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +10,8 @@ export async function POST(request: NextRequest) {
       websiteUrl, 
       targetKeywords, 
       amazonUrl,
+      email,
+      planName,
       websiteData, 
       redditData, 
       amazonReviews, 
@@ -52,6 +55,34 @@ export async function POST(request: NextRequest) {
 
     // Save the enhanced persona analysis
     await saveJobData(jobId, 'persona_profile', personaProfile);
+
+    // Send email with persona report
+    if (email && personaProfile?.content) {
+      console.log(`Sending persona report email to ${email} for job ${jobId}`);
+      try {
+        const emailSent = await sendPersonaReport({
+          jobId,
+          email,
+          websiteUrl: websiteUrl || 'Unknown',
+          keywords: targetKeywords || 'Not specified',
+          personaReport: personaProfile.content,
+          planName: planName || 'Standard Analysis',
+          analysisDate: new Date().toLocaleDateString()
+        });
+
+        if (emailSent) {
+          console.log(`✅ Email sent successfully to ${email} for job ${jobId}`);
+          // Mark email as sent in database
+          await markPersonaReportSent(jobId);
+        } else {
+          console.error(`❌ Failed to send email to ${email} for job ${jobId}`);
+        }
+      } catch (emailError) {
+        console.error(`Email sending error for job ${jobId}:`, emailError);
+      }
+    } else {
+      console.warn(`Missing email (${email}) or persona content for job ${jobId} - skipping email`);
+    }
 
     await updateJobStatus(jobId, 'completed');
 

@@ -1,5 +1,27 @@
 import { sql } from '@vercel/postgres';
 
+export interface ResearchRequest {
+  id: number;
+  job_id: string;
+  website_url: string;
+  amazon_url?: string;
+  keywords: string;
+  email: string;
+  competitor_urls: string[];
+  plan_id: string;
+  plan_name: string;
+  discount_code?: string;
+  payment_session_id: string;
+  amount_paid: number;
+  original_price: number;
+  final_price: number;
+  is_free: boolean;
+  status: string;
+  created_at: string;
+  completed_at?: string;
+  persona_report_sent: boolean;
+}
+
 export interface Job {
   id: string;
   user_inputs: {
@@ -154,6 +176,96 @@ export async function failJob(jobId: string, errorMessage: string) {
     return result.rows[0];
   } catch (error) {
     console.error('Error failing job:', error);
+    throw error;
+  }
+}
+
+// Research Requests functions
+export async function createResearchRequest(data: {
+  jobId: string;
+  websiteUrl: string;
+  amazonUrl?: string;
+  keywords: string;
+  email: string;
+  competitorUrls: string[];
+  planId: string;
+  planName: string;
+  discountCode?: string;
+  paymentSessionId: string;
+  amountPaid: number;
+  originalPrice: number;
+  finalPrice: number;
+  isFree: boolean;
+}): Promise<ResearchRequest> {
+  try {
+    const result = await sql`
+      INSERT INTO research_requests (
+        job_id, website_url, amazon_url, keywords, email, competitor_urls,
+        plan_id, plan_name, discount_code, payment_session_id, amount_paid,
+        original_price, final_price, is_free, status
+      ) VALUES (
+        ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.keywords}, 
+        ${data.email}, ${JSON.stringify(data.competitorUrls)}, ${data.planId}, ${data.planName},
+        ${data.discountCode || null}, ${data.paymentSessionId}, ${data.amountPaid},
+        ${data.originalPrice}, ${data.finalPrice}, ${data.isFree}, 'queued'
+      )
+      RETURNING *
+    `;
+    
+    const row = result.rows[0];
+    return {
+      ...row,
+      competitor_urls: JSON.parse(row.competitor_urls || '[]')
+    };
+  } catch (error) {
+    console.error('Error creating research request:', error);
+    throw error;
+  }
+}
+
+export async function getResearchRequest(jobId: string): Promise<ResearchRequest | null> {
+  try {
+    const result = await sql`
+      SELECT * FROM research_requests 
+      WHERE job_id = ${jobId}
+    `;
+    
+    if (result.rows.length === 0) return null;
+    
+    const row = result.rows[0];
+    return {
+      ...row,
+      competitor_urls: JSON.parse(row.competitor_urls || '[]')
+    };
+  } catch (error) {
+    console.error('Error getting research request:', error);
+    throw error;
+  }
+}
+
+export async function updateResearchRequestStatus(jobId: string, status: string): Promise<void> {
+  try {
+    await sql`
+      UPDATE research_requests 
+      SET status = ${status}, 
+          completed_at = ${status === 'completed' ? 'NOW()' : null}
+      WHERE job_id = ${jobId}
+    `;
+  } catch (error) {
+    console.error('Error updating research request status:', error);
+    throw error;
+  }
+}
+
+export async function markPersonaReportSent(jobId: string): Promise<void> {
+  try {
+    await sql`
+      UPDATE research_requests 
+      SET persona_report_sent = true
+      WHERE job_id = ${jobId}
+    `;
+  } catch (error) {
+    console.error('Error marking persona report as sent:', error);
     throw error;
   }
 }
