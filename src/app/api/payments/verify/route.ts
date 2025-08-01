@@ -3,10 +3,6 @@ import { stripe, PRICING_PLANS } from '@/lib/stripe';
 
 export async function GET(request: NextRequest) {
   try {
-    if (!stripe) {
-      return NextResponse.json({ error: 'Payment processing not configured' }, { status: 500 });
-    }
-
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('session_id');
     const isFree = searchParams.get('free') === 'true';
@@ -18,18 +14,24 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Handle free orders (with discount code TESTER)
-    if (isFree) {
-      // For free orders, the sessionId is actually a generated free order ID
-      if (sessionId.startsWith('free_')) {
-        return NextResponse.json({
-          success: true,
-          isFree: true,
-          email: 'Free Analysis',
-          planName: 'Free Analysis',
-          jobId: null // Will be set when the analysis starts
-        });
-      }
+    console.log('Payment verification request:', { sessionId, isFree });
+
+    // Handle free orders (with discount code TESTER) - check this FIRST
+    if (isFree && sessionId.startsWith('free_')) {
+      console.log('Verifying free order:', sessionId);
+      return NextResponse.json({
+        success: true,
+        isFree: true,
+        email: 'Free Analysis',
+        planName: 'Free Analysis',
+        jobId: searchParams.get('job_id') || null
+      });
+    }
+
+    // Only check Stripe for paid orders
+    if (!stripe) {
+      console.error('Stripe not configured for paid order verification');
+      return NextResponse.json({ error: 'Payment processing not configured' }, { status: 500 });
     }
 
     // Retrieve the Stripe session
