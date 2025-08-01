@@ -3,23 +3,38 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, ArrowRight, Globe, MessageSquare, Brain } from 'lucide-react';
+import Link from 'next/link';
 
 interface FormData {
-  primaryProductUrl: string;
-  amazonProductUrl: string;
+  websiteUrl: string;
+  amazonUrl: string;
   primaryKeywords: string;
+  redditKeywords: string;
   secondaryKeywords: string;
   additionalKeywords: string;
+  customerEmail: string;
+  competitor1: string;
+  competitor2: string;
+  competitor3: string;
+  competitor4: string;
+  competitor5: string;
 }
 
-export default function Home() {
+export default function HomePage() {
   const router = useRouter();
   const [formData, setFormData] = useState<FormData>({
-    primaryProductUrl: '',
-    amazonProductUrl: '',
+    websiteUrl: '',
+    amazonUrl: '',
     primaryKeywords: '',
+    redditKeywords: '',
     secondaryKeywords: '',
-    additionalKeywords: ''
+    additionalKeywords: '',
+    customerEmail: '',
+    competitor1: '',
+    competitor2: '',
+    competitor3: '',
+    competitor4: '',
+    competitor5: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,32 +45,43 @@ export default function Home() {
     setError(null);
 
     try {
-      const targetKeywords = [
+      // Combine all keywords for the API
+      const combinedKeywords = [
         formData.primaryKeywords,
         formData.secondaryKeywords,
         formData.additionalKeywords
-      ].filter(keyword => keyword.trim() !== '').join(', ');
+      ].filter(Boolean).join(', ');
 
-      const submitData = {
-        primaryProductUrl: formData.primaryProductUrl,
-        amazonProductUrl: formData.amazonProductUrl,
-        targetKeywords: targetKeywords
-      };
+      // Collect competitor URLs
+      const competitorUrls = [
+        formData.competitor1,
+        formData.competitor2,
+        formData.competitor3,
+        formData.competitor4,
+        formData.competitor5
+      ].filter(Boolean); // Remove empty strings
 
-      const response = await fetch('/api/jobs/create-v2', {
+      const response = await fetch('/api/research/lead-gen/start', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(submitData),
+        body: JSON.stringify({
+          websiteUrl: formData.websiteUrl,
+          keywords: combinedKeywords,
+          redditKeywords: formData.redditKeywords,
+          email: formData.customerEmail,
+          competitorUrls: competitorUrls
+        }),
       });
 
       const data = await response.json();
 
       if (data.success) {
-        router.push(`/dashboard/${data.jobId}`);
+        // Redirect to progress page
+        router.push(data.redirectUrl);
       } else {
-        setError(data.error || 'Failed to start analysis');
+        setError(data.error || 'Failed to start research');
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -65,8 +91,47 @@ export default function Home() {
     }
   };
 
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
   return (
     <div className="flex flex-col">
+      {/* Header */}
+      <header className="bg-black/95 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <Link href="/" className="text-xl font-bold">
+                <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                  Persona Generator
+                </span>
+              </Link>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link href="/dashboard" className="text-gray-300 hover:text-white flex items-center space-x-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span>Dashboard</span>
+              </Link>
+              <Link href="/lookup" className="text-gray-300 hover:text-white flex items-center space-x-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <span>Find Results</span>
+              </Link>
+              <Link href="/auth/login" className="text-gray-300 hover:text-white">
+                Login
+              </Link>
+              <Link href="/auth/signup" className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-4 py-2 rounded-md hover:opacity-90">
+                Sign Up
+              </Link>
+            </div>
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section */}
       <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-br from-purple-900/20 to-blue-900/20">
         <div className="container mx-auto px-4 md:px-6">
@@ -127,75 +192,225 @@ export default function Home() {
             <div className="rounded-lg border border-gray-800 bg-gray-900 p-8">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Website URL
+                  <label htmlFor="websiteUrl" className="text-white font-medium block">
+                    Website URL <span className="text-red-400">*</span>
                   </label>
                   <input
+                    id="websiteUrl"
                     type="url"
-                    required
+                    placeholder="https://your-website.com"
+                    value={formData.websiteUrl}
+                    onChange={(e) => handleInputChange('websiteUrl', e.target.value)}
                     className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
-                    value={formData.primaryProductUrl}
-                    onChange={(e) => setFormData({...formData, primaryProductUrl: e.target.value})}
-                    placeholder="https://yoursite.com"
+                    required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Amazon Product URL (Optional)
+                  <label htmlFor="amazonUrl" className="text-white font-medium block">
+                    Amazon Product URL <span className="text-gray-400">(Optional)</span>
                   </label>
                   <input
+                    id="amazonUrl"
                     type="url"
+                    placeholder="https://amazon.com/your-product"
+                    value={formData.amazonUrl}
+                    onChange={(e) => handleInputChange('amazonUrl', e.target.value)}
                     className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
-                    value={formData.amazonProductUrl}
-                    onChange={(e) => setFormData({...formData, amazonProductUrl: e.target.value})}
-                    placeholder="https://amazon.com/dp/..."
                   />
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label htmlFor="primaryKeywords" className="text-white font-medium block">
                       Primary Keywords <span className="text-red-400">*</span>
                     </label>
                     <input
+                      id="primaryKeywords"
                       type="text"
-                      required
-                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
+                      placeholder="e.g., ecommerce platform, saas software"
                       value={formData.primaryKeywords}
-                      onChange={(e) => setFormData({...formData, primaryKeywords: e.target.value})}
-                      placeholder="grounding sheets"
+                      onChange={(e) => handleInputChange('primaryKeywords', e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
+                      required
                     />
                     <p className="text-xs text-gray-500 mt-1">Main product or topic keywords</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Secondary Keywords (Optional)
+                    <label htmlFor="secondaryKeywords" className="text-white font-medium block">
+                      Secondary Keywords <span className="text-gray-400">(Optional)</span>
                     </label>
                     <input
+                      id="secondaryKeywords"
                       type="text"
-                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
+                      placeholder="e.g., online store, digital marketing"
                       value={formData.secondaryKeywords}
-                      onChange={(e) => setFormData({...formData, secondaryKeywords: e.target.value})}
-                      placeholder="earthing mats"
+                      onChange={(e) => handleInputChange('secondaryKeywords', e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
                     />
                     <p className="text-xs text-gray-500 mt-1">Related or alternative terms</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Additional Keywords (Optional)
+                    <label htmlFor="additionalKeywords" className="text-white font-medium block">
+                      Additional Keywords <span className="text-gray-400">(Optional)</span>
                     </label>
-                    <input
-                      type="text"
-                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
+                    <textarea
+                      id="additionalKeywords"
+                      placeholder="e.g., small business, entrepreneurs, startup, growth hacking"
                       value={formData.additionalKeywords}
-                      onChange={(e) => setFormData({...formData, additionalKeywords: e.target.value})}
-                      placeholder="sleep improvement"
+                      onChange={(e) => handleInputChange('additionalKeywords', e.target.value)}
+                      rows={3}
+                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
                     />
                     <p className="text-xs text-gray-500 mt-1">Broader problem or benefit keywords</p>
                   </div>
+                </div>
+
+                {/* Reddit Research Keywords */}
+                <div className="space-y-2">
+                  <label htmlFor="redditKeywords" className="text-white font-medium block">
+                    Reddit Research Topics <span className="text-gray-400">(Recommended)</span>
+                  </label>
+                  <input
+                    id="redditKeywords"
+                    type="text"
+                    placeholder="e.g., project management, remote work, productivity tools, team collaboration"
+                    value={formData.redditKeywords || ''}
+                    onChange={(e) => handleInputChange('redditKeywords', e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
+                  />
+                  <div className="bg-orange-900/20 border border-orange-500/30 rounded-md p-3">
+                    <div className="flex items-start space-x-2">
+                      <svg className="w-5 h-5 text-orange-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      <div className="text-orange-300 text-sm">
+                        <p className="font-medium mb-1">Reddit research provides authentic customer insights:</p>
+                        <ul className="space-y-1 text-orange-200">
+                          <li>• Real user pain points and frustrations</li>
+                          <li>• Honest product discussions and comparisons</li>
+                          <li>• Community behavior patterns and preferences</li>
+                          <li>• Unfiltered feedback from target demographics</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Competitor Analysis Section */}
+                <div className="border-t border-gray-700 pt-6">
+                  <div className="mb-6">
+                    <h3 className="text-white font-medium text-lg flex items-center space-x-2">
+                      <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      <span>Competitive Intelligence</span>
+                      <span className="bg-purple-500/20 text-purple-300 text-xs px-2 py-1 rounded-full">Enhanced</span>
+                    </h3>
+                    <p className="text-gray-300 text-sm mt-2">
+                      Add competitor websites to extract <strong>50+ customer reviews</strong> and competitive insights for enhanced persona accuracy
+                    </p>
+                  </div>
+                  
+                  {/* Enhanced Competitor URL Fields */}
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4, 5].map((num) => {
+                      const placeholders = [
+                        "https://competitor1.com (e.g., main competitor)",
+                        "https://competitor2.com (e.g., similar product/service)", 
+                        "https://competitor3.com (e.g., alternative solution)",
+                        "https://competitor4.com (e.g., premium option)",
+                        "https://competitor5.com (e.g., budget alternative)"
+                      ];
+                      
+                      return (
+                        <div key={num} className="space-y-2">
+                          <label htmlFor={`competitor${num}`} className="text-gray-300 font-medium block flex items-center space-x-2">
+                            <span>Competitor {num} Website</span>
+                            <span className="text-gray-500 text-sm">(Optional)</span>
+                            {formData[`competitor${num}` as keyof typeof formData] && (
+                              <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </label>
+                          <input
+                            id={`competitor${num}`}
+                            type="url"
+                            placeholder={placeholders[num - 1]}
+                            value={formData[`competitor${num}` as keyof typeof formData]}
+                            onChange={(e) => handleInputChange(`competitor${num}`, e.target.value)}
+                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400 hover:border-gray-600 transition-colors"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 border border-purple-500/30 rounded-lg p-4 mt-6">
+                    <div className="flex items-start space-x-3">
+                      <div className="bg-purple-500/20 rounded-full p-2 flex-shrink-0">
+                        <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      </div>
+                      <div className="text-purple-200 text-sm">
+                        <p className="font-semibold mb-2 text-purple-100">🚀 Enhanced Competitor Analysis Now Extracts:</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <ul className="space-y-1.5">
+                            <li className="flex items-center space-x-2">
+                              <span className="text-green-400 text-xs">✓</span>
+                              <span><strong>50+ customer reviews</strong> per competitor (vs 20 previously)</span>
+                            </li>
+                            <li className="flex items-center space-x-2">
+                              <span className="text-green-400 text-xs">✓</span>
+                              <span>Multi-page review extraction & pagination</span>
+                            </li>
+                            <li className="flex items-center space-x-2">
+                              <span className="text-green-400 text-xs">✓</span>
+                              <span>Underlying pain points & health conditions</span>
+                            </li>
+                          </ul>
+                          <ul className="space-y-1.5">
+                            <li className="flex items-center space-x-2">
+                              <span className="text-green-400 text-xs">✓</span>
+                              <span>Pricing analysis & feature comparison</span>
+                            </li>
+                            <li className="flex items-center space-x-2">
+                              <span className="text-green-400 text-xs">✓</span>
+                              <span>Customer demographics & psychographics</span>
+                            </li>
+                            <li className="flex items-center space-x-2">
+                              <span className="text-green-400 text-xs">✓</span>
+                              <span>Market gaps & differentiation opportunities</span>
+                            </li>
+                          </ul>
+                        </div>
+                        <div className="mt-3 text-xs text-purple-300 bg-purple-900/30 rounded-md p-2">
+                          <strong>💡 Pro Tip:</strong> Add your top 3-5 direct competitors for the most comprehensive analysis. 
+                          The system will extract 50+ reviews from each competitor to identify customer pain points and preferences.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Customer Email */}
+                <div className="space-y-2">
+                  <label htmlFor="customerEmail" className="text-white font-medium block">
+                    Email Address <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    id="customerEmail"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={formData.customerEmail}
+                    onChange={(e) => handleInputChange('customerEmail', e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
+                    required
+                  />
                 </div>
 
                 {error && (
@@ -223,11 +438,11 @@ export default function Home() {
                 </button>
               </form>
 
-              <div className="mt-6 p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                <p className="text-xs text-purple-300">
-                  <strong>Tip:</strong> Use different keyword fields to capture various aspects - 
-                  primary (main product), secondary (alternatives), additional (problems/benefits).
-                </p>
+              <div className="flex items-center space-x-2 text-gray-400 text-sm mt-6">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <span>Analysis includes website content, YouTube comments, Amazon reviews, Reddit research, and <strong>enhanced competitor intelligence (50+ reviews each)</strong></span>
               </div>
             </div>
           </div>
