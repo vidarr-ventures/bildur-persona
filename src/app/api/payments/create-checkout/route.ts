@@ -20,15 +20,19 @@ export async function POST(request: NextRequest) {
   try {
     console.log('Checkout request received'); // Debug log
     
-    if (!stripe) {
-      console.error('Stripe not configured');
-      return NextResponse.json({ error: 'Payment processing not configured' }, { status: 500 });
-    }
-
     const body: CheckoutRequest = await request.json();
     console.log('Checkout request body:', { ...body, formData: { ...body.formData, email: '***' } }); // Debug log (hide email)
     
     const { planId, discountCode, formData, originalPrice, finalPrice } = body;
+
+    // Check if this is a free order (100% discount) - allow these even without Stripe
+    const isFreeOrder = finalPrice === 0;
+    console.log('Is free order:', isFreeOrder, 'Final price:', finalPrice);
+    
+    if (!stripe && !isFreeOrder) {
+      console.error('Stripe not configured and not a free order');
+      return NextResponse.json({ error: 'Payment processing not configured' }, { status: 500 });
+    }
 
     // Validate plan
     if (!(planId in PRICING_PLANS)) {
@@ -121,6 +125,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Stripe checkout session for paid plans
+    if (!stripe) {
+      console.error('Stripe not configured for paid order');
+      return NextResponse.json({ error: 'Payment processing not configured' }, { status: 500 });
+    }
+    
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
