@@ -32,21 +32,16 @@
     border-color: hsl(var(--border));
   }
   body {
-    background-color: black;
-    color: white;
-    min-height: 100vh;
+    @apply bg-black text-white min-h-screen;
   }
 }
 
 .gradient-text {
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  background: linear-gradient(to right, rgb(168 85 247), rgb(96 165 250));
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400;
 }
 
 .gradient-bg {
-  background: linear-gradient(to bottom right, rgba(88 28 135, 0.2), rgba(30 58 138, 0.2));
+  @apply bg-gradient-to-br from-purple-900/20 to-blue-900/20;
 }
 
 .gradient-border {
