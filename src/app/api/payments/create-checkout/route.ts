@@ -46,6 +46,12 @@ export async function POST(request: NextRequest) {
 
     // Validate required form data
     if (!formData.websiteUrl || !formData.email || !formData.keywords) {
+      console.error('Missing required form data:', {
+        websiteUrl: !!formData.websiteUrl,
+        email: !!formData.email, 
+        keywords: !!formData.keywords,
+        formData: { ...formData, email: formData.email ? '***' : 'MISSING' }
+      });
       return NextResponse.json({ error: 'Missing required form data' }, { status: 400 });
     }
 
