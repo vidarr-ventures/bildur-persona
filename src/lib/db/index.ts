@@ -222,13 +222,15 @@ export async function createResearchRequest(data: {
   isFree: boolean;
 }): Promise<ResearchRequest> {
   try {
-    // Store keywords as text and handle competitor URLs
+    // Convert keywords to array format as expected by database schema
+    const keywordsArray = data.keywords.split(',').map(k => k.trim()).filter(k => k.length > 0);
+    
     const result = await sql`
       INSERT INTO research_requests (
         job_id, website_url, amazon_url, email, keywords, competitor_urls, plan_id, plan_name, 
         discount_code, payment_session_id, amount_paid, original_price, final_price, is_free
       ) VALUES (
-        ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.email}, ${data.keywords}, 
+        ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.email}, ${keywordsArray}, 
         ${JSON.stringify(data.competitorUrls)}, ${data.planId}, ${data.planName}, ${data.discountCode || null}, 
         ${data.paymentSessionId}, ${data.amountPaid}, ${data.originalPrice}, ${data.finalPrice}, ${data.isFree}
       )
