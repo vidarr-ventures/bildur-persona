@@ -131,11 +131,9 @@ export async function POST(request: NextRequest) {
           console.error('Fetch error stack:', fetchError instanceof Error ? fetchError.stack : 'No stack trace');
         }
 
-        // If we don't have a jobId, create one directly as a fallback
+        // If we don't have a jobId, something went wrong with lead-gen
         if (!jobId) {
-          console.warn('WARNING: No jobId returned from lead-gen, creating fallback jobId');
-          jobId = `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-          console.log('Created fallback jobId:', jobId);
+          console.warn('WARNING: No jobId returned from lead-gen endpoint');
         }
         
         // Redirect to success page with free order
@@ -147,7 +145,7 @@ export async function POST(request: NextRequest) {
           checkoutUrl: successUrl,
           freeOrder: true,
           jobId,
-          warning: !jobId ? 'Analysis may not start automatically' : undefined
+          warning: !jobId ? 'Analysis may not start automatically - lead-gen failed' : undefined
         });
       } catch (error) {
         console.error('Error processing free order:', error);
