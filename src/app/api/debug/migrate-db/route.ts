@@ -3,7 +3,7 @@ import { sql } from '@vercel/postgres';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔧 Running database migration to fix schema issues...');
+    console.log('🔧 Running comprehensive database migration to fix schema issues...');
 
     // Check what columns exist in research_requests
     const columns = await sql`
