@@ -12,53 +12,57 @@ export const stripe = process.env.STRIPE_SECRET_KEY
 export const PRICING_PLANS = {
   basic: {
     id: 'basic',
-    name: 'Basic Analysis',
-    description: 'Single customer persona analysis',
-    price: 49, // $49
+    name: 'Essential',
+    description: 'Core customer persona analysis',
+    price: 1999, // $19.99 (in cents)
     priceId: process.env.STRIPE_BASIC_PRICE_ID,
+    dataCollection: 'standard',
     features: [
       'Website content analysis',
-      'Customer review extraction (50+ reviews)',
-      'Amazon product analysis',
+      'Basic customer review extraction',
+      'Amazon product analysis', 
       'YouTube comments research',
-      'Reddit insights',
-      'Basic competitor analysis (2 competitors)',
+      'Reddit discussion insights',
+      'Standard competitor analysis (2 competitors)',
       'AI-generated persona report',
       'Email delivery'
     ]
   },
-  pro: {
-    id: 'pro',
-    name: 'Professional Analysis',
-    description: 'Comprehensive multi-competitor analysis',
-    price: 99, // $99
-    priceId: process.env.STRIPE_PRO_PRICE_ID,
+  enhanced: {
+    id: 'enhanced',
+    name: 'Professional',
+    description: 'Enhanced data collection and deeper insights',
+    price: 4999, // $49.99 (in cents)
+    priceId: process.env.STRIPE_ENHANCED_PRICE_ID,
+    dataCollection: 'enhanced',
     popular: true,
     features: [
-      'Everything in Basic',
-      'Enhanced competitor analysis (5 competitors)',
-      'Advanced Reddit research',
-      'Detailed pain point analysis',
-      'Customer journey mapping',
-      'Market positioning insights',
-      'Downloadable PDF report',
+      'Everything in Essential',
+      'Enhanced data collection (advanced web scraping)',
+      'Deep customer review analysis (100+ reviews)',
+      'Comprehensive competitor analysis (5 competitors)',
+      'Advanced Reddit thread exploration',
+      'Rich content extraction from complex sites',
+      'Enhanced pain point identification',
       'Priority processing'
     ]
   },
-  enterprise: {
-    id: 'enterprise',
-    name: 'Enterprise Analysis',
-    description: 'Multi-product analysis with custom insights',
-    price: 199, // $199
-    priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID,
+  premium: {
+    id: 'premium',
+    name: 'Enterprise',
+    description: 'Maximum insights with AI-powered deep research',
+    price: 9999, // $99.99 (in cents)
+    priceId: process.env.STRIPE_PREMIUM_PRICE_ID,
+    dataCollection: 'premium',
     features: [
       'Everything in Professional',
-      'Multiple product analysis',
-      'Custom competitor research',
-      'Advanced demographic insights',
-      'Psychographic profiling',
-      'Market opportunity analysis',
-      'White-label reporting',
+      'AI-powered deep market research',
+      'Custom industry analysis queries',
+      'Advanced psychographic profiling',
+      'Competitive positioning strategies',
+      'Market opportunity identification',
+      'Executive summary and action items',
+      'White-label reporting options',
       'Dedicated support'
     ]
   }

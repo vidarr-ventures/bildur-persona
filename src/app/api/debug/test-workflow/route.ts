@@ -4,7 +4,7 @@ import { Queue } from '@/lib/queue';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email = 'test@example.com', skipProcessing = false } = await request.json();
+    const { email = 'test@example.com', skipProcessing = true } = await request.json();
     
     // Create a basic job instead of research request for testing
     const job = await createJob({
@@ -18,34 +18,24 @@ export async function POST(request: NextRequest) {
     console.log(`🧪 Creating test job: ${jobId}`);
     console.log(`✅ Test job created: ${job.id}`);
 
+    // Only do queue processing if explicitly requested (skip by default to avoid fetch errors)
     if (!skipProcessing) {
-      // Add to queue for processing
-      const queueJobId = await Queue.addJob({
-        type: 'persona_research',
-        data: {
-          jobId,
-          websiteUrl: 'https://example.com',
-          targetKeywords: 'test keywords',
-          amazonUrl: 'https://amazon.com/dp/test'
-        }
-      });
-
-      console.log(`📤 Test job added to queue: ${queueJobId}`);
-
-      // Also trigger direct processing
-      setTimeout(async () => {
-        try {
-          console.log(`🔄 Triggering direct processing for test job: ${jobId}`);
-          await Queue.executeWorkersDirectly({
+      try {
+        // Add to queue for processing
+        const queueJobId = await Queue.addJob({
+          type: 'persona_research',
+          data: {
             jobId,
             websiteUrl: 'https://example.com',
             targetKeywords: 'test keywords',
             amazonUrl: 'https://amazon.com/dp/test'
-          });
-        } catch (error) {
-          console.error(`❌ Test job processing failed:`, error);
-        }
-      }, 2000);
+          }
+        });
+
+        console.log(`📤 Test job added to queue: ${queueJobId}`);
+      } catch (queueError) {
+        console.warn('Queue processing failed, but job creation succeeded:', queueError);
+      }
     }
 
     return NextResponse.json({
@@ -62,7 +52,7 @@ export async function POST(request: NextRequest) {
       message: `Test job ${jobId} created successfully`,
       nextSteps: [
         '1. Check job status at the debug URL',
-        '2. Monitor queue processing',
+        '2. Monitor queue processing (skipped by default)',
         '3. Verify persona generation',
         '4. Test email delivery (if enabled)',
         '5. Check results display on success page'

@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
             plan_id, plan_name, payment_session_id, amount_paid,
             original_price, final_price, is_free, status
           ) VALUES (
-            ${testJobId}, 'https://test.com', 'test keywords', 'test@test.com', '{}',
+            ${testJobId}, 'https://test.com', ARRAY['test keywords']::TEXT[], 'test@test.com', '[]'::jsonb,
             'test', 'Test Plan', 'test_session', 0,
             0, 0, true, 'queued'
           )

@@ -44,15 +44,9 @@ export async function createJob(data: {
   status: string;
 }) {
   try {
-    const userInputs = {
-      primaryProductUrl: data.website_url,
-      targetKeywords: data.target_keywords,
-      amazonProductUrl: data.amazon_url
-    };
-
     const result = await sql`
-      INSERT INTO jobs (user_inputs, status, progress)
-      VALUES (${JSON.stringify(userInputs)}, ${data.status}, 0)
+      INSERT INTO jobs (website_url, primary_keywords, status)
+      VALUES (${data.website_url}, ${data.target_keywords}, ${data.status})
       RETURNING *
     `;
     return result.rows[0];
@@ -79,9 +73,10 @@ export async function updateJobStatus(jobId: string, status: string) {
 
 export async function updateJobProgress(jobId: string, progress: number) {
   try {
+    // Progress column doesn't exist in the jobs table, so just update status
     const result = await sql`
       UPDATE jobs 
-      SET progress = ${progress}
+      SET status = 'processing'
       WHERE id = ${jobId}
       RETURNING *
     `;
@@ -104,9 +99,7 @@ export async function getJobById(id: string) {
     // Transform to match expected interface for backwards compatibility
     return {
       ...job,
-      website_url: job.user_inputs?.primaryProductUrl,
-      target_keywords: job.user_inputs?.targetKeywords,
-      amazon_url: job.user_inputs?.amazonProductUrl
+      target_keywords: job.primary_keywords
     };
   } catch (error) {
     console.error('Error getting job by ID:', error);
@@ -120,7 +113,8 @@ export async function saveJobData(jobId: string, dataType: string, data: any) {
     
     // Special handling for persona_profile - store in research_requests table
     if (dataType === 'persona_profile' && data?.persona) {
-      await sql`
+      // First try to update research_requests using job_id
+      const updateResult = await sql`
         UPDATE research_requests 
         SET persona_analysis = ${data.persona},
             data_quality = ${JSON.stringify(data.dataQuality)},
@@ -128,6 +122,26 @@ export async function saveJobData(jobId: string, dataType: string, data: any) {
             status = 'completed'
         WHERE job_id = ${jobId}
       `;
+      
+      // If no rows were updated, the research_request might use the jobs.research_request_id
+      if (updateResult.rowCount === 0) {
+        // Get the research_request_id from the jobs table
+        const jobResult = await sql`
+          SELECT research_request_id FROM jobs WHERE id = ${jobId}
+        `;
+        
+        if (jobResult.rows.length > 0 && jobResult.rows[0].research_request_id) {
+          await sql`
+            UPDATE research_requests 
+            SET persona_analysis = ${data.persona},
+                data_quality = ${JSON.stringify(data.dataQuality)},
+                persona_metadata = ${JSON.stringify(data.metadata || {})},
+                status = 'completed'
+            WHERE id = ${jobResult.rows[0].research_request_id}
+          `;
+        }
+      }
+      
       console.log(`Saved persona analysis for job ${jobId}`);
       return data;
     }
@@ -163,9 +177,7 @@ export async function completeJob(jobId: string, resultsUrl?: string) {
     const result = await sql`
       UPDATE jobs 
       SET status = 'completed', 
-          progress = 100,
-          completed_at = NOW(),
-          results_blob_url = ${resultsUrl}
+          completed_at = NOW()
       WHERE id = ${jobId}
       RETURNING *
     `;

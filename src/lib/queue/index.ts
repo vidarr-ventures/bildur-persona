@@ -192,12 +192,21 @@ export class Queue {
     // Import here to avoid circular dependencies
     const { getResearchRequest } = await import('@/lib/db');
 
-    // Get research request data for email info (may not exist for test jobs)
+    // Get research request data for email info and data collection tier (may not exist for test jobs)
     let researchRequest = null;
+    let dataCollectionTier = 'basic'; // default tier
     try {
       researchRequest = await getResearchRequest(jobData.jobId);
+      // Map plan IDs to data collection tiers
+      const tierMapping = {
+        'basic': 'standard',
+        'enhanced': 'enhanced', 
+        'premium': 'premium'
+      };
+      dataCollectionTier = tierMapping[researchRequest?.plan_id as keyof typeof tierMapping] || 'standard';
+      console.log(`🎯 Processing job with data collection tier: ${dataCollectionTier} (plan: ${researchRequest?.plan_id})`);
     } catch (error) {
-      console.log('No research request found for job:', jobData.jobId, '- continuing with test defaults');
+      console.log('No research request found for job:', jobData.jobId, '- using standard tier');
     }
 
     const workers = [
@@ -212,12 +221,13 @@ export class Queue {
       try {
         console.log('Executing worker:', worker);
         
-        // For persona generator, include email and plan info
+        // For persona generator, include email and plan info; for all workers, include data collection tier
         const workerPayload = {
           jobId: jobData.jobId,
           websiteUrl: jobData.websiteUrl,
           targetKeywords: jobData.targetKeywords,
           amazonUrl: jobData.amazonUrl,
+          dataCollectionTier,
           ...(worker.includes('persona-generator') ? {
             email: researchRequest?.email || 'test@example.com',
             planName: researchRequest?.plan_name || 'Test Analysis'
