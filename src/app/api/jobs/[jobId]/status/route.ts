@@ -15,6 +15,12 @@ export async function GET(
     // Get job and research request data
     const job = await getJobById(jobId);
     const researchRequest = await getResearchRequest(jobId);
+    
+    // Debug: Log what we found in the database
+    console.log('=== JOB STATUS DEBUG ===');
+    console.log('Job ID:', jobId);
+    console.log('Research Request Amazon URL:', researchRequest?.amazon_url);
+    console.log('Research Request Full Data:', JSON.stringify(researchRequest, null, 2));
 
     // Test all workers to see their current status
     // Use the production domain for worker calls to avoid preview URL issues

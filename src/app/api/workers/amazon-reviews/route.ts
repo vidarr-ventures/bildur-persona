@@ -286,11 +286,20 @@ export async function POST(request: NextRequest) {
   try {
     const { jobId, amazonUrl, targetKeywords } = await request.json();
 
+    // Debug: Log what we received
+    console.log('=== AMAZON WORKER DEBUG ===');
+    console.log('Job ID:', jobId);
+    console.log('Amazon URL received:', amazonUrl);
+    console.log('Amazon URL type:', typeof amazonUrl);
+    console.log('Amazon URL length:', amazonUrl?.length);
+    console.log('Target keywords:', targetKeywords);
+
     if (!jobId) {
       return NextResponse.json({ error: 'Job ID is required' }, { status: 400 });
     }
 
-    if (!amazonUrl) {
+    if (!amazonUrl || amazonUrl.trim() === '') {
+      console.log('No Amazon URL provided - skipping Amazon analysis');
       return NextResponse.json({ 
         success: true, 
         message: 'No Amazon URL provided - skipping Amazon analysis',
