@@ -210,40 +210,22 @@ export async function createResearchRequest(data: {
   isFree: boolean;
 }): Promise<ResearchRequest> {
   try {
-    // First try with all columns, fall back to minimal if payment columns don't exist
-    let result;
-    try {
-      result = await sql`
-        INSERT INTO research_requests (
-          job_id, website_url, amazon_url, keywords, email, competitor_urls,
-          plan_id, plan_name, discount_code, payment_session_id, amount_paid,
-          original_price, final_price, is_free, status
-        ) VALUES (
-          ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.keywords}, 
-          ${data.email}, ${JSON.stringify(data.competitorUrls)}, ${data.planId}, ${data.planName},
-          ${data.discountCode || null}, ${data.paymentSessionId}, ${data.amountPaid},
-          ${data.originalPrice}, ${data.finalPrice}, ${data.isFree}, 'queued'
-        )
-        RETURNING *
-      `;
-    } catch (error) {
-      console.log('Payment columns not available, using minimal insert:', error);
-      // Fallback to minimal columns that should exist
-      result = await sql`
-        INSERT INTO research_requests (
-          job_id, website_url, amazon_url, keywords, email, competitor_urls, status
-        ) VALUES (
-          ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ARRAY[${data.keywords}], 
-          ${data.email}, ${JSON.stringify(data.competitorUrls)}, 'queued'
-        )
-        RETURNING *
-      `;
-    }
+    // Split keywords into array for the database
+    const keywordsArray = data.keywords.split(',').map(k => k.trim()).filter(k => k.length > 0);
+    
+    const result = await sql`
+      INSERT INTO research_requests (
+        website_url, email, keywords
+      ) VALUES (
+        ${data.websiteUrl}, ${data.email}, ${keywordsArray}
+      )
+      RETURNING *
+    `;
     
     const row = result.rows[0];
     return {
       ...row,
-      competitor_urls: JSON.parse(row.competitor_urls || '[]')
+      competitor_urls: Array.isArray(row.competitor_urls) ? row.competitor_urls : JSON.parse(row.competitor_urls || '[]')
     } as ResearchRequest;
   } catch (error) {
     console.error('Error creating research request:', error);

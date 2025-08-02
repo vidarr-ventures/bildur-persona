@@ -1,35 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createResearchRequest, updateJobStatus } from '@/lib/db';
+import { createJob, updateJobStatus } from '@/lib/db';
 import { Queue } from '@/lib/queue';
 
 export async function POST(request: NextRequest) {
   try {
     const { email = 'test@example.com', skipProcessing = false } = await request.json();
     
-    // Create a test job
-    const jobId = `test_job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    console.log(`🧪 Creating test job: ${jobId}`);
-    
-    // Create research request
-    const researchRequest = await createResearchRequest({
-      jobId,
-      websiteUrl: 'https://example.com',
-      amazonUrl: 'https://amazon.com/dp/test',
-      keywords: 'test keywords',
-      email,
-      competitorUrls: ['https://competitor1.com', 'https://competitor2.com'],
-      planId: 'comprehensive',
-      planName: 'Comprehensive Analysis',
-      discountCode: 'TEST',
-      paymentSessionId: 'test_session_123',
-      amountPaid: 0,
-      originalPrice: 9900,
-      finalPrice: 0,
-      isFree: true
+    // Create a basic job instead of research request for testing
+    const job = await createJob({
+      website_url: 'https://example.com',
+      target_keywords: 'test keywords',
+      amazon_url: 'https://amazon.com/dp/test',
+      status: 'pending'
     });
 
-    console.log(`✅ Test research request created: ${researchRequest.id}`);
+    const jobId = job.id;
+    console.log(`🧪 Creating test job: ${jobId}`);
+    console.log(`✅ Test job created: ${job.id}`);
 
     if (!skipProcessing) {
       // Add to queue for processing
@@ -66,7 +53,7 @@ export async function POST(request: NextRequest) {
       testJob: {
         jobId,
         email,
-        researchRequestId: researchRequest.id,
+        researchRequestId: job.id,
         dashboardUrl: `/dashboard/${jobId}`,
         debugUrl: `/api/debug/job-status?jobId=${jobId}`,
         statusCheckUrl: `/api/jobs/${jobId}/persona`,

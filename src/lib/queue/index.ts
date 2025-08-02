@@ -192,8 +192,13 @@ export class Queue {
     // Import here to avoid circular dependencies
     const { getResearchRequest } = await import('@/lib/db');
 
-    // Get research request data for email info
-    const researchRequest = await getResearchRequest(jobData.jobId);
+    // Get research request data for email info (may not exist for test jobs)
+    let researchRequest = null;
+    try {
+      researchRequest = await getResearchRequest(jobData.jobId);
+    } catch (error) {
+      console.log('No research request found for job:', jobData.jobId, '- continuing with test defaults');
+    }
 
     const workers = [
       '/api/workers/website-crawler',
@@ -213,9 +218,9 @@ export class Queue {
           websiteUrl: jobData.websiteUrl,
           targetKeywords: jobData.targetKeywords,
           amazonUrl: jobData.amazonUrl,
-          ...(worker.includes('persona-generator') && researchRequest ? {
-            email: researchRequest.email,
-            planName: researchRequest.plan_name
+          ...(worker.includes('persona-generator') ? {
+            email: researchRequest?.email || 'test@example.com',
+            planName: researchRequest?.plan_name || 'Test Analysis'
           } : {})
         };
         
