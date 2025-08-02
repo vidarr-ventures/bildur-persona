@@ -60,75 +60,9 @@ export async function POST(request: NextRequest) {
     console.log(`Starting research job ${jobId} for ${email}`);
     console.log(`Plan: ${planId}, Amount: $${finalPrice/100}, Free: ${isFree}`);
 
-    // Get plan name from PRICING_PLANS
-    const plan = PRICING_PLANS[planId as keyof typeof PRICING_PLANS];
-    const planName = plan?.name || 'Unknown Plan';
-
-    // Create job record in jobs table
-    try {
-      await sql`
-        INSERT INTO jobs (id, website_url, primary_keywords, status, created_at)
-        VALUES (${jobId}, ${websiteUrl}, ${keywords}, 'queued', NOW())
-      `;
-      console.log(`Created job record for ${jobId}`);
-    } catch (jobError) {
-      console.error('Error creating job record:', jobError);
-      // Continue anyway - the research request is more important
-    }
-
-    // Ensure research_requests table exists
-    try {
-      await sql`
-        CREATE TABLE IF NOT EXISTS research_requests (
-          id SERIAL PRIMARY KEY,
-          job_id VARCHAR(255) UNIQUE NOT NULL,
-          website_url TEXT NOT NULL,
-          amazon_url TEXT,
-          keywords TEXT NOT NULL,
-          email VARCHAR(255) NOT NULL,
-          competitor_urls TEXT,
-          plan_id VARCHAR(50) NOT NULL,
-          plan_name VARCHAR(100) NOT NULL,
-          discount_code VARCHAR(50),
-          payment_session_id VARCHAR(255),
-          amount_paid INTEGER DEFAULT 0,
-          original_price INTEGER DEFAULT 0,
-          final_price INTEGER DEFAULT 0,
-          is_free BOOLEAN DEFAULT FALSE,
-          status VARCHAR(50) DEFAULT 'queued',
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-          completed_at TIMESTAMP WITH TIME ZONE,
-          persona_report_sent BOOLEAN DEFAULT FALSE
-        )
-      `;
-      console.log('✅ research_requests table ready');
-    } catch (tableError) {
-      console.warn('Table creation warning (may already exist):', tableError);
-    }
-
-    // Store the research request in database
-    const researchRequest = await createResearchRequest({
-      jobId,
-      websiteUrl,
-      amazonUrl,
-      keywords,
-      email,
-      competitorUrls,
-      planId,
-      planName,
-      discountCode,
-      paymentSessionId,
-      amountPaid,
-      originalPrice,
-      finalPrice,
-      isFree
-    });
-
-    console.log('Research request stored in database:', researchRequest.id);
-
-    // TEMPORARILY DISABLED: Queue processing for testing
-    console.log(`Skipping queue processing for job ${jobId} - using direct worker calls instead`);
-    console.log(`Job ${jobId} stored in database successfully`);
+    // TEMPORARILY SKIP ALL DATABASE OPERATIONS FOR TESTING
+    console.log('TESTING MODE: Skipping database operations to test jobId flow');
+    console.log(`Generated jobId: ${jobId}`);
 
     console.log('About to return response with jobId:', jobId);
     
