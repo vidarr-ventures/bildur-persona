@@ -331,7 +331,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`Starting Amazon reviews extraction for job ${jobId}`);
     
-    await updateJobStatus(jobId, 'processing');
+    // TEMPORARILY DISABLED: await updateJobStatus(jobId, 'processing');
     
     // Multi-page extraction
     const extractionResult = await extractMultiPageAmazonReviews(amazonUrl, targetKeywords);
@@ -360,7 +360,7 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    await saveJobData(jobId, 'amazon_reviews', amazonReviewsData);
+    // TEMPORARILY DISABLED: await saveJobData(jobId, 'amazon_reviews', amazonReviewsData);
 
     console.log(`Amazon extraction completed for job ${jobId}:`);
     console.log(`- Real reviews extracted: ${extractionResult.realReviewsCount}`);
