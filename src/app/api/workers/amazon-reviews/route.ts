@@ -284,14 +284,21 @@ export async function POST(request: NextRequest) {
   // }
 
   try {
-    const { jobId, amazonUrl, targetKeywords } = await request.json();
+    const requestBody = await request.json();
+    console.log('=== AMAZON WORKER FULL REQUEST DEBUG ===');
+    console.log('Full request body received:', JSON.stringify(requestBody, null, 2));
+    
+    const { jobId, amazonUrl, targetKeywords } = requestBody;
 
     // Debug: Log what we received
-    console.log('=== AMAZON WORKER DEBUG ===');
+    console.log('=== AMAZON WORKER EXTRACTED VALUES DEBUG ===');
     console.log('Job ID:', jobId);
     console.log('Amazon URL received:', amazonUrl);
     console.log('Amazon URL type:', typeof amazonUrl);
     console.log('Amazon URL length:', amazonUrl?.length);
+    console.log('Amazon URL is empty string:', amazonUrl === '');
+    console.log('Amazon URL is null:', amazonUrl === null);
+    console.log('Amazon URL is undefined:', amazonUrl === undefined);
     console.log('Target keywords:', targetKeywords);
 
     if (!jobId) {

@@ -21,19 +21,26 @@ async function callWorkersDirectly(jobId: string, websiteUrl: string, keywords: 
     try {
       console.log(`Calling ${worker.name} worker...`);
       
+      const requestData = {
+        jobId,
+        websiteUrl,
+        targetKeywords: keywords,
+        keywords: keywords, // YouTube worker expects 'keywords'
+        amazonUrl: amazonUrl
+      };
+      
+      console.log(`=== SENDING TO ${worker.name.toUpperCase()} WORKER ===`);
+      console.log('Request data being sent:', JSON.stringify(requestData, null, 2));
+      console.log('Amazon URL being sent:', amazonUrl);
+      console.log('Amazon URL type:', typeof amazonUrl);
+      
       const response = await fetch(`${baseUrl}${worker.endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${internalApiKey}`,
         },
-        body: JSON.stringify({
-          jobId,
-          websiteUrl,
-          targetKeywords: keywords,
-          keywords: keywords, // YouTube worker expects 'keywords'
-          amazonUrl: amazonUrl
-        }),
+        body: JSON.stringify(requestData),
       });
       
       const result = await response.json();
