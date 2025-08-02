@@ -28,7 +28,8 @@ async function searchYouTubeVideos(keywords: string): Promise<any[]> {
     console.log(`Searching YouTube for videos about: ${keywords}`);
     
     if (!process.env.YOUTUBE_API_KEY) {
-      throw new Error('Missing YouTube API key');
+      console.warn('YouTube API key not configured - skipping YouTube extraction');
+      return [];
     }
 
     const searchResponse = await fetch(
@@ -38,6 +39,10 @@ async function searchYouTubeVideos(keywords: string): Promise<any[]> {
     );
 
     if (!searchResponse.ok) {
+      if (searchResponse.status === 403) {
+        console.warn(`YouTube API quota exceeded or API key invalid (403) - skipping YouTube extraction`);
+        return [];
+      }
       throw new Error(`YouTube search failed: ${searchResponse.status}`);
     }
 
@@ -48,7 +53,9 @@ async function searchYouTubeVideos(keywords: string): Promise<any[]> {
     
   } catch (error) {
     console.error('YouTube search error:', error);
-    throw error;
+    // Return empty array instead of throwing to allow the job to continue
+    console.warn('Continuing job without YouTube data due to API error');
+    return [];
   }
 }
 
@@ -104,7 +111,20 @@ async function extractYouTubeComments(keywords: string): Promise<{ comments: You
     const videos = await searchYouTubeVideos(keywords);
     
     if (videos.length === 0) {
-      throw new Error('No YouTube videos found for keywords');
+      console.warn('No YouTube videos found or API unavailable - returning empty analysis');
+      return {
+        comments: [],
+        analysis: {
+          totalComments: 0,
+          extractionStatus: 'NO_VIDEOS_FOUND_OR_API_UNAVAILABLE',
+          painPoints: [],
+          desires: [],
+          frustrations: [],
+          solutions: [],
+          emotions: {},
+          topVideos: []
+        }
+      };
     }
     
     let allComments: YouTubeComment[] = [];
@@ -278,18 +298,23 @@ export async function POST(request: NextRequest) {
 
     await saveJobData(jobId, 'youtube_comments', youtubeData);
 
-    console.log(`YouTube extraction completed for job ${jobId}: ${comments.length} comments from ${analysis.topVideos.length} videos`);
+    if (comments.length === 0) {
+      console.log(`YouTube extraction completed for job ${jobId}: No comments extracted (API unavailable or no videos found)`);
+    } else {
+      console.log(`YouTube extraction completed for job ${jobId}: ${comments.length} comments from ${analysis.topVideos.length} videos`);
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'YouTube comments extraction completed',
+      message: comments.length === 0 ? 'YouTube comments extraction completed (no data available)' : 'YouTube comments extraction completed',
       data: {
         totalComments: comments.length,
         videosAnalyzed: analysis.topVideos.length,
         painPointsFound: analysis.painPoints.length,
         desiresFound: analysis.desires.length,
         frustrationssFound: analysis.frustrations.length,
-        extractionStatus: analysis.extractionStatus
+        extractionStatus: analysis.extractionStatus,
+        warning: comments.length === 0 ? 'YouTube API unavailable or no videos found' : undefined
       }
     });
 
