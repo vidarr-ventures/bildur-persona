@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getJobById, getResearchRequest } from '@/lib/db';
+import { getJobData } from '@/lib/job-cache';
 
 export async function GET(
   request: NextRequest,
@@ -23,11 +24,16 @@ export async function GET(
     
     const researchRequest = await getResearchRequest(jobId);
     
-    // Debug: Log what we found in the database
+    // Get data from cache as fallback/primary source
+    const cachedJobData = getJobData(jobId);
+    
+    // Debug: Log what we found in the database and cache
     console.log('=== JOB STATUS DEBUG ===');
     console.log('Job ID:', jobId);
     console.log('Research Request Amazon URL:', researchRequest?.amazon_url);
+    console.log('Cached Job Data Amazon URL:', cachedJobData?.amazonUrl);
     console.log('Research Request Full Data:', JSON.stringify(researchRequest, null, 2));
+    console.log('Cached Job Data Full Data:', JSON.stringify(cachedJobData, null, 2));
 
     // Test all workers to see their current status
     // Use the production domain for worker calls to avoid preview URL issues
@@ -57,12 +63,12 @@ export async function GET(
             },
             body: JSON.stringify({
               jobId,
-              websiteUrl: researchRequest?.website_url || 'https://example.com',
-              targetKeywords: researchRequest?.keywords || 'test',
-              keywords: researchRequest?.keywords || 'test', // YouTube worker expects 'keywords'
-              amazonUrl: researchRequest?.amazon_url,
-              email: researchRequest?.email,
-              planName: researchRequest?.plan_name
+              websiteUrl: cachedJobData?.websiteUrl || researchRequest?.website_url || 'https://example.com',
+              targetKeywords: cachedJobData?.keywords || researchRequest?.keywords || 'test',
+              keywords: cachedJobData?.keywords || researchRequest?.keywords || 'test', // YouTube worker expects 'keywords'
+              amazonUrl: cachedJobData?.amazonUrl || researchRequest?.amazon_url || '', // Prefer cache over database
+              email: cachedJobData?.email || researchRequest?.email,
+              planName: cachedJobData?.planName || researchRequest?.plan_name
             }),
             signal: AbortSignal.timeout(10000) // 10 second timeout
           });

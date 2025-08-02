@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus, saveJobData, createResearchRequest } from '@/lib/db';
 import { PRICING_PLANS } from '@/lib/stripe';
 import { sql } from '@vercel/postgres';
+import { storeJobData } from '@/lib/job-cache';
 // TEMPORARILY DISABLED: import { Queue } from '@/lib/queue';
 
 async function callWorkersDirectly(jobId: string, websiteUrl: string, keywords: string, amazonUrl?: string) {
@@ -116,12 +117,24 @@ export async function POST(request: NextRequest) {
     console.log('Amazon URL isEmpty:', !amazonUrl || amazonUrl.trim() === '');
     console.log('Full request body:', JSON.stringify(body, null, 2));
 
-    // CREATE DATABASE RECORDS FOR TESTING
-    console.log('Creating database records for testing...');
+    // STORE JOB DATA IN CACHE (bypass database issues)
+    console.log('Storing job data in cache...');
     console.log(`Generated jobId: ${jobId}`);
     
+    storeJobData({
+      jobId,
+      websiteUrl,
+      amazonUrl: amazonUrl || '',
+      keywords,
+      email,
+      competitorUrls,
+      planId,
+      planName: PRICING_PLANS[planId as keyof typeof PRICING_PLANS]?.name || planId
+    });
+    console.log('Job data stored in cache successfully');
+    
+    // Also try database (but don't fail if it doesn't work)
     try {
-      // Create research request record
       await createResearchRequest({
         jobId,
         websiteUrl,
@@ -138,10 +151,10 @@ export async function POST(request: NextRequest) {
         finalPrice,
         isFree
       });
-      console.log('Research request created successfully');
+      console.log('Database record also created successfully');
     } catch (dbError) {
-      console.error('Database error:', dbError);
-      // Continue with worker calls even if database fails
+      console.error('Database failed (using cache instead):', dbError instanceof Error ? dbError.message : 'Unknown error');
+      // Continue with cache data
     }
     
     // Call workers directly for testing
