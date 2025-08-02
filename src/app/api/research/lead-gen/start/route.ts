@@ -3,6 +3,7 @@ import { updateJobStatus, saveJobData, createResearchRequest } from '@/lib/db';
 import { PRICING_PLANS } from '@/lib/stripe';
 import { sql } from '@vercel/postgres';
 import { storeJobData } from '@/lib/job-cache';
+import { v4 as uuidv4 } from 'uuid';
 // TEMPORARILY DISABLED: import { Queue } from '@/lib/queue';
 
 async function callWorkersDirectly(jobId: string, websiteUrl: string, keywords: string, amazonUrl?: string) {
@@ -103,8 +104,8 @@ export async function POST(request: NextRequest) {
       console.log('Payment verification would happen here for paid orders');
     }
 
-    // Create a job ID
-    const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Create a proper UUID job ID
+    const jobId = uuidv4();
 
     console.log(`Starting research job ${jobId} for ${email}`);
     console.log(`Plan: ${planId}, Amount: $${finalPrice/100}, Free: ${isFree}`);

@@ -14,6 +14,7 @@
     "@radix-ui/react-progress": "^1.1.7",
     "@sparticuz/chromium": "^133.0.0",
     "@stripe/stripe-js": "^7.8.0",
+    "@types/uuid": "^10.0.0",
     "@vercel/blob": "^1.1.1",
     "@vercel/kv": "^3.0.0",
     "@vercel/postgres": "^0.10.0",
@@ -28,6 +29,7 @@
     "react-dom": "^19.0.0",
     "resend": "^4.7.0",
     "stripe": "^18.4.0",
+    "uuid": "^11.1.0",
     "zustand": "^5.0.5"
   },
   "devDependencies": {

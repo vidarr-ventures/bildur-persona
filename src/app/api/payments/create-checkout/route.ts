@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe, PRICING_PLANS, validateDiscountCode } from '@/lib/stripe';
+import { v4 as uuidv4 } from 'uuid';
 
 interface CheckoutRequest {
   planId: string;
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
       console.log('Processing free order with 100% discount');
       try {
         // Create a record in your database for the free analysis
-        const freeOrderId = `free_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const freeOrderId = `free_${uuidv4()}`;
         console.log('Generated free order ID:', freeOrderId);
         
         // Start the research process immediately for free orders

@@ -331,7 +331,11 @@ export async function POST(request: NextRequest) {
 
     console.log(`Starting Amazon reviews extraction for job ${jobId}`);
     
-    // TEMPORARILY DISABLED: await updateJobStatus(jobId, 'processing');
+    try {
+      await updateJobStatus(jobId, 'processing');
+    } catch (dbError) {
+      console.log('updateJobStatus failed (continuing anyway):', dbError);
+    }
     
     // Multi-page extraction
     const extractionResult = await extractMultiPageAmazonReviews(amazonUrl, targetKeywords);
@@ -360,7 +364,11 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    // TEMPORARILY DISABLED: await saveJobData(jobId, 'amazon_reviews', amazonReviewsData);
+    try {
+      await saveJobData(jobId, 'amazon_reviews', amazonReviewsData);
+    } catch (dbError) {
+      console.log('saveJobData failed (continuing anyway):', dbError);
+    }
 
     console.log(`Amazon extraction completed for job ${jobId}:`);
     console.log(`- Real reviews extracted: ${extractionResult.realReviewsCount}`);
