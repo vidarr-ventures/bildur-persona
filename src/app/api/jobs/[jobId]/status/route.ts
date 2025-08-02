@@ -46,6 +46,7 @@ export async function GET(
               jobId,
               websiteUrl: researchRequest?.website_url || 'https://example.com',
               targetKeywords: researchRequest?.keywords || 'test',
+              keywords: researchRequest?.keywords || 'test', // YouTube worker expects 'keywords'
               amazonUrl: researchRequest?.amazon_url,
               email: researchRequest?.email,
               planName: researchRequest?.plan_name
