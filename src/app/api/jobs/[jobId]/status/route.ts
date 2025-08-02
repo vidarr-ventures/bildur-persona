@@ -21,6 +21,10 @@ export async function GET(
       ? `https://${process.env.VERCEL_URL}` 
       : process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
+    // Debug: Check if API key is available
+    const hasApiKey = !!process.env.INTERNAL_API_KEY;
+    const apiKeyLength = process.env.INTERNAL_API_KEY?.length || 0;
+
     const workers = [
       { name: 'website-crawler', endpoint: '/api/workers/website-crawler' },
       { name: 'amazon-reviews', endpoint: '/api/workers/amazon-reviews' },
@@ -106,6 +110,11 @@ export async function GET(
         successful: workerStatuses.filter(w => w.status === 'success').length,
         failed: workerStatuses.filter(w => w.status === 'failed').length,
         errors: workerStatuses.filter(w => w.status === 'error').length
+      },
+      debug: {
+        baseUrl,
+        hasApiKey,
+        apiKeyLength
       }
     });
 
