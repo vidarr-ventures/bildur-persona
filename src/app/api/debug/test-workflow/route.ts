@@ -1,78 +1,110 @@
-// Add this temporary debug endpoint to test the workflow
-// Create: src/app/api/debug/test-workflow/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
+import { createResearchRequest, updateJobStatus } from '@/lib/db';
+import { Queue } from '@/lib/queue';
 
 export async function POST(request: NextRequest) {
   try {
-    const { jobId } = await request.json();
+    const { email = 'test@example.com', skipProcessing = false } = await request.json();
     
-    if (!jobId) {
-      return NextResponse.json({ error: 'Job ID required' }, { status: 400 });
-    }
+    // Create a test job
+    const jobId = `test_job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    console.log(`🧪 Creating test job: ${jobId}`);
+    
+    // Create research request
+    const researchRequest = await createResearchRequest({
+      jobId,
+      websiteUrl: 'https://example.com',
+      amazonUrl: 'https://amazon.com/dp/test',
+      keywords: 'test keywords',
+      email,
+      competitorUrls: ['https://competitor1.com', 'https://competitor2.com'],
+      planId: 'comprehensive',
+      planName: 'Comprehensive Analysis',
+      discountCode: 'TEST',
+      paymentSessionId: 'test_session_123',
+      amountPaid: 0,
+      originalPrice: 9900,
+      finalPrice: 0,
+      isFree: true
+    });
 
-    console.log(`=== DEBUG: Testing workflow for job ${jobId} ===`);
-    
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-    
-    // Test website crawler
-    console.log('Testing website crawler...');
-    try {
-      const websiteResponse = await fetch(`${baseUrl}/api/workers/website-crawler`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+    console.log(`✅ Test research request created: ${researchRequest.id}`);
+
+    if (!skipProcessing) {
+      // Add to queue for processing
+      const queueJobId = await Queue.addJob({
+        type: 'persona_research',
+        data: {
           jobId,
-          websiteUrl: 'https://groundluxe.com',
-          targetKeywords: 'grounding sheets'
-        })
+          websiteUrl: 'https://example.com',
+          targetKeywords: 'test keywords',
+          amazonUrl: 'https://amazon.com/dp/test'
+        }
       });
-      
-      console.log(`Website crawler status: ${websiteResponse.status}`);
-      const websiteData = await websiteResponse.text();
-      console.log(`Website crawler response: ${websiteData.substring(0, 200)}...`);
-      
-    } catch (error) {
-      console.error('Website crawler failed:', error);
-    }
 
-    // Test Amazon reviews worker
-    console.log('Testing Amazon reviews worker...');
-    try {
-      const amazonResponse = await fetch(`${baseUrl}/api/workers/amazon-reviews`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId,
-          amazonUrl: 'https://www.amazon.com/GroundLuxe-Organic-Fitted-Earthing-Grounding/dp/B07RLNS58H',
-          targetKeywords: 'grounding sheets'
-        })
-      });
-      
-      console.log(`Amazon worker status: ${amazonResponse.status}`);
-      const amazonData = await amazonResponse.text();
-      console.log(`Amazon worker response: ${amazonData.substring(0, 200)}...`);
-      
-    } catch (error) {
-      console.error('Amazon worker failed:', error);
-    }
+      console.log(`📤 Test job added to queue: ${queueJobId}`);
 
-    // Check environment variables
-    console.log('Environment check:');
-    console.log(`SCRAPEOWL_API_KEY present: ${!!process.env.SCRAPEOWL_API_KEY}`);
-    console.log(`NEXT_PUBLIC_APP_URL: ${process.env.NEXT_PUBLIC_APP_URL}`);
+      // Also trigger direct processing
+      setTimeout(async () => {
+        try {
+          console.log(`🔄 Triggering direct processing for test job: ${jobId}`);
+          await Queue.executeWorkersDirectly({
+            jobId,
+            websiteUrl: 'https://example.com',
+            targetKeywords: 'test keywords',
+            amazonUrl: 'https://amazon.com/dp/test'
+          });
+        } catch (error) {
+          console.error(`❌ Test job processing failed:`, error);
+        }
+      }, 2000);
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Debug test completed - check server logs',
-      jobId
+      testJob: {
+        jobId,
+        email,
+        researchRequestId: researchRequest.id,
+        dashboardUrl: `/dashboard/${jobId}`,
+        debugUrl: `/api/debug/job-status?jobId=${jobId}`,
+        statusCheckUrl: `/api/jobs/${jobId}/persona`,
+        queueProcessing: !skipProcessing
+      },
+      message: `Test job ${jobId} created successfully`,
+      nextSteps: [
+        '1. Check job status at the debug URL',
+        '2. Monitor queue processing',
+        '3. Verify persona generation',
+        '4. Test email delivery (if enabled)',
+        '5. Check results display on success page'
+      ]
     });
 
   } catch (error) {
-    console.error('Debug test error:', error);
-    return NextResponse.json(
-      { error: 'Debug test failed', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+    console.error('Test workflow error:', error);
+    return NextResponse.json({
+      error: 'Failed to create test workflow',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
+}
+
+export async function GET() {
+  return NextResponse.json({
+    message: 'Test Workflow Endpoint',
+    usage: {
+      method: 'POST',
+      body: {
+        email: 'test@example.com (optional)',
+        skipProcessing: 'false (optional - set to true to only create job without processing)'
+      }
+    },
+    endpoints: {
+      systemStatus: '/api/debug/system-status',
+      jobStatus: '/api/debug/job-status?jobId=JOB_ID',
+      queueStatus: '/api/queue/status'
+    }
+  });
 }

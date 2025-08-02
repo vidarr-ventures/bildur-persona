@@ -4,15 +4,15 @@ import { updateJobStatus, getJobById, getResearchRequest } from '@/lib/db';
 
 // Worker execution function
 async function executeWorkers(jobId: string, websiteUrl: string, targetKeywords: string, amazonUrl?: string) {
-  const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL 
+  const baseUrl = process.env.VERCEL_URL 
     ? `https://${process.env.VERCEL_URL}` 
-    : 'http://localhost:3000';
+    : process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
   const workers = [
     { name: 'website-crawler', endpoint: '/api/workers/website-crawler' },
-    { name: 'reviews-collector', endpoint: '/api/workers/reviews-collector' },
-    { name: 'amazon-competitors', endpoint: '/api/workers/amazon-competitors' },
-    { name: 'google-competitors', endpoint: '/api/workers/google-competitors' },
+    { name: 'amazon-reviews', endpoint: '/api/workers/amazon-reviews' },
+    { name: 'reddit-scraper', endpoint: '/api/workers/reddit-scraper' },
+    { name: 'youtube-comments', endpoint: '/api/workers/youtube-comments' },
   ];
 
   // Execute data collection workers in parallel
