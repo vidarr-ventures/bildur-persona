@@ -219,7 +219,7 @@ export async function createResearchRequest(data: {
           plan_id, plan_name, discount_code, payment_session_id, amount_paid,
           original_price, final_price, is_free, status
         ) VALUES (
-          ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${[data.keywords]}, 
+          ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ARRAY[${data.keywords}], 
           ${data.email}, ${JSON.stringify(data.competitorUrls)}, ${data.planId}, ${data.planName},
           ${data.discountCode || null}, ${data.paymentSessionId}, ${data.amountPaid},
           ${data.originalPrice}, ${data.finalPrice}, ${data.isFree}, 'queued'
@@ -233,7 +233,7 @@ export async function createResearchRequest(data: {
         INSERT INTO research_requests (
           job_id, website_url, amazon_url, keywords, email, competitor_urls, status
         ) VALUES (
-          ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${[data.keywords]}, 
+          ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ARRAY[${data.keywords}], 
           ${data.email}, ${JSON.stringify(data.competitorUrls)}, 'queued'
         )
         RETURNING *
