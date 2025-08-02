@@ -306,11 +306,26 @@ export async function POST(request: NextRequest) {
     }
 
     if (!amazonUrl || amazonUrl.trim() === '') {
-      console.log('No Amazon URL provided - skipping Amazon analysis');
+      console.log('=== AMAZON WORKER: NO URL PROVIDED ===');
+      console.log('Amazon URL is null/undefined:', amazonUrl === null || amazonUrl === undefined);
+      console.log('Amazon URL is empty string:', amazonUrl === '');
+      console.log('Amazon URL after trim is empty:', amazonUrl?.trim() === '');
+      console.log('Full request body was:', JSON.stringify(requestBody, null, 2));
+      console.log('=== END AMAZON WORKER DEBUG ===');
+      
       return NextResponse.json({ 
         success: true, 
         message: 'No Amazon URL provided - skipping Amazon analysis',
-        data: { reviewCount: 0, method: 'skipped' }
+        data: { 
+          reviewCount: 0, 
+          method: 'skipped',
+          debugInfo: {
+            receivedAmazonUrl: amazonUrl,
+            amazonUrlType: typeof amazonUrl,
+            amazonUrlLength: amazonUrl?.length,
+            requestBodyKeys: Object.keys(requestBody)
+          }
+        }
       });
     }
 
