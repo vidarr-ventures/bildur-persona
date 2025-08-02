@@ -90,36 +90,44 @@ export async function POST(request: NextRequest) {
         // Start the research process
         const internalApiKey = process.env.INTERNAL_API_KEY;
         console.log('Internal API key available:', !!internalApiKey);
-        
-        const response = await fetch(`${baseUrl}/api/research/lead-gen/start`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${internalApiKey}`, // Internal API key for free orders
-          },
-          body: JSON.stringify(researchData),
-        });
-
-        console.log('Research API response status:', response.status);
+        console.log('About to call lead-gen endpoint:', `${baseUrl}/api/research/lead-gen/start`);
+        console.log('Research data being sent:', JSON.stringify(researchData, null, 2));
         
         let jobId = null;
-        if (response.ok) {
-          const responseText = await response.text();
-          console.log('Raw response from lead-gen:', responseText);
+        try {
+          const response = await fetch(`${baseUrl}/api/research/lead-gen/start`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${internalApiKey}`, // Internal API key for free orders
+            },
+            body: JSON.stringify(researchData),
+          });
+
+          console.log('Research API response status:', response.status);
+          console.log('Research API response headers:', Object.fromEntries(response.headers.entries()));
           
-          try {
-            const result = JSON.parse(responseText);
-            console.log('Parsed response:', result);
-            jobId = result.jobId;
-            console.log('Extracted jobId:', jobId);
-            console.log('Free research started successfully:', jobId);
-          } catch (parseError) {
-            console.error('Failed to parse response:', parseError);
-            console.error('Response text was:', responseText);
+          if (response.ok) {
+            const responseText = await response.text();
+            console.log('Raw response from lead-gen:', responseText);
+            
+            try {
+              const result = JSON.parse(responseText);
+              console.log('Parsed response:', result);
+              jobId = result.jobId;
+              console.log('Extracted jobId:', jobId);
+              console.log('Free research started successfully:', jobId);
+            } catch (parseError) {
+              console.error('Failed to parse response:', parseError);
+              console.error('Response text was:', responseText);
+            }
+          } else {
+            const errorText = await response.text();
+            console.error('Failed to start free research:', response.status, response.statusText, errorText);
           }
-        } else {
-          const errorText = await response.text();
-          console.error('Failed to start free research:', response.status, errorText);
+        } catch (fetchError) {
+          console.error('Fetch error calling lead-gen endpoint:', fetchError);
+          console.error('Fetch error stack:', fetchError instanceof Error ? fetchError.stack : 'No stack trace');
         }
 
         // Redirect to success page with free order
