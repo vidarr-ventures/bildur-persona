@@ -127,10 +127,7 @@ async function generateEnhancedPersona(data: any) {
   const amazonInsights = extractAmazonInsights(data.amazonReviews);
   const competitorInsights = extractCompetitorInsights(data.competitorsData);
 
-  const prompt = `Ultimate Psychological ICP Development Prompt
-
-Overview
-Create a comprehensive, psychologically nuanced Ideal Customer Profile (ICP) based on the collected research data from Amazon competitor analysis, review collection, and market research. This ICP should go beyond traditional demographic data to deliver deep psychological insights about your target customer's mindstates, motivations, decision-making processes, life event triggers, and generational characteristics.
+  const prompt = `Create a comprehensive customer persona analysis based on the collected research data. Focus on psychological insights, behaviors, and actionable business recommendations.
 
 Target Keywords: ${data.targetKeywords}
 Website URL: ${data.websiteUrl}
@@ -491,7 +488,14 @@ Using all the review data ONLY from the collected data, and considering the buyi
 
 IMPORTANT: Ground every insight in the actual customer data provided. Use specific quotes, emotions, and behaviors from the real reviews and discussions above. Focus on actionable insights that directly inform product, marketing, and business strategy decisions.
 
-Generate a comprehensive 3,000-4,000 word psychological ICP analysis:`;
+Generate a comprehensive 1,500-2,000 word customer persona analysis focusing on:
+1. Demographics and psychographics
+2. Core motivations and pain points
+3. Decision-making process
+4. Marketing strategy recommendations
+5. Key insights from the collected data
+
+Provide actionable insights based on the data above.`;
 
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -513,7 +517,7 @@ Generate a comprehensive 3,000-4,000 word psychological ICP analysis:`;
           }
         ],
         temperature: 0.1,
-        max_tokens: 8000,
+        max_tokens: 4000,
       }),
     });
 
