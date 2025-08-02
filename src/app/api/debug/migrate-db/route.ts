@@ -22,6 +22,42 @@ export async function POST(request: NextRequest) {
         sql: `ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS amazon_url TEXT`
       },
       {
+        name: 'plan_id',
+        sql: `ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS plan_id VARCHAR(255)`
+      },
+      {
+        name: 'plan_name',
+        sql: `ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS plan_name VARCHAR(255)`
+      },
+      {
+        name: 'discount_code',
+        sql: `ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS discount_code VARCHAR(255)`
+      },
+      {
+        name: 'payment_session_id',
+        sql: `ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS payment_session_id VARCHAR(255)`
+      },
+      {
+        name: 'amount_paid',
+        sql: `ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS amount_paid INTEGER DEFAULT 0`
+      },
+      {
+        name: 'original_price',
+        sql: `ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS original_price INTEGER DEFAULT 0`
+      },
+      {
+        name: 'final_price',
+        sql: `ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS final_price INTEGER DEFAULT 0`
+      },
+      {
+        name: 'is_free',
+        sql: `ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS is_free BOOLEAN DEFAULT false`
+      },
+      {
+        name: 'persona_report_sent',
+        sql: `ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS persona_report_sent BOOLEAN DEFAULT false`
+      },
+      {
         name: 'persona_analysis',
         sql: `ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS persona_analysis TEXT`
       },
@@ -116,9 +152,13 @@ export async function GET() {
       analysis: {
         hasJobId: columns.rows.some(col => col.column_name === 'job_id'),
         hasAmazonUrl: columns.rows.some(col => col.column_name === 'amazon_url'),
+        hasPlanId: columns.rows.some(col => col.column_name === 'plan_id'),
+        hasPlanName: columns.rows.some(col => col.column_name === 'plan_name'),
+        hasPaymentColumns: columns.rows.some(col => col.column_name === 'amount_paid'),
         hasPersonaAnalysis: columns.rows.some(col => col.column_name === 'persona_analysis'),
         hasDataQuality: columns.rows.some(col => col.column_name === 'data_quality'),
         hasPersonaMetadata: columns.rows.some(col => col.column_name === 'persona_metadata'),
+        hasPersonaReportSent: columns.rows.some(col => col.column_name === 'persona_report_sent'),
         totalColumns: columns.rows.length
       }
     });
