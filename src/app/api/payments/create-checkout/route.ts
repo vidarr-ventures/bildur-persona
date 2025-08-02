@@ -101,9 +101,19 @@ export async function POST(request: NextRequest) {
         
         let jobId = null;
         if (response.ok) {
-          const result = await response.json();
-          jobId = result.jobId;
-          console.log('Free research started successfully:', jobId);
+          const responseText = await response.text();
+          console.log('Raw response from lead-gen:', responseText);
+          
+          try {
+            const result = JSON.parse(responseText);
+            console.log('Parsed response:', result);
+            jobId = result.jobId;
+            console.log('Extracted jobId:', jobId);
+            console.log('Free research started successfully:', jobId);
+          } catch (parseError) {
+            console.error('Failed to parse response:', parseError);
+            console.error('Response text was:', responseText);
+          }
         } else {
           const errorText = await response.text();
           console.error('Failed to start free research:', response.status, errorText);

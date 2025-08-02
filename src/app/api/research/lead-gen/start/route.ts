@@ -169,7 +169,9 @@ export async function POST(request: NextRequest) {
       }, 1000);
     }
 
-    return NextResponse.json({
+    console.log('About to return response with jobId:', jobId);
+    
+    const responseData = {
       success: true,
       jobId,
       message: 'Research job started successfully',
@@ -181,7 +183,11 @@ export async function POST(request: NextRequest) {
         isFree,
         estimatedCompletion: '5-8 minutes'
       }
-    });
+    };
+    
+    console.log('Full response data:', JSON.stringify(responseData));
+    
+    return NextResponse.json(responseData);
 
   } catch (error) {
     console.error('Research start error:', error);
