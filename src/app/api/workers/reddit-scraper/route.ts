@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/db';
 import { saveJobData } from '@/lib/db';
+import { validateInternalApiKey, createAuthErrorResponse } from '@/lib/auth';
 
 interface RedditPost {
   title: string;
@@ -117,6 +118,11 @@ function extractCommonThemes(posts: RedditPost[]): string[] {
 }
 
 export async function POST(request: NextRequest) {
+  // Validate internal API key
+  if (!validateInternalApiKey(request)) {
+    return createAuthErrorResponse();
+  }
+
   try {
     const { jobId, targetKeywords } = await request.json();
 

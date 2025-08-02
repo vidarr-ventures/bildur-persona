@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/db';
 import { getJobData, saveJobData, markPersonaReportSent } from '@/lib/db';
 import { sendPersonaReport } from '@/lib/email';
+import { validateInternalApiKey, createAuthErrorResponse } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
+  // Validate internal API key
+  if (!validateInternalApiKey(request)) {
+    return createAuthErrorResponse();
+  }
+
   try {
     const { 
       jobId, 

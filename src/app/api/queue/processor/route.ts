@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Queue } from '@/lib/queue';
 import { updateJobStatus, getJobById, getResearchRequest } from '@/lib/db';
+import { validateInternalApiKey, createAuthErrorResponse } from '@/lib/auth';
 
 // Worker execution function
 async function executeWorkers(jobId: string, websiteUrl: string, targetKeywords: string, amazonUrl?: string) {
@@ -24,6 +25,7 @@ async function executeWorkers(jobId: string, websiteUrl: string, targetKeywords:
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`,
         },
         body: JSON.stringify({
           jobId,
@@ -67,6 +69,7 @@ async function executeWorkers(jobId: string, websiteUrl: string, targetKeywords:
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`,
       },
       body: JSON.stringify({
         jobId,
@@ -97,6 +100,11 @@ async function executeWorkers(jobId: string, websiteUrl: string, targetKeywords:
 }
 
 export async function POST(request: NextRequest) {
+  // Validate internal API key
+  if (!validateInternalApiKey(request)) {
+    return createAuthErrorResponse();
+  }
+
   try {
     const body = await request.json();
     

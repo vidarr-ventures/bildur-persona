@@ -129,6 +129,7 @@ export class Queue {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`,
         },
         body: JSON.stringify({ trigger: true }),
       });
@@ -223,7 +224,10 @@ export class Queue {
         
         const response = await fetch(`${baseUrl}${worker}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`,
+          },
           body: JSON.stringify(workerPayload),
         });
 

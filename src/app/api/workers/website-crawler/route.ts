@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus, saveJobData } from '@/lib/db';
+import { validateInternalApiKey, createAuthErrorResponse } from '@/lib/auth';
 
 interface WebsiteData {
   homePageContent: string;
@@ -163,6 +164,11 @@ function extractBrandMessage(html: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  // Validate internal API key
+  if (!validateInternalApiKey(request)) {
+    return createAuthErrorResponse();
+  }
+
   try {
     const { jobId, websiteUrl, targetKeywords } = await request.json();
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus, saveJobData } from '@/lib/db';
+import { validateInternalApiKey, createAuthErrorResponse } from '@/lib/auth';
 
 interface YouTubeComment {
   text: string;
@@ -246,6 +247,11 @@ function analyzeEmotions(text: string): Record<string, number> {
 }
 
 export async function POST(request: NextRequest) {
+  // Validate internal API key
+  if (!validateInternalApiKey(request)) {
+    return createAuthErrorResponse();
+  }
+
   try {
     const { jobId, keywords } = await request.json();
 
