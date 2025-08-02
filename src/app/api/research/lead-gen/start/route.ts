@@ -192,8 +192,10 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Research start error:', error);
+    console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json(
-      { error: 'Failed to start research job' },
+      { error: 'Failed to start research job', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
