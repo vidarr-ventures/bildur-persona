@@ -219,8 +219,8 @@ export async function createResearchRequest(data: {
           plan_id, plan_name, discount_code, payment_session_id, amount_paid,
           original_price, final_price, is_free, status
         ) VALUES (
-          ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ARRAY[${data.keywords}], 
-          ${data.email}, ${JSON.stringify(data.competitorUrls)}, ${data.planId}, ${data.planName},
+          ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.keywords}, 
+          ${data.email}, ${data.competitorUrls}, ${data.planId}, ${data.planName},
           ${data.discountCode || null}, ${data.paymentSessionId}, ${data.amountPaid},
           ${data.originalPrice}, ${data.finalPrice}, ${data.isFree}, 'queued'
         )
