@@ -493,7 +493,7 @@ export default function HomePage() {
                     </>
                   ) : (
                     <>
-                      <span>Continue to Pricing</span>
+                      <span>Continue</span>
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}

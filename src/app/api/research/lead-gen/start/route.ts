@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
         email,
         planId,
         isFree,
-        estimatedCompletion: '10-15 minutes'
+        estimatedCompletion: '5-8 minutes'
       }
     });
 

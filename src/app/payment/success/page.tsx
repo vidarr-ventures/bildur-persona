@@ -187,7 +187,7 @@ function PaymentSuccessContent() {
             </div>
             <div className="text-sm text-gray-300">
               <p><span className="text-gray-400">Status:</span> In Progress</p>
-              <p><span className="text-gray-400">ETA:</span> 10-15 minutes</p>
+              <p><span className="text-gray-400">ETA:</span> 5-8 minutes</p>
             </div>
           </div>
 
@@ -271,7 +271,7 @@ function PaymentSuccessContent() {
                 <span className="text-purple-400 font-bold text-sm">1</span>
               </div>
               <div>
-                <h3 className="font-semibold text-white mb-2">Data Collection (5-10 minutes)</h3>
+                <h3 className="font-semibold text-white mb-2">Data Collection (3-5 minutes)</h3>
                 <p className="text-gray-300 text-sm">
                   Our AI system is analyzing your website, extracting customer reviews, researching Reddit discussions, 
                   and gathering competitive intelligence from your specified competitors.
@@ -300,7 +300,7 @@ function PaymentSuccessContent() {
                 <h3 className="font-semibold text-white mb-2">Report Generation & Delivery</h3>
                 <p className="text-gray-300 text-sm">
                   Your comprehensive customer persona report will be generated and automatically 
-                  sent to your email address. Check your inbox in 10-15 minutes!
+                  sent to your email address. Check your inbox in 5-8 minutes!
                 </p>
               </div>
             </div>
