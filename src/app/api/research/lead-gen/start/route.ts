@@ -27,7 +27,7 @@ async function callWorkersDirectly(jobId: string, websiteUrl: string, keywords: 
         websiteUrl,
         targetKeywords: keywords,
         keywords: keywords, // YouTube worker expects 'keywords'
-        amazonUrl: amazonUrl
+        amazonUrl: amazonUrl || '' // Ensure amazonUrl is at root level
       };
       
       console.log(`=== SENDING TO ${worker.name.toUpperCase()} WORKER ===`);
