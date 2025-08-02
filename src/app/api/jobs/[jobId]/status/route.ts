@@ -17,9 +17,8 @@ export async function GET(
     const researchRequest = await getResearchRequest(jobId);
 
     // Test all workers to see their current status
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    // Use the production domain for worker calls to avoid preview URL issues
+    const baseUrl = 'https://persona.bildur.ai';
 
     // Debug: Check if API key is available
     const hasApiKey = !!process.env.INTERNAL_API_KEY;
