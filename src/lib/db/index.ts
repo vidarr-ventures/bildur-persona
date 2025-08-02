@@ -212,11 +212,11 @@ export async function createResearchRequest(data: {
   try {
     const result = await sql`
       INSERT INTO research_requests (
-        job_id, website_url, amazon_url, keywords, email, competitor_urls,
+        job_id, website_url, keywords, email, competitor_urls,
         plan_id, plan_name, discount_code, payment_session_id, amount_paid,
         original_price, final_price, is_free, status
       ) VALUES (
-        ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.keywords}, 
+        ${data.jobId}, ${data.websiteUrl}, ${data.keywords}, 
         ${data.email}, ${JSON.stringify(data.competitorUrls)}, ${data.planId}, ${data.planName},
         ${data.discountCode || null}, ${data.paymentSessionId}, ${data.amountPaid},
         ${data.originalPrice}, ${data.finalPrice}, ${data.isFree}, 'queued'
