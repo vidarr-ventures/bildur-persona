@@ -117,18 +117,19 @@ export async function POST(request: NextRequest) {
 
     // Manual processing request
     if (body.jobId) {
-      const job = await getJobById(body.jobId);
-      if (!job) {
-        return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+      // Get research request data which has the correct fields
+      const researchRequest = await getResearchRequest(body.jobId);
+      if (!researchRequest) {
+        return NextResponse.json({ error: 'Research request not found' }, { status: 404 });
       }
 
       await updateJobStatus(body.jobId, 'processing');
       
       const result = await executeWorkers(
         body.jobId,
-        job.website_url,
-        job.target_keywords,
-        job.amazon_url
+        researchRequest.website_url,
+        researchRequest.keywords,
+        researchRequest.amazon_url
       );
 
       await updateJobStatus(body.jobId, 'completed');
