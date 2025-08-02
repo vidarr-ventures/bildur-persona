@@ -65,9 +65,16 @@ export async function POST(request: NextRequest) {
         };
 
         const startTime = Date.now();
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        
+        // Add internal API key if available
+        if (process.env.INTERNAL_API_KEY) {
+          headers['Authorization'] = `Bearer ${process.env.INTERNAL_API_KEY}`;
+        }
+        
         const response = await fetch(`${baseUrl}${worker.endpoint}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(payload),
           signal: AbortSignal.timeout(30000) // 30 second timeout
         });
@@ -105,9 +112,16 @@ export async function POST(request: NextRequest) {
     try {
       console.log('🔧 Testing queue processor...');
       const startTime = Date.now();
+      const queueHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      
+      // Add internal API key if available
+      if (process.env.INTERNAL_API_KEY) {
+        queueHeaders['Authorization'] = `Bearer ${process.env.INTERNAL_API_KEY}`;
+      }
+      
       const queueResponse = await fetch(`${baseUrl}/api/queue/processor`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: queueHeaders,
         body: JSON.stringify({ trigger: true }),
         signal: AbortSignal.timeout(15000)
       });
@@ -141,6 +155,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       jobId,
       baseUrl,
+      authStatus: {
+        hasInternalApiKey: !!process.env.INTERNAL_API_KEY,
+        apiKeyLength: process.env.INTERNAL_API_KEY?.length || 0
+      },
       summary: {
         total: totalWorkers,
         working: workingWorkers,
