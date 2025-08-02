@@ -9,7 +9,9 @@ import { validateAndCorrectUrl, validateAmazonUrl } from '@/lib/url-utils';
 interface FormData {
   websiteUrl: string;
   amazonUrl: string;
-  keywords: string;
+  primaryKeyword: string;
+  secondaryKeyword: string;
+  additionalKeyword: string;
   customerEmail: string;
   competitor1: string;
   competitor2: string;
@@ -33,7 +35,9 @@ export default function HomePage() {
   const [formData, setFormData] = useState<FormData>({
     websiteUrl: '',
     amazonUrl: '',
-    keywords: '',
+    primaryKeyword: '',
+    secondaryKeyword: '',
+    additionalKeyword: '',
     customerEmail: '',
     competitor1: '',
     competitor2: '',
@@ -68,11 +72,24 @@ export default function HomePage() {
         formData.competitor5
       ].filter(Boolean); // Remove empty strings
 
+      // Validate that at least primary keyword is provided
+      if (!formData.primaryKeyword.trim()) {
+        setError('Primary keyword is required');
+        return;
+      }
+
+      // Combine keywords into a single string (comma-separated for backend compatibility)
+      const keywords = [
+        formData.primaryKeyword,
+        formData.secondaryKeyword,
+        formData.additionalKeyword
+      ].filter(Boolean).join(', ');
+
       // Redirect to pricing page with form data as URL parameters
       const searchParams = new URLSearchParams({
         websiteUrl: formData.websiteUrl,
         amazonUrl: formData.amazonUrl || '',
-        keywords: formData.keywords,
+        keywords: keywords,
         email: formData.customerEmail,
         competitorUrls: competitorUrls.join(',')
       });
@@ -317,19 +334,61 @@ export default function HomePage() {
                   )}
                 </div>
 
-                <div>
-                  <label htmlFor="keywords" className="text-white font-medium block">
-                    Keywords <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    id="keywords"
-                    type="text"
-                    placeholder="Enter up to 5 keywords separated by commas (e.g., ecommerce platform, saas software, online store)"
-                    value={formData.keywords}
-                    onChange={(e) => handleInputChange('keywords', e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
-                    required
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-white font-medium text-lg flex items-center space-x-2 mb-4">
+                      <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                      </svg>
+                      <span>Target Keywords</span>
+                    </h3>
+                    <p className="text-gray-300 text-sm mb-4">
+                      Enter up to 3 keywords that best describe your product, service, or target market
+                    </p>
+                  </div>
+
+                  <div>
+                    <label htmlFor="primaryKeyword" className="text-white font-medium block mb-2">
+                      Primary Keyword <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      id="primaryKeyword"
+                      type="text"
+                      placeholder="e.g., ecommerce platform"
+                      value={formData.primaryKeyword}
+                      onChange={(e) => handleInputChange('primaryKeyword', e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="secondaryKeyword" className="text-white font-medium block mb-2">
+                      Secondary Keyword <span className="text-gray-400">(Optional)</span>
+                    </label>
+                    <input
+                      id="secondaryKeyword"
+                      type="text"
+                      placeholder="e.g., online store builder"
+                      value={formData.secondaryKeyword}
+                      onChange={(e) => handleInputChange('secondaryKeyword', e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="additionalKeyword" className="text-white font-medium block mb-2">
+                      Additional Keyword <span className="text-gray-400">(Optional)</span>
+                    </label>
+                    <input
+                      id="additionalKeyword"
+                      type="text"
+                      placeholder="e.g., saas software"
+                      value={formData.additionalKeyword}
+                      onChange={(e) => handleInputChange('additionalKeyword', e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
+                    />
+                  </div>
                 </div>
 
 
@@ -504,7 +563,7 @@ export default function HomePage() {
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
-                <span>Analysis includes website content, YouTube comments, Amazon reviews, Reddit research, and <strong>enhanced competitor intelligence (50+ reviews each)</strong></span>
+                <span>Analysis uses your keywords to extract relevant data from website content, YouTube comments, Amazon reviews, Reddit research, and <strong>enhanced competitor intelligence (50+ reviews each)</strong></span>
               </div>
             </div>
           </div>
