@@ -20,6 +20,29 @@ interface PersonaReport {
   dataQuality?: any;
 }
 
+interface WorkerStatus {
+  worker: string;
+  status: 'success' | 'failed' | 'error' | 'running';
+  httpStatus: number;
+  responseTime: number;
+  message: string;
+  details?: any;
+}
+
+interface JobStatusResponse {
+  success: boolean;
+  jobId: string;
+  job?: any;
+  researchRequest?: any;
+  workers: WorkerStatus[];
+  summary: {
+    total: number;
+    successful: number;
+    failed: number;
+    errors: number;
+  };
+}
+
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
@@ -29,6 +52,8 @@ function PaymentSuccessContent() {
   const [loading, setLoading] = useState(true);
   const [personaReport, setPersonaReport] = useState<PersonaReport | null>(null);
   const [checkingReport, setCheckingReport] = useState(false);
+  const [workerStatus, setWorkerStatus] = useState<JobStatusResponse | null>(null);
+  const [checkingWorkers, setCheckingWorkers] = useState(false);
 
   useEffect(() => {
     if (!sessionId) {
@@ -53,42 +78,53 @@ function PaymentSuccessContent() {
     verifyPayment();
   }, [sessionId, isFree]);
 
-  // Check for persona report availability
+  // Check worker status and persona report
   useEffect(() => {
     if (!status?.jobId) return;
 
-    const checkPersonaReport = async () => {
-      setCheckingReport(true);
+    const checkWorkerStatus = async () => {
+      setCheckingWorkers(true);
       try {
-        const response = await fetch(`/api/jobs/${status.jobId}/persona`);
+        const response = await fetch(`/api/jobs/${status.jobId}/status`);
         if (response.ok) {
           const data = await response.json();
-          if (data.persona) {
-            setPersonaReport({
-              content: data.persona,
-              status: 'completed',
-              dataQuality: data.dataQuality
-            });
+          setWorkerStatus(data);
+          
+          // Check if persona generator succeeded and get the report
+          const personaWorker = data.workers?.find((w: WorkerStatus) => w.worker === 'persona-generator');
+          if (personaWorker?.status === 'success') {
+            // Try to get the persona report
+            const personaResponse = await fetch(`/api/jobs/${status.jobId}/persona`);
+            if (personaResponse.ok) {
+              const personaData = await personaResponse.json();
+              if (personaData.persona) {
+                setPersonaReport({
+                  content: personaData.persona,
+                  status: 'completed',
+                  dataQuality: personaData.dataQuality
+                });
+              }
+            }
           }
         }
       } catch (error) {
-        console.error('Error checking persona report:', error);
+        console.error('Error checking worker status:', error);
       } finally {
-        setCheckingReport(false);
+        setCheckingWorkers(false);
       }
     };
 
     // Check immediately
-    checkPersonaReport();
+    checkWorkerStatus();
 
-    // Check every 5 seconds if no report yet
+    // Check every 10 seconds if no persona report yet
     const interval = setInterval(() => {
       if (!personaReport) {
-        checkPersonaReport();
+        checkWorkerStatus();
       } else {
         clearInterval(interval);
       }
-    }, 5000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [status?.jobId, personaReport]);
@@ -144,11 +180,9 @@ function PaymentSuccessContent() {
           <p className="text-xl text-gray-300 mb-2">
             Your customer persona analysis is now processing
           </p>
-          {status.email && (
-            <p className="text-gray-400">
-              Results will be sent to <span className="text-purple-400 font-medium">{status.email}</span>
-            </p>
-          )}
+          <p className="text-gray-400">
+            Results will appear on this page as soon as they're ready
+          </p>
         </div>
 
         {/* Status Cards */}
@@ -187,7 +221,7 @@ function PaymentSuccessContent() {
             </div>
             <div className="text-sm text-gray-300">
               <p><span className="text-gray-400">Status:</span> In Progress</p>
-              <p><span className="text-gray-400">ETA:</span> 5-8 minutes</p>
+              <p><span className="text-gray-400">ETA:</span> Real-time</p>
             </div>
           </div>
 
@@ -197,16 +231,75 @@ function PaymentSuccessContent() {
                 <Mail className="w-5 h-5 text-purple-400" />
               </div>
               <div>
-                <h3 className="font-semibold text-white">Email Delivery</h3>
-                <p className="text-sm text-gray-400">Results via email</p>
+                <h3 className="font-semibold text-white">Results Display</h3>
+                <p className="text-sm text-gray-400">Live results on this page</p>
               </div>
             </div>
             <div className="text-sm text-gray-300">
-              <p><span className="text-gray-400">Format:</span> PDF Report</p>
-              <p><span className="text-gray-400">Delivery:</span> Automatic</p>
+              <p><span className="text-gray-400">Format:</span> Live Display</p>
+              <p><span className="text-gray-400">Delivery:</span> Immediate</p>
             </div>
           </div>
         </div>
+
+        {/* Worker Status Display */}
+        {workerStatus && (
+          <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Analysis Progress</h2>
+              <div className="flex items-center space-x-4">
+                {checkingWorkers && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-500"></div>
+                )}
+                <div className="text-sm text-gray-400">
+                  {workerStatus.summary.successful}/{workerStatus.summary.total} workers completed
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {workerStatus.workers.map((worker) => (
+                <div
+                  key={worker.worker}
+                  className={`border rounded-lg p-4 ${
+                    worker.status === 'success' ? 'border-green-500/30 bg-green-500/10' :
+                    worker.status === 'failed' ? 'border-red-500/30 bg-red-500/10' :
+                    worker.status === 'error' ? 'border-orange-500/30 bg-orange-500/10' :
+                    'border-gray-600 bg-gray-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium text-white capitalize">
+                      {worker.worker.replace('-', ' ')}
+                    </h3>
+                    <div className={`w-3 h-3 rounded-full ${
+                      worker.status === 'success' ? 'bg-green-400' :
+                      worker.status === 'failed' ? 'bg-red-400' :
+                      worker.status === 'error' ? 'bg-orange-400' :
+                      'bg-gray-400'
+                    }`}></div>
+                  </div>
+                  <p className="text-sm text-gray-300 mb-2">{worker.message}</p>
+                  <div className="text-xs text-gray-400 space-y-1">
+                    <p>Status: {worker.httpStatus || 'N/A'}</p>
+                    {worker.responseTime > 0 && (
+                      <p>Time: {(worker.responseTime / 1000).toFixed(1)}s</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {workerStatus.summary.failed > 0 || workerStatus.summary.errors > 0 ? (
+              <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <p className="text-yellow-300 text-sm">
+                  ⚠️ Some workers encountered issues, but the analysis may still complete. 
+                  If the persona report doesn't appear after a few minutes, please contact support.
+                </p>
+              </div>
+            ) : null}
+          </div>
+        )}
 
         {/* Persona Report Display */}
         {personaReport && (

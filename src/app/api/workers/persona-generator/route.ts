@@ -62,33 +62,35 @@ export async function POST(request: NextRequest) {
     // Save the enhanced persona analysis
     await saveJobData(jobId, 'persona_profile', personaProfile);
 
+    // EMAIL TEMPORARILY DISABLED FOR TESTING
     // Send email with persona report
-    if (email && personaProfile?.persona) {
-      console.log(`Sending persona report email to ${email} for job ${jobId}`);
-      try {
-        const emailSent = await sendPersonaReport({
-          jobId,
-          email,
-          websiteUrl: websiteUrl || 'Unknown',
-          keywords: targetKeywords || 'Not specified',
-          personaReport: personaProfile.persona,
-          planName: planName || 'Standard Analysis',
-          analysisDate: new Date().toLocaleDateString()
-        });
+    // if (email && personaProfile?.persona) {
+    //   console.log(`Sending persona report email to ${email} for job ${jobId}`);
+    //   try {
+    //     const emailSent = await sendPersonaReport({
+    //       jobId,
+    //       email,
+    //       websiteUrl: websiteUrl || 'Unknown',
+    //       keywords: targetKeywords || 'Not specified',
+    //       personaReport: personaProfile.persona,
+    //       planName: planName || 'Standard Analysis',
+    //       analysisDate: new Date().toLocaleDateString()
+    //     });
 
-        if (emailSent) {
-          console.log(`✅ Email sent successfully to ${email} for job ${jobId}`);
-          // Mark email as sent in database
-          await markPersonaReportSent(jobId);
-        } else {
-          console.error(`❌ Failed to send email to ${email} for job ${jobId}`);
-        }
-      } catch (emailError) {
-        console.error(`Email sending error for job ${jobId}:`, emailError);
-      }
-    } else {
-      console.warn(`Missing email (${email}) or persona content (${!!personaProfile?.persona}) for job ${jobId} - skipping email`);
-    }
+    //     if (emailSent) {
+    //       console.log(`✅ Email sent successfully to ${email} for job ${jobId}`);
+    //       // Mark email as sent in database
+    //       await markPersonaReportSent(jobId);
+    //     } else {
+    //       console.error(`❌ Failed to send email to ${email} for job ${jobId}`);
+    //     }
+    //   } catch (emailError) {
+    //     console.error(`Email sending error for job ${jobId}:`, emailError);
+    //   }
+    // } else {
+    //   console.warn(`Missing email (${email}) or persona content (${!!personaProfile?.persona}) for job ${jobId} - skipping email`);
+    // }
+    console.log(`Email delivery disabled for testing - persona saved for job ${jobId}`);
 
     await updateJobStatus(jobId, 'completed');
 
