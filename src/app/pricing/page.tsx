@@ -49,7 +49,7 @@ function PricingContent() {
     
     try {
       const plan = PRICING_PLANS[planId as keyof typeof PRICING_PLANS];
-      const originalPrice = plan.price * 100; // Convert to cents
+      const originalPrice = plan.price; // Already in cents
       const finalPrice = calculateDiscountedPrice(originalPrice, appliedDiscount || undefined);
 
       const response = await fetch('/api/payments/create-checkout', {
@@ -166,7 +166,7 @@ function PricingContent() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {Object.entries(PRICING_PLANS).map(([planId, plan]) => {
-            const originalPrice = plan.price * 100;
+            const originalPrice = plan.price;
             const finalPrice = calculateDiscountedPrice(originalPrice, appliedDiscount || undefined);
             const hasDiscount = finalPrice < originalPrice;
 
