@@ -18,6 +18,10 @@ export async function POST(request: NextRequest) {
     // Add missing columns if they don't exist
     const migrations = [
       {
+        name: 'amazon_url',
+        sql: `ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS amazon_url TEXT`
+      },
+      {
         name: 'persona_analysis',
         sql: `ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS persona_analysis TEXT`
       },
@@ -111,6 +115,7 @@ export async function GET() {
       columns: columns.rows,
       analysis: {
         hasJobId: columns.rows.some(col => col.column_name === 'job_id'),
+        hasAmazonUrl: columns.rows.some(col => col.column_name === 'amazon_url'),
         hasPersonaAnalysis: columns.rows.some(col => col.column_name === 'persona_analysis'),
         hasDataQuality: columns.rows.some(col => col.column_name === 'data_quality'),
         hasPersonaMetadata: columns.rows.some(col => col.column_name === 'persona_metadata'),
