@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
         // Start the research process
         const internalApiKey = process.env.INTERNAL_API_KEY;
         console.log('Internal API key available:', !!internalApiKey);
+        console.log('Internal API key value (first 10 chars):', internalApiKey ? internalApiKey.substring(0, 10) + '...' : 'NOT_SET');
         console.log('About to call lead-gen endpoint:', `${baseUrl}/api/research/lead-gen/start`);
         console.log('Research data being sent:', JSON.stringify(researchData, null, 2));
         
@@ -130,6 +131,13 @@ export async function POST(request: NextRequest) {
           console.error('Fetch error stack:', fetchError instanceof Error ? fetchError.stack : 'No stack trace');
         }
 
+        // If we don't have a jobId, create one directly as a fallback
+        if (!jobId) {
+          console.warn('WARNING: No jobId returned from lead-gen, creating fallback jobId');
+          jobId = `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          console.log('Created fallback jobId:', jobId);
+        }
+        
         // Redirect to success page with free order
         const successUrl = `${baseUrl}/payment/success?session_id=${freeOrderId}&free=true&job_id=${jobId || ''}`;
         console.log('Redirecting to success URL:', successUrl);
@@ -138,7 +146,8 @@ export async function POST(request: NextRequest) {
           success: true,
           checkoutUrl: successUrl,
           freeOrder: true,
-          jobId
+          jobId,
+          warning: !jobId ? 'Analysis may not start automatically' : undefined
         });
       } catch (error) {
         console.error('Error processing free order:', error);
