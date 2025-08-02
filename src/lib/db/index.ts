@@ -222,15 +222,13 @@ export async function createResearchRequest(data: {
   isFree: boolean;
 }): Promise<ResearchRequest> {
   try {
-    // Fix keywords format: preserve search intent by storing as single-item array
-    const keywordsForDb = [data.keywords]; // Wrap string in array to preserve "grounding sheets" as one term
-    
+    // Fix keywords format: use PostgreSQL ARRAY constructor to preserve search intent
     const result = await sql`
       INSERT INTO research_requests (
         job_id, website_url, amazon_url, email, keywords, competitor_urls, plan_id, plan_name, 
         discount_code, payment_session_id, amount_paid, original_price, final_price, is_free
       ) VALUES (
-        ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.email}, ${JSON.stringify(keywordsForDb)}, 
+        ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.email}, ARRAY[${data.keywords}], 
         ${JSON.stringify(data.competitorUrls)}, ${data.planId}, ${data.planName}, ${data.discountCode || null}, 
         ${data.paymentSessionId}, ${data.amountPaid}, ${data.originalPrice}, ${data.finalPrice}, ${data.isFree}
       )
