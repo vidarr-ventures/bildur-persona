@@ -223,7 +223,7 @@ export async function createResearchRequest(data: {
 }): Promise<ResearchRequest> {
   try {
     // Fix keywords format: convert comma/space separated string to proper format for database
-    const keywordsForDb = data.keywords; // Store as simple text, not array
+    const keywordsForDb = data.keywords; // Store as simple text (schema expects TEXT not array)
     
     const result = await sql`
       INSERT INTO research_requests (

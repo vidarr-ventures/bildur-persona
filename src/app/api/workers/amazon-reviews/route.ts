@@ -284,7 +284,7 @@ export async function POST(request: NextRequest) {
   // }
 
   try {
-    const requestBody = await request.json();
+    const requestBody = await request.json(); // Store once, use everywhere
     console.log('=== AMAZON WORKER FULL REQUEST DEBUG ===');
     console.log('Full request body received:', JSON.stringify(requestBody, null, 2));
     
