@@ -35,9 +35,17 @@ export async function POST(request: NextRequest) {
         status VARCHAR(50) DEFAULT 'queued',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         completed_at TIMESTAMP WITH TIME ZONE,
-        persona_report_sent BOOLEAN DEFAULT FALSE
+        persona_report_sent BOOLEAN DEFAULT FALSE,
+        persona_analysis TEXT,
+        data_quality TEXT,
+        persona_metadata TEXT
       )
     `;
+
+    // Add new columns if they don't exist (for existing tables)
+    await sql`ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS persona_analysis TEXT`;
+    await sql`ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS data_quality TEXT`;
+    await sql`ALTER TABLE research_requests ADD COLUMN IF NOT EXISTS persona_metadata TEXT`;
 
     // Create indexes
     await sql`CREATE INDEX IF NOT EXISTS idx_research_requests_job_id ON research_requests(job_id)`;
