@@ -63,6 +63,18 @@ export async function POST(request: NextRequest) {
     const plan = PRICING_PLANS[planId as keyof typeof PRICING_PLANS];
     const planName = plan?.name || 'Unknown Plan';
 
+    // Create job record in jobs table
+    try {
+      await sql`
+        INSERT INTO jobs (id, website_url, primary_keywords, status, created_at)
+        VALUES (${jobId}, ${websiteUrl}, ${keywords}, 'queued', NOW())
+      `;
+      console.log(`Created job record for ${jobId}`);
+    } catch (jobError) {
+      console.error('Error creating job record:', jobError);
+      // Continue anyway - the research request is more important
+    }
+
     // Ensure research_requests table exists
     try {
       await sql`
