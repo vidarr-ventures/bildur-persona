@@ -17,7 +17,10 @@ interface CheckoutRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Checkout request received'); // Debug log
+    console.log('=== CHECKOUT REQUEST RECEIVED ===');
+    console.log('Request method:', request.method);
+    console.log('Request URL:', request.url);
+    console.log('Request headers:', Object.fromEntries(request.headers.entries()));
     
     const body: CheckoutRequest = await request.json();
     console.log('Checkout request body:', { ...body, formData: { ...body.formData, email: '***' } }); // Debug log (hide email)
