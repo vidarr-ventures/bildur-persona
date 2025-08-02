@@ -48,6 +48,7 @@ function PaymentSuccessContent() {
   const sessionId = searchParams.get('session_id');
   const isFree = searchParams.get('free') === 'true';
   const debugMode = searchParams.get('debug') === 'true';
+  const testJobId = searchParams.get('testJobId');
   
   const [status, setStatus] = useState<PaymentStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +62,7 @@ function PaymentSuccessContent() {
       // Debug mode: set fake status for testing
       setStatus({ 
         success: true, 
-        jobId: 'ecb8d1f7-d4f3-42ee-9b73-3a08d4086617',
+        jobId: testJobId || 'ecb8d1f7-d4f3-42ee-9b73-3a08d4086617',
         email: 'test@example.com',
         planName: 'Essential'
       });
