@@ -230,7 +230,7 @@ export async function createResearchRequest(data: {
         job_id, website_url, amazon_url, email, keywords, plan_id, plan_name, 
         discount_code, payment_session_id, amount_paid, original_price, final_price, is_free
       ) VALUES (
-        ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.email}, ${JSON.stringify(keywordsArray)}, 
+        ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.email}, ${keywordsArray}, 
         ${data.planId}, ${data.planName}, ${data.discountCode || null}, ${data.paymentSessionId}, 
         ${data.amountPaid}, ${data.originalPrice}, ${data.finalPrice}, ${data.isFree}
       )
