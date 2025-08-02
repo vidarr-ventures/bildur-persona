@@ -42,7 +42,7 @@ export async function sendPersonaReport(data: PersonaEmailData): Promise<boolean
     console.log('📝 Email content generated, sending via Resend...');
 
     const result = await resend.emails.send({
-      from: 'Persona Generator <reports@persona.bildur.ai>',
+      from: 'Persona Generator <reports@bildur.ai>',
       to: [data.email],
       subject: `Your Customer Persona Analysis is Ready - ${data.websiteUrl}`,
       html: htmlContent,
@@ -166,7 +166,7 @@ export async function sendTestEmail(email: string): Promise<boolean> {
 
   try {
     const result = await resend.emails.send({
-      from: 'Persona Generator <reports@persona.bildur.ai>',
+      from: 'Persona Generator <reports@bildur.ai>',
       to: [email],
       subject: 'Test Email - Persona Generator',
       html: '<h1>Test Email</h1><p>This is a test email to verify Resend integration.</p>',

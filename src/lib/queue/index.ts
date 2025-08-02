@@ -196,8 +196,9 @@ export class Queue {
 
     const workers = [
       '/api/workers/website-crawler',
-      '/api/workers/reviews-collector', 
-      '/api/workers/amazon-competitors',
+      '/api/workers/amazon-reviews',
+      '/api/workers/reddit-scraper',
+      '/api/workers/youtube-comments',
       '/api/workers/persona-generator'
     ];
 
@@ -217,18 +218,28 @@ export class Queue {
           } : {})
         };
         
+        console.log(`🔗 Calling worker: ${baseUrl}${worker}`);
+        console.log(`📦 Worker payload:`, JSON.stringify(workerPayload, null, 2));
+        
         const response = await fetch(`${baseUrl}${worker}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(workerPayload),
         });
 
+        console.log(`📊 Worker ${worker} response status:`, response.status);
+        
         if (!response.ok) {
-          console.error(`Worker ${worker} failed:`, response.status, await response.text());
+          const errorText = await response.text();
+          console.error(`❌ Worker ${worker} failed:`, response.status);
+          console.error(`❌ Error response:`, errorText);
+          if (response.status === 404) {
+            console.error(`🔍 404 ERROR: Worker endpoint not found: ${baseUrl}${worker}`);
+          }
         } else {
-          console.log(`Worker ${worker} completed successfully`);
+          console.log(`✅ Worker ${worker} completed successfully`);
           const result = await response.json();
-          console.log(`Worker ${worker} result:`, result);
+          console.log(`📄 Worker ${worker} result:`, result);
         }
       } catch (error) {
         console.error(`Error executing worker ${worker}:`, error);
