@@ -4,6 +4,47 @@ import { PRICING_PLANS } from '@/lib/stripe';
 import { sql } from '@vercel/postgres';
 // TEMPORARILY DISABLED: import { Queue } from '@/lib/queue';
 
+async function callWorkersDirectly(jobId: string, websiteUrl: string, keywords: string, amazonUrl?: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://persona.bildur.ai';
+  const internalApiKey = process.env.INTERNAL_API_KEY;
+  
+  console.log(`Calling workers for job ${jobId} with Amazon URL: ${amazonUrl}`);
+  
+  const workers = [
+    { name: 'amazon-reviews', endpoint: '/api/workers/amazon-reviews' },
+    { name: 'youtube-comments', endpoint: '/api/workers/youtube-comments' },
+    { name: 'website-crawler', endpoint: '/api/workers/website-crawler' },
+    { name: 'persona-generator', endpoint: '/api/workers/persona-generator' }
+  ];
+  
+  for (const worker of workers) {
+    try {
+      console.log(`Calling ${worker.name} worker...`);
+      
+      const response = await fetch(`${baseUrl}${worker.endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${internalApiKey}`,
+        },
+        body: JSON.stringify({
+          jobId,
+          websiteUrl,
+          targetKeywords: keywords,
+          keywords: keywords, // YouTube worker expects 'keywords'
+          amazonUrl: amazonUrl
+        }),
+      });
+      
+      const result = await response.json();
+      console.log(`${worker.name} result:`, result);
+      
+    } catch (error) {
+      console.error(`Error calling ${worker.name}:`, error);
+    }
+  }
+}
+
 interface ResearchRequest {
   websiteUrl: string;
   amazonUrl?: string;
@@ -60,9 +101,20 @@ export async function POST(request: NextRequest) {
     console.log(`Starting research job ${jobId} for ${email}`);
     console.log(`Plan: ${planId}, Amount: $${finalPrice/100}, Free: ${isFree}`);
 
-    // TEMPORARILY SKIP ALL DATABASE OPERATIONS FOR TESTING
-    console.log('TESTING MODE: Skipping database operations to test jobId flow');
+    // TEMPORARILY SKIP DATABASE OPERATIONS BUT CALL WORKERS DIRECTLY FOR TESTING
+    console.log('TESTING MODE: Skipping database operations but calling workers directly');
     console.log(`Generated jobId: ${jobId}`);
+    console.log(`Amazon URL to pass to workers: ${amazonUrl}`);
+    
+    // Call workers directly for testing
+    setTimeout(async () => {
+      try {
+        console.log('Calling workers directly for testing...');
+        await callWorkersDirectly(jobId, websiteUrl, keywords, amazonUrl);
+      } catch (error) {
+        console.error('Error calling workers directly:', error);
+      }
+    }, 2000); // Small delay to let the response return first
 
     console.log('About to return response with jobId:', jobId);
     
