@@ -24,27 +24,50 @@ export async function GET(request: NextRequest) {
     // Get queue stats
     const queueStats = await Queue.getQueueStats();
 
-    // Check if job is in processing queue
-    const processingJobs = await sql`SELECT value FROM vercel_kv WHERE key = 'processing_jobs'`;
+    // Check if job is in processing queue using Vercel KV
     let inProcessingQueue = false;
-    if (processingJobs.rows[0]?.value) {
-      const processing = JSON.parse(processingJobs.rows[0].value);
-      inProcessingQueue = jobId in processing;
-    }
-
-    // Check if job is in pending queue
-    const pendingJobs = await sql`SELECT value FROM vercel_kv WHERE key = 'job_queue'`;
     let inPendingQueue = false;
-    if (pendingJobs.rows[0]?.value) {
-      const pending = JSON.parse(pendingJobs.rows[0].value);
-      inPendingQueue = Array.isArray(pending) && pending.some((job: any) => {
-        try {
-          const jobData = typeof job === 'string' ? JSON.parse(job) : job;
-          return jobData.data?.jobId === jobId;
-        } catch (e) {
-          return false;
+    
+    try {
+      const { kv } = await import('@vercel/kv');
+      
+      // Check processing queue
+      const processingJobs = await kv.hgetall('processing_jobs');
+      if (processingJobs) {
+        for (const [queueJobId, jobDataStr] of Object.entries(processingJobs)) {
+          if (typeof jobDataStr === 'string') {
+            try {
+              const queueJob = JSON.parse(jobDataStr);
+              if (queueJob.data?.jobId === jobId) {
+                inProcessingQueue = true;
+                break;
+              }
+            } catch (e) {
+              console.error('Error parsing processing job:', e);
+            }
+          }
         }
-      });
+      }
+
+      // Check pending queue
+      const pendingJobs = await kv.lrange('job_queue', 0, -1);
+      if (pendingJobs && Array.isArray(pendingJobs)) {
+        for (const jobDataStr of pendingJobs) {
+          if (typeof jobDataStr === 'string') {
+            try {
+              const queueJob = JSON.parse(jobDataStr);
+              if (queueJob.data?.jobId === jobId) {
+                inPendingQueue = true;
+                break;
+              }
+            } catch (e) {
+              console.error('Error parsing pending job:', e);
+            }
+          }
+        }
+      }
+    } catch (kvError) {
+      console.error('Error checking KV queues:', kvError);
     }
 
     return NextResponse.json({
