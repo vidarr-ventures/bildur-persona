@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
         ${'https://example.com'},
         ${'https://www.amazon.com/dp/B08N5WRWNW'},
         ${'test@example.com'},
-        ${'test product, quality items'},
+        ${'{test product,quality items}'},
         ${'Essential'},
         ${'queued'},
         NOW()
