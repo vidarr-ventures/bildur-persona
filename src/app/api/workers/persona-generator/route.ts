@@ -501,7 +501,7 @@ Generate a comprehensive 3,000-4,000 word psychological ICP analysis:`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
