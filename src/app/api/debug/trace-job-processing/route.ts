@@ -26,9 +26,11 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔍 Tracing job processing for job: ${jobId}`);
     
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : 'http://localhost:3000';
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://persona.bildur.ai'
+      : process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : 'http://localhost:3000';
 
     console.log(`Using base URL: ${baseUrl}`);
 
