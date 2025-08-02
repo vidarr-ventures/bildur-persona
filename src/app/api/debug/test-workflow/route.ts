@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const researchRequest = await createResearchRequest({
       jobId,
       websiteUrl: 'https://example.com',
-      // amazonUrl: 'https://amazon.com/dp/test', // Temporarily commented out until column is available
+      amazonUrl: 'https://amazon.com/dp/test',
       keywords: 'test keywords',
       email,
       competitorUrls: ['https://competitor1.com', 'https://competitor2.com'],
@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
         data: {
           jobId,
           websiteUrl: 'https://example.com',
-          targetKeywords: 'test keywords'
-          // amazonUrl: 'https://amazon.com/dp/test' // Temporarily removed
+          targetKeywords: 'test keywords',
+          amazonUrl: 'https://amazon.com/dp/test'
         }
       });
 
@@ -52,8 +52,8 @@ export async function POST(request: NextRequest) {
           await Queue.executeWorkersDirectly({
             jobId,
             websiteUrl: 'https://example.com',
-            targetKeywords: 'test keywords'
-            // amazonUrl: 'https://amazon.com/dp/test' // Temporarily removed
+            targetKeywords: 'test keywords',
+            amazonUrl: 'https://amazon.com/dp/test'
           });
         } catch (error) {
           console.error(`❌ Test job processing failed:`, error);
