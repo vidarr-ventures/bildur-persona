@@ -101,10 +101,17 @@ export async function POST(request: NextRequest) {
     console.log(`Starting research job ${jobId} for ${email}`);
     console.log(`Plan: ${planId}, Amount: $${finalPrice/100}, Free: ${isFree}`);
 
+    // DETAILED DEBUGGING FOR AMAZON URL
+    console.log('=== LEAD-GEN AMAZON URL DEBUGGING ===');
+    console.log('Amazon URL received:', amazonUrl);
+    console.log('Amazon URL type:', typeof amazonUrl);
+    console.log('Amazon URL length:', amazonUrl?.length);
+    console.log('Amazon URL isEmpty:', !amazonUrl || amazonUrl.trim() === '');
+    console.log('Full request body:', JSON.stringify(body, null, 2));
+
     // TEMPORARILY SKIP DATABASE OPERATIONS BUT CALL WORKERS DIRECTLY FOR TESTING
     console.log('TESTING MODE: Skipping database operations but calling workers directly');
     console.log(`Generated jobId: ${jobId}`);
-    console.log(`Amazon URL to pass to workers: ${amazonUrl}`);
     
     // Call workers directly for testing
     setTimeout(async () => {

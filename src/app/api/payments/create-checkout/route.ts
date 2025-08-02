@@ -24,6 +24,9 @@ export async function POST(request: NextRequest) {
     
     const body: CheckoutRequest = await request.json();
     console.log('Checkout request body:', { ...body, formData: { ...body.formData, email: '***' } }); // Debug log (hide email)
+    console.log('Amazon URL from formData:', body.formData?.amazonUrl);
+    console.log('Amazon URL type:', typeof body.formData?.amazonUrl);
+    console.log('Amazon URL length:', body.formData?.amazonUrl?.length);
     
     const { planId, discountCode, formData, originalPrice, finalPrice } = body;
 
