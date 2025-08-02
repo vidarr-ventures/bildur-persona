@@ -10,7 +10,7 @@ interface JobData {
   competitorUrls: string[];
   planId: string;
   planName: string;
-  timestamp: number;
+  timestamp?: number; // Optional, will be added by storeJobData
 }
 
 // In-memory storage (will be lost on deployment, but fine for testing)
@@ -20,7 +20,7 @@ const jobCache = new Map<string, JobData>();
 function cleanupOldEntries() {
   const oneHourAgo = Date.now() - (60 * 60 * 1000);
   for (const [jobId, data] of jobCache.entries()) {
-    if (data.timestamp < oneHourAgo) {
+    if (data.timestamp && data.timestamp < oneHourAgo) {
       jobCache.delete(jobId);
     }
   }
