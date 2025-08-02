@@ -229,7 +229,7 @@ export async function createResearchRequest(data: {
       INSERT INTO research_requests (
         website_url, email, keywords
       ) VALUES (
-        ${data.websiteUrl}, ${data.email}, ${keywordsArray}
+        ${data.websiteUrl}, ${data.email}, ${JSON.stringify(keywordsArray)}
       )
       RETURNING *
     `;

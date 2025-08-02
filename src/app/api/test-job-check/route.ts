@@ -17,15 +17,17 @@ export async function GET(request: NextRequest) {
     const researchRequest = researchResult.rows[0];
     
     // Check data tables
-    const dataCounts = {};
+    const dataCounts: Record<string, number | string> = {};
     const tables = ['website_data', 'amazon_data', 'reddit_data', 'youtube_data'];
     
     for (const table of tables) {
       try {
-        const result = await sql`SELECT COUNT(*) as count FROM ${sql(table)} WHERE job_id = ${jobId}`;
+        // Note: Table name cannot be parameterized in Vercel Postgres, using string interpolation
+        const query = `SELECT COUNT(*) as count FROM ${table} WHERE job_id = $1`;
+        const result = await sql.query(query, [jobId]);
         dataCounts[table] = parseInt(result.rows[0]?.count || '0');
       } catch (error) {
-        dataCounts[table] = `Error: ${error.message}`;
+        dataCounts[table] = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
       }
     }
     

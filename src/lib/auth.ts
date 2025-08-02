@@ -6,8 +6,8 @@ import { NextRequest } from 'next/server';
  */
 export function validateInternalApiKey(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization');
-  return authHeader?.startsWith('Bearer ') && 
-         authHeader.split(' ')[1] === process.env.INTERNAL_API_KEY;
+  return !!(authHeader?.startsWith('Bearer ') && 
+           authHeader.split(' ')[1] === process.env.INTERNAL_API_KEY);
 }
 
 /**

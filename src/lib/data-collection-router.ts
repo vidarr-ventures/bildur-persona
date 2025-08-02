@@ -295,7 +295,7 @@ export function validateTierConfiguration(tier: DataCollectionTier): {
   const tierConfig = capabilities[tier];
 
   if (!tierConfig.available) {
-    const missing = tierConfig.requirements || [];
+    const missing = 'requirements' in tierConfig ? tierConfig.requirements : [];
     
     // Suggest fallback
     let fallback: DataCollectionTier | undefined;

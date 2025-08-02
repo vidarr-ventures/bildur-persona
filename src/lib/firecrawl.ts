@@ -65,10 +65,10 @@ export async function scrapeWebsiteWithFirecrawl(url: string): Promise<Firecrawl
     return {
       success: true,
       data: {
-        markdown: scrapeResult.data?.markdown,
-        content: scrapeResult.data?.content,
-        metadata: scrapeResult.data?.metadata,
-        screenshot: scrapeResult.data?.screenshot
+        markdown: (scrapeResult as any).data?.markdown,
+        content: (scrapeResult as any).data?.content,
+        metadata: (scrapeResult as any).data?.metadata,
+        screenshot: (scrapeResult as any).data?.screenshot
       }
     };
 
@@ -113,9 +113,9 @@ export async function scrapeRedditWithFirecrawl(searchUrl: string): Promise<Fire
     return {
       success: true,
       data: {
-        markdown: scrapeResult.data?.markdown,
-        content: scrapeResult.data?.content,
-        metadata: scrapeResult.data?.metadata
+        markdown: (scrapeResult as any).data?.markdown,
+        content: (scrapeResult as any).data?.content,
+        metadata: (scrapeResult as any).data?.metadata
       }
     };
 
@@ -158,7 +158,7 @@ export async function performMarketResearch(query: string, maxResults: number = 
 
     return {
       success: true,
-      data: searchResult.data
+      data: (searchResult as any).data
     };
 
   } catch (error) {
