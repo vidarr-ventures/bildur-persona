@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
         console.log('Internal API key available:', !!internalApiKey);
         console.log('Internal API key value (first 10 chars):', internalApiKey ? internalApiKey.substring(0, 10) + '...' : 'NOT_SET');
         console.log('About to call lead-gen endpoint:', `${baseUrl}/api/research/lead-gen/start`);
+        console.log('Amazon URL being sent to lead-gen:', researchData.amazonUrl);
         console.log('Research data being sent:', JSON.stringify(researchData, null, 2));
         
         let jobId = null;
