@@ -116,11 +116,23 @@ export async function getJobById(id: string) {
 
 export async function saveJobData(jobId: string, dataType: string, data: any) {
   try {
-    // For now, we'll store this as blob URL since that's the table structure
-    // In a real implementation, you might want to create a separate table for job_data
-    console.log(`Saving ${dataType} data for job ${jobId}:`, data);
+    console.log(`Saving ${dataType} data for job ${jobId}`);
     
-    // Just update status for now - you might want to extend this
+    // Special handling for persona_profile - store in research_requests table
+    if (dataType === 'persona_profile' && data?.persona) {
+      await sql`
+        UPDATE research_requests 
+        SET persona_analysis = ${data.persona},
+            data_quality = ${JSON.stringify(data.dataQuality)},
+            persona_metadata = ${JSON.stringify(data.metadata || {})},
+            status = 'completed'
+        WHERE job_id = ${jobId}
+      `;
+      console.log(`Saved persona analysis for job ${jobId}`);
+      return data;
+    }
+    
+    // For other data types, just update status for now
     const result = await sql`
       UPDATE jobs 
       SET status = 'processing'
@@ -266,6 +278,35 @@ export async function markPersonaReportSent(jobId: string): Promise<void> {
     `;
   } catch (error) {
     console.error('Error marking persona report as sent:', error);
+    throw error;
+  }
+}
+
+export async function getPersonaByJobId(jobId: string) {
+  try {
+    const result = await sql`
+      SELECT persona_analysis, data_quality, persona_metadata, status, created_at, completed_at
+      FROM research_requests 
+      WHERE job_id = ${jobId}
+    `;
+    
+    if (result.rows.length === 0) return null;
+    
+    const row = result.rows[0];
+    
+    // Only return if persona analysis exists
+    if (!row.persona_analysis) return null;
+    
+    return {
+      persona: row.persona_analysis,
+      data_quality: row.data_quality ? JSON.parse(row.data_quality) : null,
+      metadata: row.persona_metadata ? JSON.parse(row.persona_metadata) : null,
+      status: row.status,
+      created_at: row.created_at,
+      updated_at: row.completed_at
+    };
+  } catch (error) {
+    console.error('Error getting persona by job ID:', error);
     throw error;
   }
 }

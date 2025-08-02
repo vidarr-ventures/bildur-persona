@@ -18,7 +18,10 @@ CREATE TABLE IF NOT EXISTS research_requests (
   status VARCHAR(50) DEFAULT 'queued', -- queued, processing, completed, failed
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   completed_at TIMESTAMP WITH TIME ZONE,
-  persona_report_sent BOOLEAN DEFAULT FALSE
+  persona_report_sent BOOLEAN DEFAULT FALSE,
+  persona_analysis TEXT, -- Store the generated persona report
+  data_quality TEXT, -- Store data quality info as JSON
+  persona_metadata TEXT -- Store metadata as JSON
 );
 
 -- Add indexes for performance

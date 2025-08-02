@@ -14,6 +14,12 @@ interface PaymentStatus {
   error?: string;
 }
 
+interface PersonaReport {
+  content: string;
+  status: string;
+  dataQuality?: any;
+}
+
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
@@ -21,6 +27,8 @@ function PaymentSuccessContent() {
   
   const [status, setStatus] = useState<PaymentStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [personaReport, setPersonaReport] = useState<PersonaReport | null>(null);
+  const [checkingReport, setCheckingReport] = useState(false);
 
   useEffect(() => {
     if (!sessionId) {
@@ -44,6 +52,46 @@ function PaymentSuccessContent() {
 
     verifyPayment();
   }, [sessionId, isFree]);
+
+  // Check for persona report availability
+  useEffect(() => {
+    if (!status?.jobId) return;
+
+    const checkPersonaReport = async () => {
+      setCheckingReport(true);
+      try {
+        const response = await fetch(`/api/jobs/${status.jobId}/persona`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.persona) {
+            setPersonaReport({
+              content: data.persona,
+              status: 'completed',
+              dataQuality: data.dataQuality
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error checking persona report:', error);
+      } finally {
+        setCheckingReport(false);
+      }
+    };
+
+    // Check immediately
+    checkPersonaReport();
+
+    // Check every 5 seconds if no report yet
+    const interval = setInterval(() => {
+      if (!personaReport) {
+        checkPersonaReport();
+      } else {
+        clearInterval(interval);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [status?.jobId, personaReport]);
 
   if (loading) {
     return (
@@ -160,8 +208,61 @@ function PaymentSuccessContent() {
           </div>
         </div>
 
-        {/* What's Next */}
-        <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-lg p-8">
+        {/* Persona Report Display */}
+        {personaReport && (
+          <div className="bg-gray-900 border border-purple-500/30 rounded-lg p-8 mb-12">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">Your Customer Persona Report</h2>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-5 h-5 text-green-400" />
+                <span className="text-green-400 font-medium">Complete</span>
+              </div>
+            </div>
+            <div className="prose prose-invert max-w-none">
+              <div className="bg-black/50 rounded-lg p-6 overflow-auto max-h-[600px]">
+                <pre className="whitespace-pre-wrap font-sans text-gray-300 text-sm leading-relaxed">
+                  {personaReport.content}
+                </pre>
+              </div>
+            </div>
+            <div className="mt-6 flex items-center justify-between">
+              <button
+                onClick={() => {
+                  const blob = new Blob([personaReport.content], { type: 'text/plain' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `persona-report-${status?.jobId || 'report'}.txt`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="inline-flex items-center space-x-2 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>Download Report</span>
+              </button>
+              {personaReport.dataQuality && (
+                <div className="text-sm text-gray-400">
+                  <span>Data Quality: </span>
+                  <span className={`font-medium ${
+                    personaReport.dataQuality.confidence === 'high' ? 'text-green-400' :
+                    personaReport.dataQuality.confidence === 'medium' ? 'text-yellow-400' :
+                    'text-orange-400'
+                  }`}>
+                    {personaReport.dataQuality.confidence}
+                  </span>
+                  <span className="ml-2">({personaReport.dataQuality.score}%)</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* What's Next - Show only if report not ready */}
+        {!personaReport && (
+          <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-lg p-8">
           <h2 className="text-2xl font-bold mb-6 text-center">What happens next?</h2>
           
           <div className="space-y-6">
