@@ -160,7 +160,15 @@ export async function POST(request: NextRequest) {
     // Call workers directly for testing
     setTimeout(async () => {
       try {
-        console.log('Calling workers directly for testing...');
+        console.log('=== BEFORE CALLING WORKERS ===');
+        console.log('jobId:', jobId);
+        console.log('websiteUrl:', websiteUrl);
+        console.log('keywords:', keywords);
+        console.log('amazonUrl variable:', amazonUrl);
+        console.log('amazonUrl type:', typeof amazonUrl);
+        console.log('amazonUrl length:', amazonUrl?.length);
+        console.log('===============================');
+        
         await callWorkersDirectly(jobId, websiteUrl, keywords, amazonUrl);
       } catch (error) {
         console.error('Error calling workers directly:', error);
