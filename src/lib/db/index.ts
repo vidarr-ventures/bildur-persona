@@ -227,9 +227,9 @@ export async function createResearchRequest(data: {
     
     const result = await sql`
       INSERT INTO research_requests (
-        website_url, email, keywords
+        job_id, website_url, amazon_url, email, keywords, plan_name
       ) VALUES (
-        ${data.websiteUrl}, ${data.email}, ${JSON.stringify(keywordsArray)}
+        ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.email}, ${JSON.stringify(keywordsArray)}, ${data.planName}
       )
       RETURNING *
     `;
