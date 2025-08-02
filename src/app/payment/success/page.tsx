@@ -306,6 +306,7 @@ function PaymentSuccessContent() {
             </div>
           </div>
         </div>
+        )}
 
         {/* Action Buttons */}
         <div className="text-center mt-12 space-y-4">
