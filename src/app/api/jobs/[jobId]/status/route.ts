@@ -68,7 +68,7 @@ export async function GET(
               keywords: cachedJobData?.keywords || researchRequest?.keywords || 'test', // YouTube worker expects 'keywords'
               amazonUrl: cachedJobData?.amazonUrl || researchRequest?.amazon_url || '', // Prefer cache over database
               email: cachedJobData?.email || researchRequest?.email,
-              planName: cachedJobData?.planName || researchRequest?.plan_name
+              planName: cachedJobData?.planName || researchRequest?.plan_name || 'Essential'
             }),
             signal: AbortSignal.timeout(10000) // 10 second timeout
           });

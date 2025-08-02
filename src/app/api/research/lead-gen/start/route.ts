@@ -28,7 +28,8 @@ async function callWorkersDirectly(jobId: string, websiteUrl: string, keywords: 
         websiteUrl,
         targetKeywords: keywords,
         keywords: keywords, // YouTube worker expects 'keywords'
-        amazonUrl: amazonUrl || '' // Ensure amazonUrl is at root level
+        amazonUrl: amazonUrl || '', // Ensure amazonUrl is at root level
+        planName: PRICING_PLANS[planId as keyof typeof PRICING_PLANS]?.name || 'Essential'
       };
       
       console.log(`=== SENDING TO ${worker.name.toUpperCase()} WORKER ===`);
