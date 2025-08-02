@@ -1,11 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// UUID validation and generation helpers
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { jobId } = await request.json();
+    let { jobId } = await request.json();
     
-    if (!jobId) {
-      return NextResponse.json({ error: 'Job ID required' }, { status: 400 });
+    // If no jobId provided or if it's not a UUID, generate a valid UUID
+    if (!jobId || !isValidUUID(jobId)) {
+      jobId = generateUUID();
+      console.log(`Generated valid UUID for testing: ${jobId}`);
     }
 
     console.log(`🔍 Tracing job processing for job: ${jobId}`);
@@ -31,10 +47,20 @@ export async function POST(request: NextRequest) {
       try {
         console.log(`🔧 Testing ${worker.name}...`);
         
-        const payload = {
+        // Different payload for persona generator
+        const payload = worker.name === 'persona-generator' ? {
           jobId,
           websiteUrl: 'https://groundluxe.com',
           targetKeywords: 'grounding sheets',
+          keywords: 'grounding sheets',
+          amazonUrl: 'https://amazon.com/dp/B07RLNS58H',
+          email: 'test@example.com',
+          planName: 'Test Plan'
+        } : {
+          jobId,
+          websiteUrl: 'https://groundluxe.com',
+          targetKeywords: 'grounding sheets',
+          keywords: 'grounding sheets', // For YouTube worker
           amazonUrl: 'https://amazon.com/dp/B07RLNS58H'
         };
 
