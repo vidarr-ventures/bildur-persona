@@ -222,15 +222,15 @@ export async function createResearchRequest(data: {
   isFree: boolean;
 }): Promise<ResearchRequest> {
   try {
-    // Fix keywords format: convert comma/space separated string to proper format for database
-    const keywordsForDb = data.keywords; // Store as simple text (schema expects TEXT not array)
+    // Fix keywords format: preserve search intent by storing as single-item array
+    const keywordsForDb = [data.keywords]; // Wrap string in array to preserve "grounding sheets" as one term
     
     const result = await sql`
       INSERT INTO research_requests (
         job_id, website_url, amazon_url, email, keywords, competitor_urls, plan_id, plan_name, 
         discount_code, payment_session_id, amount_paid, original_price, final_price, is_free
       ) VALUES (
-        ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.email}, ${keywordsForDb}, 
+        ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.email}, ${JSON.stringify(keywordsForDb)}, 
         ${JSON.stringify(data.competitorUrls)}, ${data.planId}, ${data.planName}, ${data.discountCode || null}, 
         ${data.paymentSessionId}, ${data.amountPaid}, ${data.originalPrice}, ${data.finalPrice}, ${data.isFree}
       )
@@ -240,7 +240,8 @@ export async function createResearchRequest(data: {
     const row = result.rows[0];
     return {
       ...row,
-      competitor_urls: Array.isArray(row.competitor_urls) ? row.competitor_urls : JSON.parse(row.competitor_urls || '[]')
+      competitor_urls: Array.isArray(row.competitor_urls) ? row.competitor_urls : JSON.parse(row.competitor_urls || '[]'),
+      keywords: Array.isArray(row.keywords) ? row.keywords[0] : row.keywords // Extract first item for search
     } as ResearchRequest;
   } catch (error) {
     console.error('Error creating research request:', error);
@@ -260,7 +261,8 @@ export async function getResearchRequest(jobId: string): Promise<ResearchRequest
     const row = result.rows[0];
     return {
       ...row,
-      competitor_urls: JSON.parse(row.competitor_urls || '[]')
+      competitor_urls: JSON.parse(row.competitor_urls || '[]'),
+      keywords: Array.isArray(row.keywords) ? row.keywords[0] : row.keywords // Extract first item for search
     } as ResearchRequest;
   } catch (error) {
     console.error('Error getting research request:', error);
