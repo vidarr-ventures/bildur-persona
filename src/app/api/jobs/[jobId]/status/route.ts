@@ -13,7 +13,14 @@ export async function GET(
     }
 
     // Get job and research request data
-    const job = await getJobById(jobId);
+    // Note: job might not exist in jobs table for free sessions, but researchRequest should exist
+    let job = null;
+    try {
+      job = await getJobById(jobId);
+    } catch (error) {
+      console.log('Job not found in jobs table (expected for free sessions):', error);
+    }
+    
     const researchRequest = await getResearchRequest(jobId);
     
     // Debug: Log what we found in the database

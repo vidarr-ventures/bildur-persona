@@ -116,9 +116,33 @@ export async function POST(request: NextRequest) {
     console.log('Amazon URL isEmpty:', !amazonUrl || amazonUrl.trim() === '');
     console.log('Full request body:', JSON.stringify(body, null, 2));
 
-    // TEMPORARILY SKIP DATABASE OPERATIONS BUT CALL WORKERS DIRECTLY FOR TESTING
-    console.log('TESTING MODE: Skipping database operations but calling workers directly');
+    // CREATE DATABASE RECORDS FOR TESTING
+    console.log('Creating database records for testing...');
     console.log(`Generated jobId: ${jobId}`);
+    
+    try {
+      // Create research request record
+      await createResearchRequest({
+        jobId,
+        websiteUrl,
+        amazonUrl: amazonUrl || '',
+        keywords,
+        email,
+        competitorUrls,
+        planId,
+        planName: PRICING_PLANS[planId as keyof typeof PRICING_PLANS]?.name || planId,
+        discountCode,
+        paymentSessionId,
+        amountPaid,
+        originalPrice,
+        finalPrice,
+        isFree
+      });
+      console.log('Research request created successfully');
+    } catch (dbError) {
+      console.error('Database error:', dbError);
+      // Continue with worker calls even if database fails
+    }
     
     // Call workers directly for testing
     setTimeout(async () => {
