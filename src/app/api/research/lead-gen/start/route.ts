@@ -6,7 +6,7 @@ import { storeJobData } from '@/lib/job-cache';
 import { v4 as uuidv4 } from 'uuid';
 // TEMPORARILY DISABLED: import { Queue } from '@/lib/queue';
 
-async function callWorkersDirectly(jobId: string, websiteUrl: string, keywords: string, amazonUrl?: string) {
+async function callWorkersDirectly(jobId: string, websiteUrl: string, keywords: string, planId: string, amazonUrl?: string) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://persona.bildur.ai';
   const internalApiKey = process.env.INTERNAL_API_KEY;
   
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
         console.log('amazonUrl length:', amazonUrl?.length);
         console.log('===============================');
         
-        await callWorkersDirectly(jobId, websiteUrl, keywords, amazonUrl);
+        await callWorkersDirectly(jobId, websiteUrl, keywords, planId, amazonUrl);
       } catch (error) {
         console.error('Error calling workers directly:', error);
       }
