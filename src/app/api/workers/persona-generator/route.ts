@@ -3,6 +3,7 @@ import { updateJobStatus } from '@/lib/db';
 import { getJobData, saveJobData, markPersonaReportSent } from '@/lib/db';
 import { sendPersonaReport } from '@/lib/email';
 import { validateInternalApiKey, createAuthErrorResponse } from '@/lib/auth';
+import DemographicsFoundationProcessor from '@/lib/prompts/demographics-foundation';
 
 export async function POST(request: NextRequest) {
   // TEMPORARILY DISABLED: Validate internal API key for testing
@@ -45,8 +46,8 @@ export async function POST(request: NextRequest) {
       competitors: !!competitorsDataFinal
     });
 
-    // Generate enhanced persona with all data sources
-    const personaProfile = await generateEnhancedPersona({
+    // Generate sequential persona analysis starting with Demographics Foundation
+    const personaProfile = await generateSequentialPersonaAnalysis({
       jobId,
       websiteUrl,
       targetKeywords,
@@ -54,7 +55,8 @@ export async function POST(request: NextRequest) {
       websiteData: websiteDataFinal,
       redditData: redditDataFinal,
       amazonReviews: amazonReviewsFinal,
-      competitorsData: competitorsDataFinal
+      competitorsData: competitorsDataFinal,
+      youtubeData: null // Will be populated when YouTube data is available
     });
 
     await updateJobStatus(jobId, 'processing');
@@ -122,22 +124,34 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateEnhancedPersona(data: any) {
-  // Simplified prompt for testing
-  const prompt = `Create a customer persona analysis for a business with these details:
+async function generateSequentialPersonaAnalysis(data: any) {
+  console.log(`Starting sequential persona analysis for job ${data.jobId}`);
+  
+  // Stage 1: Demographics Foundation Analysis
+  console.log('Running Stage 1: Demographics Foundation Analysis');
+  
+  const demographicsProcessor = new DemographicsFoundationProcessor();
+  
+  // Prepare collected data for Demographics Foundation prompt
+  const collectedData = {
+    amazonReviews: data.amazonReviews,
+    websiteData: data.websiteData,
+    competitorData: data.competitorsData,
+    youtubeData: data.youtubeData,
+    redditData: data.redditData,
+    targetKeywords: data.targetKeywords || 'customer analysis',
+    amazonUrl: data.amazonUrl,
+    websiteUrl: data.websiteUrl
+  };
 
-Website: ${data.websiteUrl}
-Keywords: ${data.targetKeywords}
-
-Please provide a brief customer persona analysis including:
-1. Target demographic
-2. Main pain points
-3. Key motivations
-4. Marketing recommendations
-
-Keep the response under 500 words.`;
+  // Generate Demographics Foundation prompt
+  const { prompt: demographicsPrompt, dataQuality } = demographicsProcessor.generatePrompt(collectedData);
+  
+  console.log(`Demographics Foundation prompt generated. Data quality score: ${dataQuality.quality_score}%`);
+  console.log(`Total reviews analyzed: ${dataQuality.total_reviews}`);
 
   try {
+    // Call OpenAI API for Demographics Foundation analysis
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -149,15 +163,15 @@ Keep the response under 500 words.`;
         messages: [
           {
             role: 'system',
-            content: 'You are a customer research analyst. Create concise, actionable customer personas based on the provided information.'
+            content: 'You are an expert demographic analyst specializing in customer persona development. Follow the analysis framework exactly as specified. Use temperature 0.1 for consistent analysis.'
           },
           {
             role: 'user',
-            content: prompt
+            content: demographicsPrompt
           }
         ],
         temperature: 0.1,
-        max_tokens: 1000,
+        max_tokens: 4000,
       }),
     });
 
@@ -166,31 +180,98 @@ Keep the response under 500 words.`;
     }
 
     const result = await response.json();
-    const analysis = result.choices[0]?.message?.content || 'No analysis generated';
+    const demographicsAnalysis = result.choices[0]?.message?.content || 'No analysis generated';
+
+    // Parse the response for next stage preparation
+    const parsedInsights = demographicsProcessor.parseResponse(demographicsAnalysis);
+    
+    console.log(`Demographics Foundation analysis completed. Confidence scores:`, parsedInsights.confidence);
+
+    // Format the complete Stage 1 report
+    const stage1Report = `# STAGE 1: DEMOGRAPHICS FOUNDATION ANALYSIS
+*Generated: ${new Date().toLocaleString()}*
+*Data Quality Score: ${dataQuality.quality_score}% (${dataQuality.total_reviews} reviews analyzed)*
+
+## Data Sources Summary
+- Amazon Reviews: ${data.amazonReviews?.reviews?.length || 0} reviews
+- Competitor Data: ${data.competitorsData?.reviews?.length || 0} reviews  
+- YouTube Comments: ${data.youtubeData?.comments?.length || 0} comments
+- Reddit Posts: ${data.redditData?.posts?.length || 0} posts
+- Website Analysis: ${data.websiteData ? 'Available' : 'Not available'}
+
+${dataQuality.warnings.length > 0 ? `## Data Quality Warnings\n${dataQuality.warnings.map(w => `- ${w}`).join('\n')}\n` : ''}
+
+${demographicsAnalysis}
+
+---
+
+## Stage 1 Complete - Ready for Stage 2: Generational Analysis
+**Next Stage Preparation:**
+- Demographics confidence scores extracted
+- Key findings ready for generational deep-dive
+- Quote attributions tracked for transparency
+
+*This is Stage 1 of the sequential persona analysis pipeline.*`;
 
     return {
-      persona: analysis,
+      persona: stage1Report,
+      stage: 'demographics_foundation',
+      stageNumber: 1,
+      totalStages: 9, // You mentioned 9 total stages
       dataQuality: {
-        confidence: 'medium',
-        score: 75
+        confidence: dataQuality.quality_score >= 80 ? 'high' : dataQuality.quality_score >= 60 ? 'medium' : 'low',
+        score: dataQuality.quality_score,
+        total_reviews: dataQuality.total_reviews,
+        warnings: dataQuality.warnings
       },
-      sources: {
-        amazonReviews: 0,
-        reddit: 0,
-        website: 'basic',
-        competitors: 'basic'
+      insights: parsedInsights,
+      quoteAttributions: Array.from(demographicsProcessor.getQuoteAttributions().values()),
+      nextStage: {
+        ready: true,
+        stageName: 'generational_analysis',
+        stageNumber: 2,
+        prepData: parsedInsights.nextStagePrep
       },
       metadata: {
         generated: new Date().toISOString(),
         jobId: data.jobId,
         amazonUrl: data.amazonUrl,
-        enhancedWithAmazonReviews: false
+        websiteUrl: data.websiteUrl,
+        sequentialAnalysis: true,
+        stage: 'demographics_foundation'
       }
     };
 
   } catch (error) {
-    console.error('Error generating enhanced persona:', error);
-    throw error;
+    console.error('Error in Demographics Foundation analysis:', error);
+    
+    // Return error with stage information
+    return {
+      persona: `# STAGE 1: DEMOGRAPHICS FOUNDATION ANALYSIS - ERROR
+
+**Error occurred during analysis:**
+${error instanceof Error ? error.message : 'Unknown error'}
+
+**Data Available:**
+- Amazon Reviews: ${data.amazonReviews?.reviews?.length || 0} reviews
+- Competitor Data: ${data.competitorsData?.reviews?.length || 0} reviews  
+- YouTube Comments: ${data.youtubeData?.comments?.length || 0} comments
+- Reddit Posts: ${data.redditData?.posts?.length || 0} posts
+
+This error occurred in Stage 1 of the sequential persona analysis pipeline.`,
+      stage: 'demographics_foundation',
+      stageNumber: 1,
+      error: true,
+      dataQuality: {
+        confidence: 'low',
+        score: 0
+      },
+      metadata: {
+        generated: new Date().toISOString(),
+        jobId: data.jobId,
+        error: true
+      }
+    };
   }
 }
 

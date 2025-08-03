@@ -33,13 +33,31 @@ export async function GET(
 
     console.log(`Found persona for job ID: ${jobId}, status: ${personaData.status}`);
     
+    // Parse metadata to extract stage information
+    let stageInfo = {};
+    if (personaData.metadata) {
+      try {
+        const metadata = typeof personaData.metadata === 'string' ? 
+          JSON.parse(personaData.metadata) : personaData.metadata;
+        stageInfo = {
+          stage: metadata.stage,
+          stageNumber: metadata.stageNumber,
+          totalStages: metadata.totalStages,
+          nextStage: metadata.nextStage
+        };
+      } catch (e) {
+        console.log('Could not parse metadata for stage info');
+      }
+    }
+
     // Return the persona data in the expected format
     return NextResponse.json({
       persona: personaData.persona,
       status: personaData.status,
       dataQuality: personaData.data_quality,
       createdAt: personaData.created_at,
-      updatedAt: personaData.updated_at
+      updatedAt: personaData.updated_at,
+      ...stageInfo
     });
     
   } catch (error) {

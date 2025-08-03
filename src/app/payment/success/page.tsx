@@ -18,6 +18,10 @@ interface PersonaReport {
   content: string;
   status: string;
   dataQuality?: any;
+  stage?: string;
+  stageNumber?: number;
+  totalStages?: number;
+  nextStage?: any;
 }
 
 interface WorkerStatus {
@@ -115,7 +119,11 @@ function PaymentSuccessContent() {
                 setPersonaReport({
                   content: personaData.persona,
                   status: 'completed',
-                  dataQuality: personaData.dataQuality
+                  dataQuality: personaData.dataQuality,
+                  stage: personaData.stage,
+                  stageNumber: personaData.stageNumber,
+                  totalStages: personaData.totalStages,
+                  nextStage: personaData.nextStage
                 });
               }
             }
@@ -319,10 +327,27 @@ function PaymentSuccessContent() {
         {personaReport && (
           <div className="bg-gray-900 border border-purple-500/30 rounded-lg p-8 mb-12">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">Your Customer Persona Report</h2>
+              <div>
+                <h2 className="text-2xl font-bold text-white">
+                  {personaReport.stage ? 
+                    `Stage ${personaReport.stageNumber}: ${personaReport.stage.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} Analysis` :
+                    'Your Customer Persona Report'
+                  }
+                </h2>
+                {personaReport.totalStages && (
+                  <p className="text-gray-400 text-sm mt-1">
+                    Sequential Analysis: Stage {personaReport.stageNumber} of {personaReport.totalStages}
+                    {personaReport.nextStage?.stageName && (
+                      <span className="ml-2">• Next: {personaReport.nextStage.stageName.replace('_', ' ')}</span>
+                    )}
+                  </p>
+                )}
+              </div>
               <div className="flex items-center space-x-2">
                 <CheckCircle className="w-5 h-5 text-green-400" />
-                <span className="text-green-400 font-medium">Complete</span>
+                <span className="text-green-400 font-medium">
+                  {personaReport.totalStages ? `Stage ${personaReport.stageNumber} Complete` : 'Complete'}
+                </span>
               </div>
             </div>
             <div className="prose prose-invert max-w-none">
