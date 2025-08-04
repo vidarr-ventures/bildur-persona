@@ -3,6 +3,8 @@ import { updateJobStatus, saveJobData } from '@/lib/db';
 import { validateInternalApiKey, createAuthErrorResponse } from '@/lib/auth';
 import { scrapeWebsiteWithFirecrawl, isFirecrawlAvailable } from '@/lib/firecrawl';
 import { routeDataCollection } from '@/lib/data-collection-router';
+import { enhancedWebsiteCrawling, detectShopifyFromResponse } from '@/lib/shopify-integration';
+import { storeJobResult } from '@/lib/job-cache';
 
 interface WebsiteData {
   homePageContent: string;
@@ -13,8 +15,28 @@ interface WebsiteData {
   brandMessaging: string;
 }
 
-async function crawlWebsiteContent(websiteUrl: string, targetKeywords: string): Promise<WebsiteData & { firecrawlUsed: boolean; dataQuality: any }> {
-  // Try enhanced Firecrawl scraping first
+async function crawlWebsiteContent(websiteUrl: string, targetKeywords: string, jobId?: string): Promise<WebsiteData & { firecrawlUsed: boolean; dataQuality: any }> {
+  // Step 1: Try enhanced crawling with Shopify detection
+  console.log(`🚀 Starting enhanced website crawling: ${websiteUrl}`);
+  
+  try {
+    const enhancedResult = await enhancedWebsiteCrawling(websiteUrl, targetKeywords, 'premium', jobId);
+    
+    if (enhancedResult.dataQuality.method !== 'fallback_needed') {
+      console.log(`✅ Enhanced crawling successful using method: ${enhancedResult.dataQuality.method}`);
+      return {
+        ...enhancedResult,
+        dataQuality: {
+          ...enhancedResult.dataQuality,
+          enhanced: true
+        }
+      };
+    }
+  } catch (error) {
+    console.warn('Enhanced crawling failed, falling back to standard methods:', error);
+  }
+  
+  // Step 2: Try enhanced Firecrawl scraping
   if (isFirecrawlAvailable()) {
     try {
       console.log(`🔥 Using Firecrawl for enhanced website scraping: ${websiteUrl}`);
@@ -358,8 +380,12 @@ export async function POST(request: NextRequest) {
   //   return createAuthErrorResponse();
   // }
 
+  let jobId: string | undefined;
+  
   try {
-    const { jobId, websiteUrl, targetKeywords } = await request.json();
+    const requestBody = await request.json();
+    jobId = requestBody.jobId;
+    const { websiteUrl, targetKeywords } = requestBody;
 
     if (!jobId || !websiteUrl) {
       return NextResponse.json({ error: 'Job ID and website URL are required' }, { status: 400 });
@@ -371,7 +397,7 @@ export async function POST(request: NextRequest) {
     await updateJobStatus(jobId, 'processing');
     
     // Crawl website for content and reviews using enhanced method
-    const websiteData = await crawlWebsiteContent(websiteUrl, targetKeywords || '');
+    const websiteData = await crawlWebsiteContent(websiteUrl, targetKeywords || '', jobId);
     
     const analysis = {
       method: websiteData.dataQuality.method,
@@ -397,6 +423,15 @@ export async function POST(request: NextRequest) {
     };
 
     await saveJobData(jobId, 'website', crawlerData);
+    
+    // Store result in cache for debug dashboard
+    storeJobResult(jobId, 'website', {
+      success: true,
+      websiteData: websiteData,
+      analysis: analysis,
+      processingTime: Date.now() - (new Date().getTime() - 30000), // Approximate processing time
+      statusCode: 200
+    });
 
     console.log(`Enhanced website crawling completed for job ${jobId}:`);
     console.log(`- Method: ${analysis.method} (Firecrawl: ${analysis.firecrawlUsed})`);
@@ -425,6 +460,17 @@ export async function POST(request: NextRequest) {
     console.error('Website crawling error:', error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Store error result in cache for debug dashboard (if jobId is available)
+    if (jobId) {
+      storeJobResult(jobId, 'website', {
+        success: false,
+        error: errorMessage,
+        processingTime: 0,
+        statusCode: 500
+      });
+    }
+    
     return NextResponse.json(
       { error: 'Website crawling failed', details: errorMessage },
       { status: 500 }

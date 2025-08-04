@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { CheckCircle, Clock, Mail, ArrowRight } from 'lucide-react';
+import { CheckCircle, Clock, Mail, ArrowRight, Globe, ShoppingCart, MessageSquare, Youtube, User, TrendingUp, XCircle, AlertCircle, ExternalLink, Copy } from 'lucide-react';
 import Link from 'next/link';
 
 interface PaymentStatus {
@@ -47,12 +47,39 @@ interface JobStatusResponse {
   };
 }
 
+interface DataSourceStatus {
+  name: string;
+  url?: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'not_started';
+  reviewsCollected?: number;
+  extractionMethod?: string;
+  processingTime?: number;
+  statusCode?: number;
+  errorMessage?: string;
+  metadata?: any;
+}
+
+interface DebugData {
+  jobId: string;
+  cachedData?: any;
+  dbData?: any;
+  dataSourceStatuses?: {
+    website: any;
+    amazon: any;
+    reddit: any;
+    youtube: any;
+    persona: any;
+  };
+  finalPersona?: string;
+}
+
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
   const isFree = searchParams.get('free') === 'true';
   const debugMode = searchParams.get('debug') === 'true';
   const testJobId = searchParams.get('testJobId');
+  const urlJobId = searchParams.get('job_id');
   
   const [status, setStatus] = useState<PaymentStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,15 +87,18 @@ function PaymentSuccessContent() {
   const [checkingReport, setCheckingReport] = useState(false);
   const [workerStatus, setWorkerStatus] = useState<JobStatusResponse | null>(null);
   const [checkingWorkers, setCheckingWorkers] = useState(false);
+  const [debugData, setDebugData] = useState<DebugData | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   useEffect(() => {
     if (debugMode) {
       // Debug mode: set fake status for testing
+      const jobId = urlJobId || testJobId || 'eb904fca-ee65-46af-af16-499712b2b6ea';
       setStatus({ 
         success: true, 
-        jobId: testJobId || 'ecb8d1f7-d4f3-42ee-9b73-3a08d4086617',
+        jobId: jobId,
         email: 'test@example.com',
-        planName: 'Essential'
+        planName: 'Premium'
       });
       setLoading(false);
       return;
@@ -96,7 +126,7 @@ function PaymentSuccessContent() {
     verifyPayment();
   }, [sessionId, isFree, debugMode]);
 
-  // Check worker status and persona report
+  // Check worker status and persona report (plus debug data if in debug mode)
   useEffect(() => {
     if (!status?.jobId) return;
 
@@ -129,6 +159,19 @@ function PaymentSuccessContent() {
             }
           }
         }
+
+        // If in debug mode, also fetch debug data
+        if (debugMode) {
+          try {
+            const debugResponse = await fetch(`/api/debug/job/${status.jobId}`);
+            if (debugResponse.ok) {
+              const debugResponseData = await debugResponse.json();
+              setDebugData(debugResponseData);
+            }
+          } catch (debugError) {
+            console.error('Error fetching debug data:', debugError);
+          }
+        }
       } catch (error) {
         console.error('Error checking worker status:', error);
       } finally {
@@ -139,17 +182,235 @@ function PaymentSuccessContent() {
     // Check immediately
     checkWorkerStatus();
 
-    // Check every 10 seconds if no persona report yet
+    // Check every 3 seconds (more frequent for debug mode)
     const interval = setInterval(() => {
-      if (!personaReport) {
+      if (!personaReport || debugMode) {
         checkWorkerStatus();
       } else {
         clearInterval(interval);
       }
-    }, 10000);
+    }, debugMode ? 3000 : 10000);
 
     return () => clearInterval(interval);
-  }, [status?.jobId, personaReport]);
+  }, [status?.jobId, personaReport, debugMode]);
+
+  // Debug helper functions
+  const getStatusIcon = (status: DataSourceStatus['status']) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="h-6 w-6 text-green-400" />;
+      case 'processing':
+        return <Clock className="h-6 w-6 text-blue-400 animate-pulse" />;
+      case 'failed':
+        return <XCircle className="h-6 w-6 text-red-400" />;
+      case 'pending':
+        return <AlertCircle className="h-6 w-6 text-yellow-400" />;
+      default:
+        return <AlertCircle className="h-6 w-6 text-gray-400" />;
+    }
+  };
+
+  const getStatusColor = (status: DataSourceStatus['status']) => {
+    switch (status) {
+      case 'completed':
+        return 'text-green-400 bg-green-400/10 border-green-400/20';
+      case 'processing':
+        return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+      case 'failed':
+        return 'text-red-400 bg-red-400/10 border-red-400/20';
+      case 'pending':
+        return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
+      default:
+        return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
+    }
+  };
+
+  const getSourceIcon = (sourceName: string) => {
+    if (sourceName.includes('Website') || sourceName.includes('Competitor')) {
+      return <Globe className="h-5 w-5" />;
+    }
+    if (sourceName.includes('Amazon')) {
+      return <ShoppingCart className="h-5 w-5" />;
+    }
+    if (sourceName.includes('Reddit')) {
+      return <MessageSquare className="h-5 w-5" />;
+    }
+    if (sourceName.includes('YouTube')) {
+      return <Youtube className="h-5 w-5" />;
+    }
+    if (sourceName.includes('Persona')) {
+      return <User className="h-5 w-5" />;
+    }
+    return <TrendingUp className="h-5 w-5" />;
+  };
+
+  const formatMethod = (method: string): string => {
+    const methodMap: { [key: string]: string } = {
+      'shopify_scraper': 'Shopify API',
+      'selenium_fallback': 'Selenium fallback',
+      'firecrawl': 'Firecrawl',
+      'basic_fetch': 'Basic HTTP',
+      'amazon_api': 'Amazon API',
+      'reddit_api': 'Reddit API',
+      'youtube_api': 'YouTube API'
+    };
+    return methodMap[method] || method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const copyPersonaToClipboard = async () => {
+    const textToCopy = debugData?.finalPersona || personaReport?.content;
+    if (!textToCopy) return;
+    
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy persona:', err);
+    }
+  };
+
+  // Transform debug data into display format
+  const getDebugDataSources = () => {
+    if (!debugData) return [];
+    
+    const cachedData = debugData.cachedData || {};
+    const dbData = debugData.dbData || {};
+    const dataSourceStatuses: any = debugData.dataSourceStatuses || {};
+    
+    const sources: DataSourceStatus[] = [
+      {
+        name: 'Customer Website',
+        url: dbData.website_url || cachedData.websiteUrl,
+        status: dataSourceStatuses?.website?.status || 'not_started',
+        reviewsCollected: dataSourceStatuses?.website?.reviewsCollected || 0,
+        extractionMethod: formatMethod(dataSourceStatuses?.website?.extractionMethod || 'Unknown'),
+        processingTime: dataSourceStatuses?.website?.processingTime,
+        statusCode: dataSourceStatuses?.website?.statusCode,
+        errorMessage: dataSourceStatuses?.website?.errorMessage
+      },
+      {
+        name: 'Amazon Reviews',
+        url: dbData.amazon_url || cachedData.amazonUrl,
+        status: dataSourceStatuses?.amazon?.status || 'not_started',
+        reviewsCollected: dataSourceStatuses?.amazon?.reviewsCollected || 0,
+        extractionMethod: formatMethod(dataSourceStatuses?.amazon?.extractionMethod || 'Unknown'),
+        processingTime: dataSourceStatuses?.amazon?.processingTime,
+        statusCode: dataSourceStatuses?.amazon?.statusCode,
+        errorMessage: dataSourceStatuses?.amazon?.errorMessage
+      },
+      {
+        name: 'Reddit Scraper',
+        status: dataSourceStatuses?.reddit?.status || 'not_started',
+        reviewsCollected: dataSourceStatuses?.reddit?.reviewsCollected || 0,
+        extractionMethod: formatMethod(dataSourceStatuses?.reddit?.extractionMethod || 'Unknown'),
+        processingTime: dataSourceStatuses?.reddit?.processingTime,
+        statusCode: dataSourceStatuses?.reddit?.statusCode,
+        errorMessage: dataSourceStatuses?.reddit?.errorMessage
+      },
+      {
+        name: 'YouTube Comments',
+        status: dataSourceStatuses?.youtube?.status || 'not_started',
+        reviewsCollected: dataSourceStatuses?.youtube?.reviewsCollected || 0,
+        extractionMethod: formatMethod(dataSourceStatuses?.youtube?.extractionMethod || 'Unknown'),
+        processingTime: dataSourceStatuses?.youtube?.processingTime,
+        statusCode: dataSourceStatuses?.youtube?.statusCode,
+        errorMessage: dataSourceStatuses?.youtube?.errorMessage
+      },
+      {
+        name: 'Persona Generator',
+        status: dataSourceStatuses?.persona?.status || 'not_started',
+        processingTime: dataSourceStatuses?.persona?.processingTime,
+        errorMessage: dataSourceStatuses?.persona?.errorMessage
+      }
+    ];
+
+    // Add competitors if they exist
+    const competitorUrls = dbData.competitor_urls || [];
+    competitorUrls.forEach((url: string, index: number) => {
+      sources.splice(1 + index, 0, {
+        name: `Competitor ${index + 1}`,
+        url,
+        status: 'not_started',
+        reviewsCollected: 0,
+        extractionMethod: 'Unknown'
+      });
+    });
+
+    return sources;
+  };
+
+  const DataSourceBox = ({ source }: { source: DataSourceStatus }) => (
+    <div className={`border rounded-lg p-6 ${getStatusColor(source.status)}`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          {getSourceIcon(source.name)}
+          <h3 className="text-lg font-semibold text-white">{source.name}</h3>
+        </div>
+        {getStatusIcon(source.status)}
+      </div>
+      
+      {source.url && (
+        <div className="mb-3">
+          <p className="text-sm text-gray-400">URL</p>
+          <div className="flex items-center space-x-2">
+            <p className="font-mono text-sm text-white break-all">{source.url}</p>
+            <a 
+              href={source.url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-purple-400 hover:text-purple-300 flex-shrink-0"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
+          </div>
+        </div>
+      )}
+      
+      <div className="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <p className="text-gray-400">Status</p>
+          <p className="font-medium text-white capitalize">{source.status.replace('_', ' ')}</p>
+        </div>
+        
+        {source.reviewsCollected !== undefined && (
+          <div>
+            <p className="text-gray-400">Reviews</p>
+            <p className="font-medium text-white">
+              {source.reviewsCollected > 0 ? `${source.reviewsCollected} extracted` : 'No reviews found'}
+            </p>
+          </div>
+        )}
+        
+        {source.extractionMethod && (
+          <div>
+            <p className="text-gray-400">Method</p>
+            <p className="font-medium text-white">{source.extractionMethod}</p>
+          </div>
+        )}
+        
+        {source.processingTime && (
+          <div>
+            <p className="text-gray-400">Processing Time</p>
+            <p className="font-medium text-white">{source.processingTime}ms</p>
+          </div>
+        )}
+        
+        {source.statusCode && (
+          <div>
+            <p className="text-gray-400">Status Code</p>
+            <p className="font-medium text-white">{source.statusCode}</p>
+          </div>
+        )}
+      </div>
+      
+      {source.errorMessage && (
+        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded">
+          <p className="text-sm text-red-300">{source.errorMessage}</p>
+        </div>
+      )}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -197,14 +458,21 @@ function PaymentSuccessContent() {
             <CheckCircle className="w-10 h-10 text-green-400" />
           </div>
           <h1 className="text-3xl font-bold mb-4">
-            {isFree ? 'Free Analysis Started!' : 'Payment Successful!'}
+            {debugMode ? '🧪 Debug Mode Active' : (isFree ? 'Free Analysis Started!' : 'Payment Successful!')}
           </h1>
           <p className="text-xl text-gray-300 mb-2">
-            Your customer persona analysis is now processing
+            {debugMode ? 'Enhanced debugging view with detailed data source tracking' : 'Your customer persona analysis is now processing'}
           </p>
           <p className="text-gray-400">
-            Results will appear on this page as soon as they're ready
+            {debugMode ? `Job ID: ${status?.jobId}` : 'Results will appear on this page as soon as they\'re ready'}
           </p>
+          {debugMode && (
+            <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <p className="text-blue-300 text-sm">
+                🔧 Debug mode provides real-time insights into data source processing, extraction methods, and error details.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Status Cards */}
@@ -264,8 +532,49 @@ function PaymentSuccessContent() {
           </div>
         </div>
 
-        {/* Worker Status Display */}
-        {workerStatus && (
+        {/* Debug Mode: Enhanced Data Source Status */}
+        {debugMode && debugData && (
+          <div className="mb-8">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-white mb-2">🧪 Debug Dashboard</h2>
+              <p className="text-gray-400">Detailed status for each data source (updates every 3 seconds)</p>
+            </div>
+
+            {/* Data Sources Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {getDebugDataSources().map((source, index) => (
+                <DataSourceBox key={index} source={source} />
+              ))}
+            </div>
+
+            {/* Final Persona Output in Debug Mode */}
+            {(debugData.finalPersona || personaReport?.content) && (
+              <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-semibold text-white flex items-center space-x-2">
+                    <User className="h-5 w-5" />
+                    <span>Generated Persona (Debug View)</span>
+                  </h3>
+                  <button
+                    onClick={copyPersonaToClipboard}
+                    className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Copy className="h-4 w-4" />
+                    <span>{copySuccess ? 'Copied!' : 'Copy'}</span>
+                  </button>
+                </div>
+                <div className="bg-gray-800 border border-gray-700 rounded p-4 max-h-96 overflow-y-auto">
+                  <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
+                    {debugData.finalPersona || personaReport?.content}
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Regular Worker Status Display (shown when not in debug mode) */}
+        {!debugMode && workerStatus && (
           <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 mb-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">Analysis Progress</h2>
