@@ -169,8 +169,10 @@ export default function DebugPage() {
   const formatMethod = (method: string): string => {
     const methodMap: { [key: string]: string } = {
       'shopify_scraper': 'Shopify API',
+      'custom_amazon_scraper': 'Custom Amazon Scraper',
+      'custom_reddit_scraper': 'Custom Reddit Scraper',
       'selenium_fallback': 'Selenium fallback',
-      'firecrawl': 'Firecrawl',
+      'firecrawl': 'Firecrawl (Legacy)',
       'basic_fetch': 'Basic HTTP',
       'amazon_api': 'Amazon API',
       'reddit_api': 'Reddit API',

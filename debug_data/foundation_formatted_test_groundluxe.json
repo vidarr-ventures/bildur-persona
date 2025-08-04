@@ -1,0 +1,130 @@
+{
+  "source_type": "customer_url",
+  "source_url": "https://groundluxe.com",
+  "scrape_timestamp": "2025-08-04T11:08:11.258782",
+  "job_id": "test_groundluxe",
+  "target_keywords": [
+    "grounding sheets",
+    " wellness",
+    " sleep"
+  ],
+  "reviews": [],
+  "review_count": 0,
+  "company_info": {
+    "name": "Luxurious Organic Grounding Sheets from GroundLuxe",
+    "description": "Sleep better and feel better with organic fitted grounding sheets from GroundLuxe.",
+    "website": "https://groundluxe.com"
+  },
+  "products": [
+    {
+      "title": "Your cart is empty",
+      "description": "",
+      "price": null,
+      "source": "customer_website"
+    },
+    {
+      "title": "Your cart",
+      "description": "",
+      "price": null,
+      "source": "customer_website"
+    },
+    {
+      "title": "Subtotal",
+      "description": "",
+      "price": null,
+      "source": "customer_website"
+    },
+    {
+      "title": "Get Grounded While You Sleep, Work & Relax",
+      "description": "Grounding Sheets\n            \nGroundLuxe fitted grounding sheets are our flagship product. Each GroundLuxe sheet is expertly crafted... \n\n\n\n\n\n\n\n\n\nGrounding Sheets",
+      "price": null,
+      "source": "customer_website"
+    },
+    {
+      "title": "Grounding Sheets",
+      "description": "GroundLuxe fitted grounding sheets are our flagship product. Each GroundLuxe sheet is expertly crafted...",
+      "price": null,
+      "source": "customer_website"
+    },
+    {
+      "title": "Grounding Sheets",
+      "description": "Grounding Pillowcase\n\n\n\n\n\n\n\n\n\n\nGrounding Pillowcase",
+      "price": null,
+      "source": "customer_website"
+    },
+    {
+      "title": "Grounding Pillowcase",
+      "description": "",
+      "price": null,
+      "source": "customer_website"
+    },
+    {
+      "title": "Grounding Pillowcase",
+      "description": "Grounding Mat\n\n\n\n\n\n\n\n\n\n\nGrounding Mat",
+      "price": null,
+      "source": "customer_website"
+    },
+    {
+      "title": "Grounding Mat",
+      "description": "",
+      "price": null,
+      "source": "customer_website"
+    },
+    {
+      "title": "Grounding Mat",
+      "description": "Accessories\n\n\n\n\n\n\n\n\n\n\nAccessories",
+      "price": null,
+      "source": "customer_website"
+    }
+  ],
+  "analysis": {
+    "total_reviews": 0,
+    "has_ratings": false,
+    "has_dates": false,
+    "average_review_length": 0.0,
+    "review_quality": "poor",
+    "value_propositions": [
+      "Sleep better and feel better with organic fitted grounding sheets from GroundLuxe",
+      "Your cart is empty",
+      "Your cart",
+      "Subtotal",
+      "Get Grounded While You Sleep, Work & Relax"
+    ],
+    "features": [
+      "Grounding Sheets\n            \nGroundLuxe fitted grounding sheets are our flagship product. Each Grou...",
+      "GroundLuxe fitted grounding sheets are our flagship product. Each GroundLuxe sheet is expertly craft...",
+      "Grounding Pillowcase\n\n\n\n\n\n\n\n\n\n\nGrounding Pillowcase",
+      "Grounding Mat\n\n\n\n\n\n\n\n\n\n\nGrounding Mat",
+      "Accessories\n\n\n\n\n\n\n\n\n\n\nAccessories"
+    ],
+    "brand_messaging": "Sleep better and feel better with organic fitted grounding sheets from GroundLuxe."
+  },
+  "data_quality": {
+    "scrape_successful": true,
+    "pages_scraped": 1,
+    "reviews_found": false,
+    "has_minimum_reviews": false,
+    "confidence_level": "medium",
+    "extraction_method": "beautifulsoup_scraper",
+    "geographic_scope": "Unknown (customer website)",
+    "verification_rate": 0.0,
+    "validation_score": 0,
+    "validation_warnings": [
+      "No reviews found"
+    ],
+    "validation_recommendations": [
+      "Check if the website has a dedicated reviews or testimonials page",
+      "Consider checking additional pages or improving selectors"
+    ]
+  },
+  "metadata": {
+    "pipeline_stage": "customer_site_collection",
+    "next_stage": "demographics_foundation",
+    "processing_notes": [
+      "Scraped 1 pages",
+      "Found 0 reviews",
+      "WARNING: Below minimum recommended review count for reliable analysis"
+    ],
+    "timestamp": "2025-08-04T11:08:11.878905"
+  }
+}

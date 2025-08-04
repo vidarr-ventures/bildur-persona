@@ -1,0 +1,27 @@
+{
+  "source": "customer_website",
+  "url": "https://httpbin.org/html",
+  "scrape_date": "2025-08-04T10:48:44.982835",
+  "company_info": {
+    "name": "",
+    "description": "Availing himself of the mild, summer-cool weather that now reigned in these latitudes, and in preparation for the peculiarly active pursuits shortly to be anticipated, Perth, the begrimed, blistered old blacksmith, had not removed his portable forge to the hold again, after concluding his contributory work for Ahab's leg, but still retained it on deck, fast lashed to ringbolts by the foremast; being now almost incessantly invoked by the headsmen, and harpooneers, and bowsmen to do some little jo",
+    "website": "https://httpbin.org/html"
+  },
+  "products": [
+    {
+      "title": "Herman Melville - Moby-Dick",
+      "description": "Availing himself of the mild, summer-cool weather that now reigned in these latitudes, and in preparation for the peculiarly active pursuits shortly to be anticipated, Perth, the begrimed, blistered old blacksmith, had not removed his portable forge to the hold again, after concluding his contributory work for Ahab's leg, but still retained it on deck, fast lashed to ringbolts by the foremast; being now almost incessantly invoked by the headsmen, and harpooneers, and bowsmen to do some little jo",
+      "price": null
+    }
+  ],
+  "reviews": [],
+  "total_reviews": 0,
+  "data_quality": {
+    "reviews_found": false,
+    "ratings_available": false,
+    "dates_available": false,
+    "scrape_successful": true,
+    "pages_scraped": 1,
+    "errors": []
+  }
+}

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus, saveJobData } from '@/lib/db';
 import { validateInternalApiKey, createAuthErrorResponse } from '@/lib/auth';
-import { extractFirecrawlAmazonReviews } from './firecrawl-extraction';
+import { customAmazonScraper } from '@/lib/custom-amazon-scraper';
+import { storeJobResult } from '@/lib/job-cache';
 
 function analyzeMultiPageReviews(reviews: any[], productInfo: any, targetKeywords: string, realCount: number, extractionFailed: boolean) {
   const totalReviews = reviews.length;
@@ -180,27 +181,51 @@ export async function POST(request: NextRequest) {
       console.log('updateJobStatus failed (continuing anyway):', dbError);
     }
     
-    // Firecrawl extraction with tier-based limits
-    const extractionResult = await extractFirecrawlAmazonReviews(amazonUrl, targetKeywords, planName || 'Essential');
+    // Custom Amazon scraper with tier-based limits
+    const maxReviews = planName === 'Essential' ? 25 : planName === 'Pro' ? 100 : 200;
+    console.log(`🛒 Using custom Amazon scraper with ${maxReviews} review limit for ${planName} plan`);
+    
+    const extractionResult = await customAmazonScraper.scrapeAmazonReviews(amazonUrl, maxReviews);
+    
+    // Transform to match expected format
+    const transformedResult = {
+      success: extractionResult.success,
+      reviews: extractionResult.reviews,
+      productInfo: extractionResult.product,
+      realReviewsCount: extractionResult.reviews.length,
+      extractionFailed: !extractionResult.success,
+      metadata: extractionResult.metadata
+    };
     
     // Comprehensive analysis
     const analysis = analyzeMultiPageReviews(
-      extractionResult.reviews, 
-      extractionResult.productInfo, 
+      transformedResult.reviews, 
+      transformedResult.productInfo, 
       targetKeywords,
-      extractionResult.realReviewsCount,
-      extractionResult.extractionFailed || false
+      transformedResult.realReviewsCount,
+      transformedResult.extractionFailed || false
     );
     
+    // Store result in cache for debug dashboard
+    storeJobResult(jobId, 'amazon', {
+      success: transformedResult.success,
+      reviews: transformedResult.reviews,
+      analysis: analysis,
+      metadata: transformedResult.metadata,
+      processingTime: transformedResult.metadata.processing_time,
+      statusCode: transformedResult.success ? 200 : 500,
+      error: extractionResult.error
+    });
+    
     const amazonReviewsData = {
-      reviews: extractionResult.reviews,
+      reviews: transformedResult.reviews,
       analysis: analysis,
       metadata: {
         timestamp: new Date().toISOString(),
         amazonUrl: amazonUrl,
         targetKeywords: targetKeywords,
-        extractionMethod: extractionResult.extractionMethod,
-        realReviewsExtracted: extractionResult.realReviewsCount,
+        extractionMethod: extractionResult.metadata.extraction_method,
+        realReviewsExtracted: transformedResult.realReviewsCount,
         extractionStatus: analysis.extractionStatus,
         dataType: 'amazon_reviews_extraction',
         planName: planName || 'Essential',
@@ -216,8 +241,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`Amazon extraction completed for job ${jobId}:`);
     console.log(`- Plan: ${planName || 'Essential'}`);
-    console.log(`- Real reviews extracted: ${extractionResult.realReviewsCount}`);
-    console.log(`- Extraction method: ${extractionResult.extractionMethod}`);
+    console.log(`- Real reviews extracted: ${transformedResult.realReviewsCount}`);
+    console.log(`- Extraction method: ${extractionResult.metadata.extraction_method}`);
     console.log(`- Extraction status: ${analysis.extractionStatus}`);
 
     return NextResponse.json({
@@ -227,13 +252,13 @@ export async function POST(request: NextRequest) {
         `Amazon reviews extraction completed with issues (${planName} tier)`,
       data: {
         totalReviews: extractionResult.reviews.length,
-        realReviews: extractionResult.realReviewsCount,
+        realReviews: transformedResult.realReviewsCount,
         extractionStatus: analysis.extractionStatus,
         averageRating: analysis.averageRating,
         verifiedRatio: analysis.verifiedPurchaseRatio,
         painPointsFound: analysis.painPoints.length,
         positivesFound: analysis.positives.length,
-        method: extractionResult.extractionMethod,
+        method: extractionResult.metadata.extraction_method,
         planName: planName || 'Essential',
         emotions: analysis.emotions,
         errorMessage: analysis.errorMessage

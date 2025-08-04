@@ -1,0 +1,67 @@
+{
+  "source_type": "customer_url",
+  "source_url": "https://httpbin.org/html",
+  "scrape_timestamp": "2025-08-04T10:48:44.982835",
+  "job_id": "test_job_123",
+  "target_keywords": [
+    "test keywords"
+  ],
+  "reviews": [],
+  "review_count": 0,
+  "company_info": {
+    "name": "",
+    "description": "Availing himself of the mild, summer-cool weather that now reigned in these latitudes, and in preparation for the peculiarly active pursuits shortly to be anticipated, Perth, the begrimed, blistered old blacksmith, had not removed his portable forge to the hold again, after concluding his contributory work for Ahab's leg, but still retained it on deck, fast lashed to ringbolts by the foremast; being now almost incessantly invoked by the headsmen, and harpooneers, and bowsmen to do some little jo",
+    "website": "https://httpbin.org/html"
+  },
+  "products": [
+    {
+      "title": "Herman Melville - Moby-Dick",
+      "description": "Availing himself of the mild, summer-cool weather that now reigned in these latitudes, and in preparation for the peculiarly active pursuits shortly to be anticipated, Perth, the begrimed, blistered old blacksmith, had not removed his portable forge to the hold again, after concluding his contributory work for Ahab's leg, but still retained it on deck, fast lashed to ringbolts by the foremast; being now almost incessantly invoked by the headsmen, and harpooneers, and bowsmen to do some little jo",
+      "price": null,
+      "source": "customer_website"
+    }
+  ],
+  "analysis": {
+    "total_reviews": 0,
+    "has_ratings": false,
+    "has_dates": false,
+    "average_review_length": 0.0,
+    "review_quality": "poor",
+    "value_propositions": [
+      "Availing himself of the mild, summer-cool weather that now reigned in these latitudes, and in preparation for the peculiarly active pursuits shortly to be anticipated, Perth, the begrimed, blistered old blacksmith, had not removed his portable forge to the hold again, after concluding his contributory work for Ahab's leg, but still retained it on deck, fast lashed to ringbolts by the foremast; being now almost incessantly invoked by the headsmen, and harpooneers, and bowsmen to do some little jo",
+      "Herman Melville - Moby-Dick"
+    ],
+    "features": [
+      "Availing himself of the mild, summer-cool weather that now reigned in these latitudes, and in prepar..."
+    ],
+    "brand_messaging": "Availing himself of the mild, summer-cool weather that now reigned in these latitudes, and in preparation for the peculiarly active pursuits shortly to be anticipated, Perth, the begrimed, blistered old blacksmith, had not removed his portable forge to the hold again, after concluding his contributory work for Ahab's leg, but still retained it on deck, fast lashed to ringbolts by the foremast; being now almost incessantly invoked by the headsmen, and harpooneers, and bowsmen to do some little jo"
+  },
+  "data_quality": {
+    "scrape_successful": true,
+    "pages_scraped": 1,
+    "reviews_found": false,
+    "has_minimum_reviews": false,
+    "confidence_level": "medium",
+    "extraction_method": "beautifulsoup_scraper",
+    "geographic_scope": "Unknown (customer website)",
+    "verification_rate": 0.0,
+    "validation_score": 0,
+    "validation_warnings": [
+      "No reviews found"
+    ],
+    "validation_recommendations": [
+      "Check if the website has a dedicated reviews or testimonials page",
+      "Consider checking additional pages or improving selectors"
+    ]
+  },
+  "metadata": {
+    "pipeline_stage": "customer_site_collection",
+    "next_stage": "demographics_foundation",
+    "processing_notes": [
+      "Scraped 1 pages",
+      "Found 0 reviews",
+      "WARNING: Below minimum recommended review count for reliable analysis"
+    ],
+    "timestamp": "2025-08-04T10:48:45.697458"
+  }
+}

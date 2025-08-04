@@ -1,0 +1,27 @@
+{
+  "source": "customer_website",
+  "url": "https://example.com",
+  "scrape_date": "2025-08-04T10:48:08.324300",
+  "company_info": {
+    "name": "Example Domain",
+    "description": "This domain is for use in illustrative examples in documents. You may use this\n    domain in literature without prior coordination or asking for permission.",
+    "website": "https://example.com"
+  },
+  "products": [
+    {
+      "title": "Example Domain",
+      "description": "This domain is for use in illustrative examples in documents. You may use this\n    domain in literature without prior coordination or asking for permission.",
+      "price": null
+    }
+  ],
+  "reviews": [],
+  "total_reviews": 0,
+  "data_quality": {
+    "reviews_found": false,
+    "ratings_available": false,
+    "dates_available": false,
+    "scrape_successful": true,
+    "pages_scraped": 1,
+    "errors": []
+  }
+}

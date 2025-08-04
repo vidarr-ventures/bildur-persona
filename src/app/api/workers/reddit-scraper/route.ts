@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus } from '@/lib/db';
 import { saveJobData } from '@/lib/db';
 import { validateInternalApiKey, createAuthErrorResponse } from '@/lib/auth';
+import { customRedditScraper } from '@/lib/custom-reddit-scraper';
+import { storeJobResult } from '@/lib/job-cache';
 
 interface RedditPost {
   title: string;
@@ -135,17 +137,47 @@ export async function POST(request: NextRequest) {
     // Update job status
     await updateJobStatus(jobId, 'processing');
     
-    // Discover relevant subreddits based on keywords
-    const relevantSubreddits = await discoverRelevantSubreddits(targetKeywords);
-    console.log(`Discovered ${relevantSubreddits.length} relevant subreddits:`, relevantSubreddits);
+    // Use custom Reddit scraper for cost optimization
+    console.log(`🔍 Using custom Reddit scraper to eliminate Firecrawl costs`);
+    const scrapingResult = await customRedditScraper.scrapeRedditDiscussions(targetKeywords, 50);
+    
+    // Transform to match expected format
+    const redditPosts = scrapingResult.posts.map(post => ({
+      title: post.title,
+      content: post.text,
+      score: post.score,
+      comments: post.num_comments,
+      subreddit: post.subreddit,
+      url: post.permalink,
+      timestamp: new Date(post.created_utc * 1000).toISOString()
+    }));
+    
+    // Include comments as additional posts
+    const commentPosts = scrapingResult.comments.map((comment, index) => ({
+      title: `Comment #${index + 1}`,
+      content: comment.text,
+      score: comment.score,
+      comments: 0,
+      subreddit: 'comments',
+      url: `comment_${comment.id}`,
+      timestamp: new Date(comment.created_utc * 1000).toISOString()
+    }));
+    
+    const allRedditData = [...redditPosts, ...commentPosts];
+    
+    // Store result in cache for debug dashboard
+    storeJobResult(jobId, 'reddit', {
+      success: scrapingResult.success,
+      posts: allRedditData,
+      metadata: scrapingResult.metadata,
+      processingTime: scrapingResult.metadata.processing_time,
+      statusCode: scrapingResult.success ? 200 : 500,
+      error: scrapingResult.error
+    });
 
     await updateJobStatus(jobId, 'processing');
     
-    // Scrape Reddit data from relevant subreddits
-    console.log(`Scraping Reddit posts from subreddits...`);
-    const redditPosts = await scrapeRedditData(relevantSubreddits, targetKeywords);
-    
-    if (redditPosts.length === 0) {
+    if (allRedditData.length === 0) {
       console.log('No Reddit posts found, saving empty results');
       await saveJobData(jobId, 'reddit', {
         posts: [],
@@ -163,16 +195,18 @@ export async function POST(request: NextRequest) {
     await updateJobStatus(jobId, 'processing');
     
     // Analyze sentiment and extract insights
-    const analysis = analyzeRedditSentiment(redditPosts);
+    const analysis = analyzeRedditSentiment(allRedditData);
     
     const redditData = {
-      posts: redditPosts,
+      posts: allRedditData,
       analysis,
       metadata: {
         timestamp: new Date().toISOString(),
         keywords: targetKeywords,
-        subreddits: relevantSubreddits,
-        totalPosts: redditPosts.length
+        subreddits: scrapingResult.metadata.subreddits_searched,
+        extraction_method: scrapingResult.metadata.extraction_method,
+        cost_savings: scrapingResult.metadata.cost_savings,
+        totalPosts: allRedditData.length
       }
     };
 
@@ -187,8 +221,8 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Reddit data collection completed',
       data: {
-        postCount: redditPosts.length,
-        subreddits: relevantSubreddits.length,
+        postCount: allRedditData.length,
+        subreddits: scrapingResult.metadata.subreddits_searched.length,
         sentiment: analysis.sentiment
       }
     });

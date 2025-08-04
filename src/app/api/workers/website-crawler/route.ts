@@ -36,37 +36,8 @@ async function crawlWebsiteContent(websiteUrl: string, targetKeywords: string, j
     console.warn('Enhanced crawling failed, falling back to standard methods:', error);
   }
   
-  // Step 2: Try enhanced Firecrawl scraping
-  if (isFirecrawlAvailable()) {
-    try {
-      console.log(`🔥 Using Firecrawl for enhanced website scraping: ${websiteUrl}`);
-      
-      const firecrawlResult = await scrapeWebsiteWithFirecrawl(websiteUrl);
-      
-      if (firecrawlResult.success && firecrawlResult.data) {
-        const { markdown, content, metadata } = firecrawlResult.data;
-        
-        // Extract structured data from Firecrawl results
-        const extractedData = extractDataFromFirecrawlContent(markdown || content || '', metadata);
-        
-        return {
-          ...extractedData,
-          firecrawlUsed: true,
-          dataQuality: {
-            method: 'firecrawl',
-            contentLength: (markdown || content || '').length,
-            hasMetadata: !!metadata,
-            title: metadata?.title,
-            description: metadata?.description
-          }
-        };
-      } else {
-        console.warn('Firecrawl failed, falling back to basic scraping:', firecrawlResult.error);
-      }
-    } catch (error) {
-      console.error('Firecrawl error, falling back to basic scraping:', error);
-    }
-  }
+  // Step 2: Skip Firecrawl entirely for cost optimization
+  console.log(`💰 Skipping Firecrawl to eliminate API costs - using basic scraping instead`);
 
   // Fallback to basic scraping
   console.log(`Using basic scraping for: ${websiteUrl}`);

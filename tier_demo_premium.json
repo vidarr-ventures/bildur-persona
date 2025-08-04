@@ -1,0 +1,1365 @@
+{
+  "tier_demo": {
+    "tier": "premium",
+    "max_reviews_per_site": 200,
+    "total_reviews": 150,
+    "data_quality": {
+      "tier_limit_applied": false,
+      "available_reviews_estimated": 150,
+      "reviews_found": true,
+      "confidence_level": "high"
+    }
+  },
+  "reviews_sample": [
+    {
+      "review_id": "R001",
+      "text": "This is review 1. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_1",
+      "date": "2024-01-01",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R002",
+      "text": "This is review 2. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_2",
+      "date": "2024-02-02",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R003",
+      "text": "This is review 3. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_3",
+      "date": "2024-03-03",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R004",
+      "text": "This is review 4. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_4",
+      "date": "2024-04-04",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R005",
+      "text": "This is review 5. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_5",
+      "date": "2024-05-05",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R006",
+      "text": "This is review 6. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_6",
+      "date": "2024-06-06",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R007",
+      "text": "This is review 7. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_7",
+      "date": "2024-07-07",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R008",
+      "text": "This is review 8. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_8",
+      "date": "2024-08-08",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R009",
+      "text": "This is review 9. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_9",
+      "date": "2024-09-09",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R010",
+      "text": "This is review 10. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_10",
+      "date": "2024-10-10",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R011",
+      "text": "This is review 11. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_11",
+      "date": "2024-11-11",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R012",
+      "text": "This is review 12. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_12",
+      "date": "2024-12-12",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R013",
+      "text": "This is review 13. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_13",
+      "date": "2024-01-13",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R014",
+      "text": "This is review 14. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_14",
+      "date": "2024-02-14",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R015",
+      "text": "This is review 15. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_15",
+      "date": "2024-03-15",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R016",
+      "text": "This is review 16. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_16",
+      "date": "2024-04-16",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R017",
+      "text": "This is review 17. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_17",
+      "date": "2024-05-17",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R018",
+      "text": "This is review 18. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_18",
+      "date": "2024-06-18",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R019",
+      "text": "This is review 19. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_19",
+      "date": "2024-07-19",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R020",
+      "text": "This is review 20. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_20",
+      "date": "2024-08-20",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R021",
+      "text": "This is review 21. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_21",
+      "date": "2024-09-21",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R022",
+      "text": "This is review 22. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_22",
+      "date": "2024-10-22",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R023",
+      "text": "This is review 23. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_23",
+      "date": "2024-11-23",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R024",
+      "text": "This is review 24. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_24",
+      "date": "2024-12-24",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R025",
+      "text": "This is review 25. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_25",
+      "date": "2024-01-25",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R026",
+      "text": "This is review 26. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_26",
+      "date": "2024-02-26",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R027",
+      "text": "This is review 27. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_27",
+      "date": "2024-03-27",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R028",
+      "text": "This is review 28. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_28",
+      "date": "2024-04-28",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R029",
+      "text": "This is review 29. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_29",
+      "date": "2024-05-01",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R030",
+      "text": "This is review 30. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_30",
+      "date": "2024-06-02",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R031",
+      "text": "This is review 31. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_31",
+      "date": "2024-07-03",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R032",
+      "text": "This is review 32. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_32",
+      "date": "2024-08-04",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R033",
+      "text": "This is review 33. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_33",
+      "date": "2024-09-05",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R034",
+      "text": "This is review 34. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_34",
+      "date": "2024-10-06",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R035",
+      "text": "This is review 35. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_35",
+      "date": "2024-11-07",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R036",
+      "text": "This is review 36. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_36",
+      "date": "2024-12-08",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R037",
+      "text": "This is review 37. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_37",
+      "date": "2024-01-09",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R038",
+      "text": "This is review 38. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_38",
+      "date": "2024-02-10",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R039",
+      "text": "This is review 39. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_39",
+      "date": "2024-03-11",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R040",
+      "text": "This is review 40. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_40",
+      "date": "2024-04-12",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R041",
+      "text": "This is review 41. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_41",
+      "date": "2024-05-13",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R042",
+      "text": "This is review 42. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_42",
+      "date": "2024-06-14",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R043",
+      "text": "This is review 43. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_43",
+      "date": "2024-07-15",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R044",
+      "text": "This is review 44. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_44",
+      "date": "2024-08-16",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R045",
+      "text": "This is review 45. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_45",
+      "date": "2024-09-17",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R046",
+      "text": "This is review 46. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_46",
+      "date": "2024-10-18",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R047",
+      "text": "This is review 47. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_47",
+      "date": "2024-11-19",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R048",
+      "text": "This is review 48. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_48",
+      "date": "2024-12-20",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R049",
+      "text": "This is review 49. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_49",
+      "date": "2024-01-21",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R050",
+      "text": "This is review 50. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_50",
+      "date": "2024-02-22",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R051",
+      "text": "This is review 51. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_51",
+      "date": "2024-03-23",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R052",
+      "text": "This is review 52. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_52",
+      "date": "2024-04-24",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R053",
+      "text": "This is review 53. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_53",
+      "date": "2024-05-25",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R054",
+      "text": "This is review 54. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_54",
+      "date": "2024-06-26",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R055",
+      "text": "This is review 55. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_55",
+      "date": "2024-07-27",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R056",
+      "text": "This is review 56. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_56",
+      "date": "2024-08-28",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R057",
+      "text": "This is review 57. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_57",
+      "date": "2024-09-01",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R058",
+      "text": "This is review 58. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_58",
+      "date": "2024-10-02",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R059",
+      "text": "This is review 59. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_59",
+      "date": "2024-11-03",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R060",
+      "text": "This is review 60. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_60",
+      "date": "2024-12-04",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R061",
+      "text": "This is review 61. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_61",
+      "date": "2024-01-05",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R062",
+      "text": "This is review 62. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_62",
+      "date": "2024-02-06",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R063",
+      "text": "This is review 63. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_63",
+      "date": "2024-03-07",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R064",
+      "text": "This is review 64. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_64",
+      "date": "2024-04-08",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R065",
+      "text": "This is review 65. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_65",
+      "date": "2024-05-09",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R066",
+      "text": "This is review 66. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_66",
+      "date": "2024-06-10",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R067",
+      "text": "This is review 67. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_67",
+      "date": "2024-07-11",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R068",
+      "text": "This is review 68. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_68",
+      "date": "2024-08-12",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R069",
+      "text": "This is review 69. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_69",
+      "date": "2024-09-13",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R070",
+      "text": "This is review 70. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_70",
+      "date": "2024-10-14",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R071",
+      "text": "This is review 71. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_71",
+      "date": "2024-11-15",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R072",
+      "text": "This is review 72. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_72",
+      "date": "2024-12-16",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R073",
+      "text": "This is review 73. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_73",
+      "date": "2024-01-17",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R074",
+      "text": "This is review 74. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_74",
+      "date": "2024-02-18",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R075",
+      "text": "This is review 75. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_75",
+      "date": "2024-03-19",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R076",
+      "text": "This is review 76. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_76",
+      "date": "2024-04-20",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R077",
+      "text": "This is review 77. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_77",
+      "date": "2024-05-21",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R078",
+      "text": "This is review 78. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_78",
+      "date": "2024-06-22",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R079",
+      "text": "This is review 79. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_79",
+      "date": "2024-07-23",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R080",
+      "text": "This is review 80. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_80",
+      "date": "2024-08-24",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R081",
+      "text": "This is review 81. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_81",
+      "date": "2024-09-25",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R082",
+      "text": "This is review 82. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_82",
+      "date": "2024-10-26",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R083",
+      "text": "This is review 83. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_83",
+      "date": "2024-11-27",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R084",
+      "text": "This is review 84. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_84",
+      "date": "2024-12-28",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R085",
+      "text": "This is review 85. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_85",
+      "date": "2024-01-01",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R086",
+      "text": "This is review 86. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_86",
+      "date": "2024-02-02",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R087",
+      "text": "This is review 87. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_87",
+      "date": "2024-03-03",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R088",
+      "text": "This is review 88. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_88",
+      "date": "2024-04-04",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R089",
+      "text": "This is review 89. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_89",
+      "date": "2024-05-05",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R090",
+      "text": "This is review 90. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_90",
+      "date": "2024-06-06",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R091",
+      "text": "This is review 91. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_91",
+      "date": "2024-07-07",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R092",
+      "text": "This is review 92. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_92",
+      "date": "2024-08-08",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R093",
+      "text": "This is review 93. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_93",
+      "date": "2024-09-09",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R094",
+      "text": "This is review 94. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_94",
+      "date": "2024-10-10",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R095",
+      "text": "This is review 95. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_95",
+      "date": "2024-11-11",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R096",
+      "text": "This is review 96. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_96",
+      "date": "2024-12-12",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R097",
+      "text": "This is review 97. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_97",
+      "date": "2024-01-13",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R098",
+      "text": "This is review 98. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_98",
+      "date": "2024-02-14",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R099",
+      "text": "This is review 99. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_99",
+      "date": "2024-03-15",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R100",
+      "text": "This is review 100. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_100",
+      "date": "2024-04-16",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R101",
+      "text": "This is review 101. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_101",
+      "date": "2024-05-17",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R102",
+      "text": "This is review 102. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_102",
+      "date": "2024-06-18",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R103",
+      "text": "This is review 103. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_103",
+      "date": "2024-07-19",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R104",
+      "text": "This is review 104. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_104",
+      "date": "2024-08-20",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R105",
+      "text": "This is review 105. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_105",
+      "date": "2024-09-21",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R106",
+      "text": "This is review 106. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_106",
+      "date": "2024-10-22",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R107",
+      "text": "This is review 107. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_107",
+      "date": "2024-11-23",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R108",
+      "text": "This is review 108. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_108",
+      "date": "2024-12-24",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R109",
+      "text": "This is review 109. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_109",
+      "date": "2024-01-25",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R110",
+      "text": "This is review 110. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_110",
+      "date": "2024-02-26",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R111",
+      "text": "This is review 111. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_111",
+      "date": "2024-03-27",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R112",
+      "text": "This is review 112. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_112",
+      "date": "2024-04-28",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R113",
+      "text": "This is review 113. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_113",
+      "date": "2024-05-01",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R114",
+      "text": "This is review 114. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_114",
+      "date": "2024-06-02",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R115",
+      "text": "This is review 115. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_115",
+      "date": "2024-07-03",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R116",
+      "text": "This is review 116. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_116",
+      "date": "2024-08-04",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R117",
+      "text": "This is review 117. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_117",
+      "date": "2024-09-05",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R118",
+      "text": "This is review 118. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_118",
+      "date": "2024-10-06",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R119",
+      "text": "This is review 119. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_119",
+      "date": "2024-11-07",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R120",
+      "text": "This is review 120. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_120",
+      "date": "2024-12-08",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R121",
+      "text": "This is review 121. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_121",
+      "date": "2024-01-09",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R122",
+      "text": "This is review 122. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_122",
+      "date": "2024-02-10",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R123",
+      "text": "This is review 123. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_123",
+      "date": "2024-03-11",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R124",
+      "text": "This is review 124. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_124",
+      "date": "2024-04-12",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R125",
+      "text": "This is review 125. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_125",
+      "date": "2024-05-13",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R126",
+      "text": "This is review 126. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_126",
+      "date": "2024-06-14",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R127",
+      "text": "This is review 127. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_127",
+      "date": "2024-07-15",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R128",
+      "text": "This is review 128. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_128",
+      "date": "2024-08-16",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R129",
+      "text": "This is review 129. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_129",
+      "date": "2024-09-17",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R130",
+      "text": "This is review 130. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_130",
+      "date": "2024-10-18",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R131",
+      "text": "This is review 131. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_131",
+      "date": "2024-11-19",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R132",
+      "text": "This is review 132. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_132",
+      "date": "2024-12-20",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R133",
+      "text": "This is review 133. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_133",
+      "date": "2024-01-21",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R134",
+      "text": "This is review 134. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_134",
+      "date": "2024-02-22",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R135",
+      "text": "This is review 135. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_135",
+      "date": "2024-03-23",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R136",
+      "text": "This is review 136. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_136",
+      "date": "2024-04-24",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R137",
+      "text": "This is review 137. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_137",
+      "date": "2024-05-25",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R138",
+      "text": "This is review 138. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_138",
+      "date": "2024-06-26",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R139",
+      "text": "This is review 139. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_139",
+      "date": "2024-07-27",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R140",
+      "text": "This is review 140. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_140",
+      "date": "2024-08-28",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R141",
+      "text": "This is review 141. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_141",
+      "date": "2024-09-01",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R142",
+      "text": "This is review 142. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_142",
+      "date": "2024-10-02",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R143",
+      "text": "This is review 143. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_143",
+      "date": "2024-11-03",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R144",
+      "text": "This is review 144. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_144",
+      "date": "2024-12-04",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R145",
+      "text": "This is review 145. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_145",
+      "date": "2024-01-05",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R146",
+      "text": "This is review 146. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_146",
+      "date": "2024-02-06",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R147",
+      "text": "This is review 147. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_147",
+      "date": "2024-03-07",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R148",
+      "text": "This is review 148. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_148",
+      "date": "2024-04-08",
+      "verified": true,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R149",
+      "text": "This is review 149. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 4,
+      "reviewer": "Customer_149",
+      "date": "2024-05-09",
+      "verified": false,
+      "source": "simulated_data"
+    },
+    {
+      "review_id": "R150",
+      "text": "This is review 150. Great product, very satisfied with the quality and service. Would definitely recommend to others looking for similar items.",
+      "rating": 5,
+      "reviewer": "Customer_150",
+      "date": "2024-06-10",
+      "verified": false,
+      "source": "simulated_data"
+    }
+  ]
+}

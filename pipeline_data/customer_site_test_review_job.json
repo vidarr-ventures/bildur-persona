@@ -1,0 +1,48 @@
+{
+  "source_type": "customer_url",
+  "source_url": "file:///Users/perry/customer-persona-app/test_reviews.html",
+  "scrape_timestamp": "2025-08-04T11:06:00.123945",
+  "job_id": "test_review_job",
+  "target_keywords": [
+    "health supplements",
+    " wellness"
+  ],
+  "reviews": [],
+  "review_count": 0,
+  "company_info": {},
+  "products": [],
+  "analysis": {
+    "total_reviews": 0,
+    "has_ratings": false,
+    "has_dates": false,
+    "average_review_length": 0.0,
+    "review_quality": "poor",
+    "value_propositions": [],
+    "features": [],
+    "brand_messaging": ""
+  },
+  "data_quality": {
+    "scrape_successful": false,
+    "pages_scraped": 0,
+    "reviews_found": false,
+    "has_minimum_reviews": false,
+    "confidence_level": "low",
+    "extraction_method": "beautifulsoup_scraper",
+    "geographic_scope": "Unknown (customer website)",
+    "verification_rate": 0.0,
+    "validation_score": 0,
+    "validation_warnings": [],
+    "validation_recommendations": []
+  },
+  "metadata": {
+    "pipeline_stage": "customer_site_collection",
+    "next_stage": "demographics_foundation",
+    "processing_notes": [
+      "Scraped 0 pages",
+      "Found 0 reviews",
+      "Encountered 1 errors during scraping",
+      "WARNING: Below minimum recommended review count for reliable analysis"
+    ],
+    "timestamp": "2025-08-04T11:06:00.124617"
+  }
+}

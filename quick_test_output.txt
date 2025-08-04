@@ -1,0 +1,29 @@
+🧪 Testing Shopify Review APIs for: https://groundluxe.com
+==================================================
+
+1️⃣ Testing Judge.me API...
+   https://judge.me/api/v1/reviews?shop_domain=groundluxe.myshopify.com: 401
+   https://judge.me/api/v1/reviews?shop_domain=groundluxe.com: 401
+
+2️⃣ Testing Shopify Products API...
+   https://groundluxe.com/products.json: 200
+   Found 14 products
+
+   Checking product 1: SavedBy Package Protection
+
+   Checking product 2: GroundLuxe Grounding Sheet (Fitted)
+
+   Checking product 3: GroundLuxe Grounding Safety Adaptor for North American Outlets
+
+3️⃣ Checking for review app integrations...
+   ✅ Judge.me integration detected
+   ✅ Loox integration detected
+   ✅ Rivyo integration detected
+
+==================================================
+📊 Summary:
+Shop: groundluxe
+APIs tested: 4
+Total reviews found via APIs: 0
+
+⚠️  No reviews found via APIs. Selenium would be needed to scrape rendered content.

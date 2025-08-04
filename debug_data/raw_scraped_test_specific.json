@@ -1,0 +1,19 @@
+{
+  "source": "customer_website",
+  "url": "https://www.yelp.com/biz/blue-bottle-coffee-san-francisco",
+  "scrape_date": "2025-08-04T10:48:34.315074",
+  "company_info": {},
+  "products": [],
+  "reviews": [],
+  "total_reviews": 0,
+  "data_quality": {
+    "reviews_found": false,
+    "ratings_available": false,
+    "dates_available": false,
+    "scrape_successful": false,
+    "pages_scraped": 0,
+    "errors": [
+      "Failed to fetch main page"
+    ]
+  }
+}

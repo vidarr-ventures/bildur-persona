@@ -1,0 +1,567 @@
+{
+  "source_type": "customer_and_competitors",
+  "source_url": "https://groundluxe.com",
+  "scrape_timestamp": "2025-08-04T12:30:00.000Z",
+  "job_id": "demo_job_789",
+  "target_keywords": [
+    "grounding sheets",
+    " wellness",
+    " sleep",
+    " earthing"
+  ],
+  "reviews": [
+    {
+      "review_id": "R001",
+      "text": "I've been using the GroundLuxe grounding sheet for 3 months now and the difference in my sleep quality is remarkable. I fall asleep faster and wake up feeling more refreshed. The organic cotton feels luxurious and the silver threading is barely noticeable. Highly recommend!",
+      "title": "Customer Review from Sarah M.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2024-01-15",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Sarah M.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R002",
+      "text": "Great quality product. The fitted sheet stays in place perfectly and washes well. I've noticed reduced inflammation in my joints since using it. Customer service was also very helpful when I had questions about the setup.",
+      "title": "Customer Review from Michael R.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2024-01-10",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Michael R.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R003",
+      "text": "Been using for 2 weeks. Sleep has improved but took a few days to notice the difference. The sheet is well made with quality materials. Only wish it came in more colors. Overall very satisfied with my purchase.",
+      "title": "Customer Review from Jennifer L.",
+      "rating": 4,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2024-01-08",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Jennifer L.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R004",
+      "text": "Life changing! I have chronic pain and this grounding sheet has made such a difference. I sleep deeper and wake up with less stiffness. The connection tester that comes with it gives peace of mind that it's working properly.",
+      "title": "Customer Review from David K.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2024-01-05",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "David K.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R005",
+      "text": "Skeptical at first but now I'm a believer. My husband and I both notice we're sleeping better. The fabric is soft and comfortable, doesn't feel different from a regular sheet. Definitely worth the investment.",
+      "title": "Customer Review from Patricia W.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2024-01-03",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Patricia W.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R006",
+      "text": "Good quality grounding sheet. Fits my king size bed perfectly. I've had less anxiety and better sleep since using it. The only downside is the price, but you get what you pay for in terms of quality.",
+      "title": "Customer Review from Robert H.",
+      "rating": 4,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-12-28",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Robert H.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R007",
+      "text": "Amazing product! As someone with insomnia, this has been a game changer. I fall asleep within 30 minutes now instead of hours. The organic cotton is so soft and the grounding cable is long enough to reach my outlet easily.",
+      "title": "Customer Review from Lisa T.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-12-25",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Lisa T.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R008",
+      "text": "Works as advertised. I have more energy during the day and sleep more soundly at night. The sheet washes well - I've washed it several times with no issues. Great investment in my health.",
+      "title": "Customer Review from James B.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-12-20",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "James B.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R009",
+      "text": "The grounding sheet is well made with quality materials. I've noticed reduced inflammation and better recovery after workouts. Setup was easy with the included instructions. Recommend getting the tester too.",
+      "title": "Customer Review from Amanda S.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-12-18",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Amanda S.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R010",
+      "text": "Excellent product! My chronic back pain has decreased significantly. The fitted sheet design is much better than the flat sheets I've tried before. Stays in place all night. Very happy with this purchase.",
+      "title": "Customer Review from Thomas G.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-12-15",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Thomas G.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R011",
+      "text": "Good grounding sheet but took time to see results. After about 2 weeks I started noticing better sleep and less joint pain. The quality is excellent - you can tell it's made to last. Worth being patient for the results.",
+      "title": "Customer Review from Nancy D.",
+      "rating": 4,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-12-12",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Nancy D.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R012",
+      "text": "Love this grounding sheet! I'm sleeping through the night for the first time in years. The organic cotton feels great against the skin. Even my skeptical husband admits he's sleeping better. Highly recommend!",
+      "title": "Customer Review from Carol M.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-12-10",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Carol M.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R013",
+      "text": "Great quality and actually works. I have fibromyalgia and this has helped reduce my pain levels. The silver threading is durable - still working perfectly after 4 months. Customer service is also excellent.",
+      "title": "Customer Review from Steven P.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-12-08",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Steven P.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R014",
+      "text": "Very satisfied with this purchase. The grounding sheet has helped with my restless leg syndrome. Sleep quality has improved dramatically. The included grounding cord is good quality too. Definitely recommend.",
+      "title": "Customer Review from Michelle K.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-12-05",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Michelle K.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R015",
+      "text": "Works well but expensive. I do sleep better and have less inflammation, so it's doing what it claims. The organic cotton is very soft and comfortable. Just wish it was more affordable. Still, health is worth the investment.",
+      "title": "Customer Review from Brian L.",
+      "rating": 4,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-12-03",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Brian L.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R016",
+      "text": "Incredible results! My anxiety has decreased and I'm sleeping so much better. The quality is outstanding - you can feel the difference from cheaper alternatives. Setup was simple and the instructions were clear.",
+      "title": "Customer Review from Susan R.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-12-01",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Susan R.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R017",
+      "text": "This grounding sheet has exceeded my expectations. Better sleep, less pain, more energy. The fitted design is perfect and doesn't move around at night. Have recommended to several friends already.",
+      "title": "Customer Review from Daniel F.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-11-28",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Daniel F.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R018",
+      "text": "Good product overall. Took about a week to notice improvements in sleep. The material is high quality organic cotton as advertised. My only complaint is I wish the cord was a bit longer, but it works fine.",
+      "title": "Customer Review from Karen H.",
+      "rating": 4,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-11-25",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Karen H.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R019",
+      "text": "Best investment in my health! Chronic fatigue has improved significantly. I wake up actually feeling rested now. The sheet is comfortable and you can't even feel the silver threads. Absolutely worth every penny.",
+      "title": "Customer Review from Richard T.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-11-22",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Richard T.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R020",
+      "text": "Really helps with sleep quality. I fall asleep faster and don't wake up as much during the night. The organic cotton is soft and breathable. Great product, just make sure your outlet is properly grounded.",
+      "title": "Customer Review from Barbara J.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-11-20",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Barbara J.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R021",
+      "text": "Excellent grounding sheet! My inflammation markers have actually decreased according to my doctor. Sleep is deeper and more restorative. The quality is superb - this will last for years. Highly recommend GroundLuxe.",
+      "title": "Customer Review from William C.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-11-18",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "William C.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "R022",
+      "text": "Very happy with this purchase. The grounding sheet has helped with my arthritis pain. Washes well in cold water as instructed. The connection tester is a nice touch to ensure it's working properly. Great product!",
+      "title": "Customer Review from Linda S.",
+      "rating": 5,
+      "source_url": "https://groundluxe.com",
+      "verified": false,
+      "date": "2023-11-15",
+      "metadata": {
+        "source": "customer_shopify_store",
+        "shop_name": "groundluxe",
+        "reviewer": "Linda S.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "C1-R001",
+      "text": "Love these grounding products! The quality is amazing and I sleep so much better. Highly recommend for anyone looking to improve their wellness routine.",
+      "title": "Competitor 1 Review from Emma K.",
+      "rating": 5,
+      "source_url": "https://earthandmoon.co",
+      "verified": false,
+      "date": "2024-01-20",
+      "metadata": {
+        "source": "competitor_shopify_store",
+        "competitor_number": 1,
+        "shop_name": "earthandmoon",
+        "reviewer": "Emma K.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "C1-R002",
+      "text": "Great earthing mat! I use it while working at my desk and feel more grounded. The quality is excellent and customer service was very helpful.",
+      "title": "Competitor 1 Review from Jake R.",
+      "rating": 5,
+      "source_url": "https://earthandmoon.co",
+      "verified": false,
+      "date": "2024-01-15",
+      "metadata": {
+        "source": "competitor_shopify_store",
+        "competitor_number": 1,
+        "shop_name": "earthandmoon",
+        "reviewer": "Jake R.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "C1-R003",
+      "text": "Good product but shipping was slow. The grounding benefits are noticeable after a few weeks of use. Would buy again despite the delivery issues.",
+      "title": "Competitor 1 Review from Sophie M.",
+      "rating": 4,
+      "source_url": "https://earthandmoon.co",
+      "verified": false,
+      "date": "2024-01-10",
+      "metadata": {
+        "source": "competitor_shopify_store",
+        "competitor_number": 1,
+        "shop_name": "earthandmoon",
+        "reviewer": "Sophie M.",
+        "extraction_method": "selenium"
+      }
+    },
+    {
+      "review_id": "C2-R001",
+      "text": "These wellness products are amazing! The grounding technology really works. I feel more energized and sleep better. Natural materials feel great too.",
+      "title": "Competitor 2 Review from Maria L.",
+      "rating": 5,
+      "source_url": "https://naturesluxeproducts.com",
+      "verified": true,
+      "date": "2024-01-25",
+      "metadata": {
+        "source": "competitor_shopify_store",
+        "competitor_number": 2,
+        "shop_name": "naturesluxeproducts",
+        "reviewer": "Maria L.",
+        "extraction_method": "judge.me_api"
+      }
+    },
+    {
+      "review_id": "C2-R002",
+      "text": "High quality grounding products. I've tried several brands and this one is definitely premium. Worth the investment for better health and sleep.",
+      "title": "Competitor 2 Review from Alex T.",
+      "rating": 5,
+      "source_url": "https://naturesluxeproducts.com",
+      "verified": true,
+      "date": "2024-01-18",
+      "metadata": {
+        "source": "competitor_shopify_store",
+        "competitor_number": 2,
+        "shop_name": "naturesluxeproducts",
+        "reviewer": "Alex T.",
+        "extraction_method": "judge.me_api"
+      }
+    }
+  ],
+  "total_review_count": 27,
+  "customer_review_count": 22,
+  "competitor_review_count": 5,
+  "company_info": {
+    "name": "Groundluxe",
+    "description": "Shopify store analysis including competitor research for grounding sheets,  wellness,  sleep",
+    "website": "https://groundluxe.com",
+    "platform": "Shopify"
+  },
+  "competitor_info": [
+    {
+      "competitor_number": 1,
+      "shop_name": "earthandmoon",
+      "url": "https://earthandmoon.co",
+      "total_reviews": 18,
+      "scrape_method": "selenium"
+    },
+    {
+      "competitor_number": 2,
+      "shop_name": "naturesluxeproducts",
+      "url": "https://naturesluxeproducts.com",
+      "total_reviews": 12,
+      "scrape_method": "judge.me_api"
+    }
+  ],
+  "products": [
+    {
+      "title": "GroundLuxe Grounding Sheet (Fitted)",
+      "price": "$189.00",
+      "source": "customer_store"
+    },
+    {
+      "title": "GroundLuxe Grounding Pillowcase",
+      "price": "$89.00",
+      "source": "customer_store"
+    },
+    {
+      "title": "GroundLuxe Grounding Mat",
+      "price": "$129.00",
+      "source": "customer_store"
+    },
+    {
+      "title": "GroundLuxe Grounding Safety Adaptor",
+      "price": "$19.99",
+      "source": "customer_store"
+    },
+    {
+      "title": "Connection Tester",
+      "price": "$24.99",
+      "source": "customer_store"
+    },
+    {
+      "title": "Earth & Moon Grounding Mat",
+      "price": "$149.00",
+      "source": "competitor_1"
+    },
+    {
+      "title": "Organic Grounding Sheet Set",
+      "price": "$199.00",
+      "source": "competitor_1"
+    },
+    {
+      "title": "Nature's Luxe Grounding Blanket",
+      "price": "$259.00",
+      "source": "competitor_2"
+    }
+  ],
+  "analysis": {
+    "total_reviews": 27,
+    "customer_reviews": 22,
+    "competitor_reviews": 5,
+    "has_ratings": true,
+    "has_dates": true,
+    "average_review_length": 200.14814814814815,
+    "review_quality": "excellent",
+    "average_rating": 4.777777777777778,
+    "customer_avg_rating": 4.7727272727272725,
+    "competitor_avg_rating": 4.8,
+    "verified_purchase_rate": 0.07407407407407407,
+    "value_propositions": [
+      "I've been using the groundluxe grounding sheet for 3 months now and the difference in my sleep quality is remarkable",
+      "Great quality product",
+      "The fitted sheet stays in place perfectly and washes well",
+      "The sheet is well made with quality materials",
+      "Good quality grounding sheet"
+    ],
+    "competitor_insights": [
+      "Competitor 1: 3 reviews, 4.7/5 avg rating",
+      "Competitor 2: 2 reviews, 5.0/5 avg rating"
+    ],
+    "features": [
+      "Great quality product",
+      "The sheet is well made with quality materials",
+      "Only wish it came in more colors",
+      "The fabric is soft and comfortable, doesn't feel different from a regular sheet",
+      "Good quality grounding sheet",
+      "Fits my king size bed perfectly",
+      "The only downside is the price, but you get what you pay for in terms of quality",
+      "The organic cotton is so soft and the grounding cable is long enough to reach my outlet easily"
+    ],
+    "brand_messaging": "Multi-store analysis: Groundluxe vs competitors"
+  },
+  "data_quality": {
+    "scrape_successful": true,
+    "stores_scraped": 3,
+    "successful_scrapes": 3,
+    "reviews_found": true,
+    "has_minimum_reviews": true,
+    "customer_has_minimum": true,
+    "confidence_level": "high",
+    "extraction_methods": [
+      "selenium",
+      "judge.me_api"
+    ],
+    "geographic_scope": "Multi-store (Shopify)",
+    "verification_rate": 0.07407407407407407
+  },
+  "metadata": {
+    "pipeline_stage": "multi_store_shopify_collection",
+    "next_stage": "demographics_foundation",
+    "processing_notes": [
+      "Customer store: groundluxe (22 reviews)",
+      "Customer extraction method: selenium",
+      "Competitors analyzed: 2 stores",
+      "Competitor 1: earthandmoon (18 reviews)",
+      "Competitor 2: naturesluxeproducts (12 reviews)",
+      "Total reviews collected: 52",
+      "Successful scrapes: 3/3"
+    ],
+    "timestamp": "2025-08-04T11:57:11.027270",
+    "customer_shop": "groundluxe",
+    "competitor_shops": [
+      "earthandmoon",
+      "naturesluxeproducts"
+    ],
+    "extraction_methods": {
+      "customer": "selenium",
+      "competitors": [
+        "selenium",
+        "judge.me_api"
+      ]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "source": "customer_website",
+  "url": "file:///Users/perry/customer-persona-app/test_reviews.html",
+  "scrape_date": "2025-08-04T11:06:00.123945",
+  "company_info": {},
+  "products": [],
+  "reviews": [],
+  "total_reviews": 0,
+  "data_quality": {
+    "reviews_found": false,
+    "ratings_available": false,
+    "dates_available": false,
+    "scrape_successful": false,
+    "pages_scraped": 0,
+    "errors": [
+      "Failed to fetch main page"
+    ]
+  }
+}

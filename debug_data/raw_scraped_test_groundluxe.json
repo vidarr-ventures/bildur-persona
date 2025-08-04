@@ -1,0 +1,72 @@
+{
+  "source": "customer_website",
+  "url": "https://groundluxe.com",
+  "scrape_date": "2025-08-04T11:08:11.258782",
+  "company_info": {
+    "name": "Luxurious Organic Grounding Sheets from GroundLuxe",
+    "description": "Sleep better and feel better with organic fitted grounding sheets from GroundLuxe.",
+    "website": "https://groundluxe.com"
+  },
+  "products": [
+    {
+      "title": "Your cart is empty",
+      "description": "",
+      "price": null
+    },
+    {
+      "title": "Your cart",
+      "description": "",
+      "price": null
+    },
+    {
+      "title": "Subtotal",
+      "description": "",
+      "price": null
+    },
+    {
+      "title": "Get Grounded While You Sleep, Work & Relax",
+      "description": "Grounding Sheets\n            \nGroundLuxe fitted grounding sheets are our flagship product. Each GroundLuxe sheet is expertly crafted... \n\n\n\n\n\n\n\n\n\nGrounding Sheets",
+      "price": null
+    },
+    {
+      "title": "Grounding Sheets",
+      "description": "GroundLuxe fitted grounding sheets are our flagship product. Each GroundLuxe sheet is expertly crafted...",
+      "price": null
+    },
+    {
+      "title": "Grounding Sheets",
+      "description": "Grounding Pillowcase\n\n\n\n\n\n\n\n\n\n\nGrounding Pillowcase",
+      "price": null
+    },
+    {
+      "title": "Grounding Pillowcase",
+      "description": "",
+      "price": null
+    },
+    {
+      "title": "Grounding Pillowcase",
+      "description": "Grounding Mat\n\n\n\n\n\n\n\n\n\n\nGrounding Mat",
+      "price": null
+    },
+    {
+      "title": "Grounding Mat",
+      "description": "",
+      "price": null
+    },
+    {
+      "title": "Grounding Mat",
+      "description": "Accessories\n\n\n\n\n\n\n\n\n\n\nAccessories",
+      "price": null
+    }
+  ],
+  "reviews": [],
+  "total_reviews": 0,
+  "data_quality": {
+    "reviews_found": false,
+    "ratings_available": false,
+    "dates_available": false,
+    "scrape_successful": true,
+    "pages_scraped": 1,
+    "errors": []
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "source_type": "customer_url",
+  "source_url": "https://www.yelp.com/biz/blue-bottle-coffee-san-francisco",
+  "scrape_timestamp": "2025-08-04T10:48:34.315074",
+  "job_id": "test_specific",
+  "target_keywords": [
+    "test keywords"
+  ],
+  "reviews": [],
+  "review_count": 0,
+  "company_info": {},
+  "products": [],
+  "analysis": {
+    "total_reviews": 0,
+    "has_ratings": false,
+    "has_dates": false,
+    "average_review_length": 0.0,
+    "review_quality": "poor",
+    "value_propositions": [],
+    "features": [],
+    "brand_messaging": ""
+  },
+  "data_quality": {
+    "scrape_successful": false,
+    "pages_scraped": 0,
+    "reviews_found": false,
+    "has_minimum_reviews": false,
+    "confidence_level": "low",
+    "extraction_method": "beautifulsoup_scraper",
+    "geographic_scope": "Unknown (customer website)",
+    "verification_rate": 0.0,
+    "validation_score": 0,
+    "validation_warnings": [],
+    "validation_recommendations": []
+  },
+  "metadata": {
+    "pipeline_stage": "customer_site_collection",
+    "next_stage": "demographics_foundation",
+    "processing_notes": [
+      "Scraped 0 pages",
+      "Found 0 reviews",
+      "Encountered 1 errors during scraping",
+      "WARNING: Below minimum recommended review count for reliable analysis"
+    ],
+    "timestamp": "2025-08-04T10:48:34.895036"
+  }
+}
