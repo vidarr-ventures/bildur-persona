@@ -50,12 +50,18 @@ async function crawlWebsiteContent(websiteUrl: string, targetKeywords: string): 
   console.log(`Using basic scraping for: ${websiteUrl}`);
   
   try {
+    // Create a timeout controller
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
     const response = await fetch(websiteUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       },
-      timeout: 10000
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch website: ${response.status} ${response.statusText}`);
