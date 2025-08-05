@@ -19,10 +19,14 @@ export async function GET(
     // Get job results (data from individual workers)
     const jobResults = getJobResults(jobId);
     
-    // Get database data
+    // Get database data (where workers actually save their results)
     let dbData = null;
+    let dbJobData = null;
     try {
       dbData = await getResearchRequest(jobId);
+      // Get all job data from database (this is where workers save their results)
+      const { getJobData: getDbJobData } = await import('@/lib/db');
+      dbJobData = await getDbJobData(jobId);
     } catch (error) {
       console.log('Database error:', error);
     }
@@ -42,11 +46,11 @@ export async function GET(
     }
     
     const dataSourceStatuses = {
-      website: analyzeDataSourceStatus(jobResults, 'website'),
-      amazon: analyzeDataSourceStatus(jobResults, 'amazon'),
-      reddit: analyzeDataSourceStatus(jobResults, 'reddit'),
-      youtube: analyzeDataSourceStatus(jobResults, 'youtube_comments') || analyzeDataSourceStatus(jobResults, 'youtube'),
-      persona: analyzeDataSourceStatus(jobResults, 'persona'),
+      website: analyzeDataSourceStatusFromDb(dbJobData, 'website') || analyzeDataSourceStatus(jobResults, 'website'),
+      amazon: analyzeDataSourceStatusFromDb(dbJobData, 'amazon_reviews') || analyzeDataSourceStatus(jobResults, 'amazon'),
+      reddit: analyzeDataSourceStatusFromDb(dbJobData, 'reddit') || analyzeDataSourceStatus(jobResults, 'reddit'),
+      youtube: analyzeDataSourceStatusFromDb(dbJobData, 'youtube_comments') || analyzeDataSourceStatus(jobResults, 'youtube_comments') || analyzeDataSourceStatus(jobResults, 'youtube'),
+      persona: analyzeDataSourceStatusFromDb(dbJobData, 'persona_profile') || analyzeDataSourceStatus(jobResults, 'persona'),
       competitors: competitorStatuses
     };
     
@@ -98,6 +102,28 @@ Confidence Score: ${jobResults.persona.analysis?.confidence ? (jobResults.person
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
+}
+
+function analyzeDataSourceStatusFromDb(dbJobData: any, dataType: string) {
+  if (!dbJobData || !dbJobData[dataType]) {
+    return null; // Return null so we can fallback to cache analysis
+  }
+  
+  const data = dbJobData[dataType];
+  
+  return {
+    status: data.error ? 'failed' : 'completed',
+    reviewsCollected: extractReviewCountFromDb(data, dataType),
+    extractionMethod: extractMethodFromDb(data, dataType),
+    processingTime: data.metadata?.processingTime || Date.now(),
+    statusCode: 200,
+    errorMessage: data.error || null,
+    metadata: {
+      timestamp: data.metadata?.timestamp || new Date().toISOString(),
+      dataQuality: data.dataQuality || data.analysis?.dataQuality,
+      analysis: data.analysis
+    }
+  };
 }
 
 function analyzeDataSourceStatus(jobResults: any, dataType: string) {
@@ -181,4 +207,67 @@ function extractMethod(data: any): string {
     return data.websiteData.dataQuality.method;
   }
   return 'Unknown';
+}
+
+function extractReviewCountFromDb(data: any, dataType: string): number {
+  // YouTube comments
+  if (dataType === 'youtube_comments' && data.comments && Array.isArray(data.comments)) {
+    return data.comments.length;
+  }
+  if (dataType === 'youtube_comments' && data.analysis && typeof data.analysis.totalComments === 'number') {
+    return data.analysis.totalComments;
+  }
+  
+  // Amazon reviews
+  if (dataType === 'amazon_reviews' && data.reviews && Array.isArray(data.reviews)) {
+    return data.reviews.length;
+  }
+  if (dataType === 'amazon_reviews' && data.analysis && typeof data.analysis.totalReviews === 'number') {
+    return data.analysis.totalReviews;
+  }
+  
+  // Reddit posts
+  if (dataType === 'reddit' && data.posts && Array.isArray(data.posts)) {
+    return data.posts.length;
+  }
+  if (dataType === 'reddit' && data.analysis && typeof data.analysis.totalPosts === 'number') {
+    return data.analysis.totalPosts;
+  }
+  
+  // Website data
+  if (dataType === 'website' && data.websiteData && data.websiteData.customerReviews && Array.isArray(data.websiteData.customerReviews)) {
+    return data.websiteData.customerReviews.length;
+  }
+  
+  return 0;
+}
+
+function extractMethodFromDb(data: any, dataType: string): string {
+  // Check various places where extraction method might be stored
+  if (data.metadata && data.metadata.extractionMethod) {
+    return data.metadata.extractionMethod;
+  }
+  if (data.metadata && data.metadata.keywordProcessingMethod) {
+    return data.metadata.keywordProcessingMethod;
+  }
+  if (data.analysis && data.analysis.method) {
+    return data.analysis.method;
+  }
+  if (data.dataQuality && data.dataQuality.method) {
+    return data.dataQuality.method;
+  }
+  if (data.websiteData && data.websiteData.dataQuality && data.websiteData.dataQuality.method) {
+    return data.websiteData.dataQuality.method;
+  }
+  
+  // Default based on data type
+  const defaultMethods: { [key: string]: string } = {
+    'website': 'openai_extraction',
+    'youtube_comments': 'youtube_api_v3',
+    'reddit': 'reddit_api_v1',
+    'amazon_reviews': 'custom_amazon_scraper',
+    'persona_profile': 'sequential_analysis'
+  };
+  
+  return defaultMethods[dataType] || 'Unknown';
 }
