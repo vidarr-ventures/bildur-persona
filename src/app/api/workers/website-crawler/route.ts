@@ -309,8 +309,8 @@ function extractReviews(html: string): string[] {
   // Step 2: Extract testimonials from visible content (GroundLuxe specific)
   console.log(`💬 Extracting customer testimonials from visible content...`);
   
-  // Look for GroundLuxe specific testimonial structure: <h3>Name</h3>...<p>"Quote"</p>
-  const groundluxePattern = /<h3>([A-Z][a-z]+(?:\s+[A-Z]\.?)?)<\/h3>[\s\S]{0,200}?<p>"([^"]{30,500})"<\/p>/gi;
+  // Look for GroundLuxe specific testimonial structure: <h3>Name</h3><div class="rte"><p>"Quote"</p>
+  const groundluxePattern = /<h3>([A-Z][a-z]+(?:\s+[A-Z]\.?)?)<\/h3>[\s\S]{0,300}?<p>"([^"]{20,500})"<\/p>/gi;
   const groundluxeMatches = Array.from(html.matchAll(groundluxePattern));
   
   console.log(`🎯 GroundLuxe testimonial pattern found ${groundluxeMatches.length} matches`);
