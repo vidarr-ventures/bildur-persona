@@ -265,38 +265,183 @@ function extractMainHeading(content: string): string {
 }
 
 function extractMainContent(html: string): string {
-  // Remove scripts and styles
-  let content = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-  content = content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+  console.log(`📄 Extracting main content from ${html.length} characters of HTML...`);
+  
+  // Remove scripts and styles but preserve location for debugging
+  let content = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' [SCRIPT_REMOVED] ');
+  content = content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' [STYLE_REMOVED] ');
   
   // Clean HTML tags
   content = content.replace(/<[^>]*>/g, ' ');
   content = content.replace(/\s+/g, ' ');
   content = content.trim();
   
-  return content.substring(0, 2000);
+  // Extract a larger sample to capture more testimonials (increased from 2000)
+  const longContent = content.substring(0, 8000);
+  console.log(`📄 Extracted ${longContent.length} characters of clean content`);
+  
+  // Look for testimonial section specifically
+  const testimonialMatch = content.match(/customer\s+love[\s\S]{0,2000}/i);
+  if (testimonialMatch) {
+    console.log(`💬 Found 'Customer Love' section in main content`);
+  }
+  
+  return longContent;
 }
 
 function extractReviews(html: string): string[] {
+  console.log(`🔍 Starting improved review extraction...`);
   const reviews: string[] = [];
   
-  // Look for review patterns
-  const reviewPatterns = [
-    /"[^"]{50,300}"/g,
-    /★+.*?"[^"]{30,200}"/g
+  // Step 1: Check for Shopify review platforms
+  console.log(`📱 Checking for Shopify review platforms...`);
+  const reviewPlatforms = {
+    'Judge.me': html.includes('judge.me') || html.includes('judgeme'),
+    'Yotpo': html.includes('yotpo') || html.includes('Yotpo'),
+    'Shopify Reviews': html.includes('shopify-product-reviews') || html.includes('spr-'),
+    'Loox': html.includes('loox') || html.includes('Loox'),
+    'Stamped': html.includes('stamped.io') || html.includes('stamped')
+  };
+  
+  const detectedPlatform = Object.entries(reviewPlatforms).find(([name, detected]) => detected)?.[0];
+  console.log(`📊 Review platform detected: ${detectedPlatform || 'None - using custom extraction'}`);
+  
+  // Step 2: Extract testimonials from visible content (GroundLuxe specific)
+  console.log(`💬 Extracting customer testimonials from visible content...`);
+  
+  // Look for testimonial patterns with customer names
+  const testimonialPatterns = [
+    // Pattern: "Quote text" - Name
+    /"([^"]{30,500})"\s*[-—]\s*([A-Z][a-z]+(?:\s+[A-Z]\.?)?)/g,
+    // Pattern: Name: "Quote text"
+    /([A-Z][a-z]+(?:\s+[A-Z]\.?)?)[\s:]*[""]([^""]{30,500})[""](?!\s*[{}\[\];,])/g,
+    // Pattern: Customer testimonials in HTML structure
+    /<[^>]*(?:testimonial|review|customer)[^>]*>[\s\S]*?[""]([^""]{30,500})[""][\s\S]*?([A-Z][a-z]+(?:\s+[A-Z]\.?)?)/gi
   ];
-
-  reviewPatterns.forEach(pattern => {
-    const matches = html.match(pattern) || [];
+  
+  testimonialPatterns.forEach((pattern, index) => {
+    console.log(`🔍 Trying testimonial pattern ${index + 1}...`);
+    const matches = Array.from(html.matchAll(pattern));
+    console.log(`   Found ${matches.length} matches`);
+    
     matches.forEach(match => {
-      const clean = match.replace(/[★"]/g, '').trim();
-      if (clean.length > 30 && clean.length < 400) {
-        reviews.push(clean);
+      let reviewText = '';
+      let customerName = '';
+      
+      if (index === 0) { // "Quote" - Name
+        reviewText = match[1].trim();
+        customerName = match[2].trim();
+      } else if (index === 1) { // Name: "Quote"
+        customerName = match[1].trim();
+        reviewText = match[2].trim();
+      } else { // HTML structure
+        reviewText = match[1].trim();
+        customerName = match[2].trim();
+      }
+      
+      // Filter out JavaScript/technical content
+      if (isValidCustomerReview(reviewText, customerName)) {
+        const formattedReview = `"${reviewText}" - ${customerName}`;
+        reviews.push(formattedReview);
+        console.log(`   ✅ Found testimonial: ${customerName} - ${reviewText.substring(0, 50)}...`);
+      } else {
+        console.log(`   ❌ Filtered out: ${reviewText.substring(0, 50)}... (technical content)`);
       }
     });
   });
-
+  
+  // Step 3: Look for review-like content in specific sections
+  console.log(`🔍 Looking for review content in specific sections...`);
+  
+  // Look for content between "Customer Love" or "Reviews" sections
+  const reviewSectionPatterns = [
+    /customer\s+love[\s\S]{0,500}?[""]([^""]{30,400})[""][\s\S]{0,100}?([A-Z][a-z]+)/gi,
+    /testimonials?[\s\S]{0,500}?[""]([^""]{30,400})[""][\s\S]{0,100}?([A-Z][a-z]+)/gi,
+    /reviews?[\s\S]{0,500}?[""]([^""]{30,400})[""][\s\S]{0,100}?([A-Z][a-z]+)/gi
+  ];
+  
+  reviewSectionPatterns.forEach((pattern, index) => {
+    console.log(`🔍 Checking review section pattern ${index + 1}...`);
+    const matches = Array.from(html.matchAll(pattern));
+    console.log(`   Found ${matches.length} matches`);
+    
+    matches.forEach(match => {
+      const reviewText = match[1].trim();
+      const customerName = match[2].trim();
+      
+      if (isValidCustomerReview(reviewText, customerName)) {
+        const formattedReview = `"${reviewText}" - ${customerName}`;
+        if (!reviews.some(r => r.includes(reviewText.substring(0, 30)))) { // Avoid duplicates
+          reviews.push(formattedReview);
+          console.log(`   ✅ Found section review: ${customerName} - ${reviewText.substring(0, 50)}...`);
+        }
+      }
+    });
+  });
+  
+  // Step 4: Extract from JSON-LD structured data if present
+  console.log(`🔍 Checking for JSON-LD structured review data...`);
+  const jsonLdMatches = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+  if (jsonLdMatches) {
+    jsonLdMatches.forEach(match => {
+      try {
+        const jsonContent = match.replace(/<script[^>]*>|<\/script>/g, '');
+        const data = JSON.parse(jsonContent);
+        if (data.review || data.reviews || data['@type'] === 'Review') {
+          console.log(`   ✅ Found JSON-LD review data`);
+          // Extract reviews from structured data
+          // This would need specific implementation based on the schema
+        }
+      } catch (e) {
+        // Invalid JSON, skip
+      }
+    });
+  }
+  
+  console.log(`📊 Review extraction complete: found ${reviews.length} valid reviews`);
   return [...new Set(reviews)].slice(0, 10);
+}
+
+function isValidCustomerReview(reviewText: string, customerName: string): boolean {
+  // Filter out JavaScript/technical content
+  const technicalKeywords = [
+    'function', 'window', 'document', 'script', 'var ', 'const ', 'let ',
+    'jquery', 'ajax', 'http', 'https', 'javascript', 'shopify', 'theme',
+    'css', 'html', 'json', 'api', 'url', 'getElementById', 'querySelector',
+    'addEventListener', 'fetch(', 'console.', '.js', '.css', '.com/',
+    'gtag', 'analytics', 'tracking', 'pixel', 'cookie', 'localStorage'
+  ];
+  
+  const reviewLower = reviewText.toLowerCase();
+  
+  // Check if it contains technical keywords
+  if (technicalKeywords.some(keyword => reviewLower.includes(keyword))) {
+    return false;
+  }
+  
+  // Check if customer name looks valid (not a technical term)
+  if (!customerName || customerName.length < 2 || customerName.length > 50) {
+    return false;
+  }
+  
+  const nameLower = customerName.toLowerCase();
+  if (technicalKeywords.some(keyword => nameLower.includes(keyword))) {
+    return false;
+  }
+  
+  // Check if review text looks like actual customer feedback
+  const reviewIndicators = [
+    'love', 'great', 'amazing', 'recommend', 'best', 'good', 'excellent',
+    'perfect', 'quality', 'comfortable', 'soft', 'sleep', 'better',
+    'product', 'buy', 'purchase', 'use', 'tried', 'experience'
+  ];
+  
+  const hasReviewLanguage = reviewIndicators.some(indicator => 
+    reviewLower.includes(indicator)
+  );
+  
+  // Must have review-like language and reasonable length
+  return hasReviewLanguage && reviewText.length >= 30 && reviewText.length <= 500;
 }
 
 function extractTestimonials(html: string): string[] {
