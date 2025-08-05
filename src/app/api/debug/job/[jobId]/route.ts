@@ -28,12 +28,26 @@ export async function GET(
     }
     
     // Enhanced data source status
+    // Analyze competitor statuses
+    const competitorStatuses: any[] = [];
+    if (cachedData?.competitorUrls && Array.isArray(cachedData.competitorUrls)) {
+      cachedData.competitorUrls.forEach((url: string, index: number) => {
+        const competitorKey = `competitor_${index}`;
+        competitorStatuses.push({
+          url,
+          index,
+          ...analyzeDataSourceStatus(jobResults, competitorKey)
+        });
+      });
+    }
+    
     const dataSourceStatuses = {
       website: analyzeDataSourceStatus(jobResults, 'website'),
       amazon: analyzeDataSourceStatus(jobResults, 'amazon'),
       reddit: analyzeDataSourceStatus(jobResults, 'reddit'),
       youtube: analyzeDataSourceStatus(jobResults, 'youtube'),
-      persona: analyzeDataSourceStatus(jobResults, 'persona')
+      persona: analyzeDataSourceStatus(jobResults, 'persona'),
+      competitors: competitorStatuses
     };
     
     // Extract final persona content

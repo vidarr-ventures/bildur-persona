@@ -291,6 +291,17 @@ function PaymentSuccessContent() {
         statusCode: dataSourceStatuses?.website?.statusCode,
         errorMessage: dataSourceStatuses?.website?.errorMessage
       },
+      // Add competitor boxes
+      ...(dataSourceStatuses?.competitors || []).map((competitor: any, index: number) => ({
+        name: `Competitor ${index + 1}`,
+        url: competitor.url,
+        status: competitor.status || 'not_started',
+        reviewsCollected: competitor.reviewsCollected || 0,
+        extractionMethod: formatMethod(competitor.extractionMethod || 'Unknown'),
+        processingTime: competitor.processingTime,
+        statusCode: competitor.statusCode,
+        errorMessage: competitor.errorMessage
+      })),
       {
         name: 'Amazon Reviews',
         url: dbData.amazon_url || cachedData.amazonUrl,
@@ -326,18 +337,6 @@ function PaymentSuccessContent() {
         errorMessage: dataSourceStatuses?.persona?.errorMessage
       }
     ];
-
-    // Add competitors if they exist
-    const competitorUrls = dbData.competitor_urls || [];
-    competitorUrls.forEach((url: string, index: number) => {
-      sources.splice(1 + index, 0, {
-        name: `Competitor ${index + 1}`,
-        url,
-        status: 'not_started',
-        reviewsCollected: 0,
-        extractionMethod: 'Unknown'
-      });
-    });
 
     return sources;
   };

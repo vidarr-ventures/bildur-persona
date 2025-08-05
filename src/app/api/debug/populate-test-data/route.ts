@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { storeJobResult } from '@/lib/job-cache';
+import { storeJobResult, storeJobData } from '@/lib/job-cache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,6 +7,70 @@ export async function POST(request: NextRequest) {
     const testJobId = jobId || 'eb904fca-ee65-46af-af16-499712b2b6ea';
     
     console.log(`🧪 Populating test data for debug job: ${testJobId}`);
+
+    // Store job cache data with competitor URLs
+    storeJobData({
+      jobId: testJobId,
+      websiteUrl: 'https://groundluxe.com',
+      amazonUrl: 'https://www.amazon.com/dp/B08N5WRWNW',
+      keywords: 'grounding sheets',
+      email: 'test@example.com',
+      competitorUrls: [
+        'https://earthing.com',
+        'https://grounded.com',
+        'https://betterearth.com'
+      ],
+      planId: 'premium',
+      planName: 'Premium'
+    });
+
+    // Populate competitor results
+    storeJobResult(testJobId, 'competitor_0', {
+      success: true,
+      websiteData: {
+        customerReviews: [
+          'Earthing products are life-changing!',
+          'Best grounding sheets on the market'
+        ],
+        dataQuality: {
+          method: 'shopify_scraper'
+        }
+      },
+      analysis: {
+        method: 'shopify_scraper',
+        reviewsFound: 15,
+        firecrawlUsed: false
+      },
+      processingTime: 3200,
+      statusCode: 200
+    });
+
+    storeJobResult(testJobId, 'competitor_1', {
+      success: true,
+      websiteData: {
+        customerReviews: [
+          'Grounded.com sheets helped my sleep',
+          'Quality is outstanding'
+        ],
+        dataQuality: {
+          method: 'custom_scraper'
+        }
+      },
+      analysis: {
+        method: 'custom_scraper',
+        reviewsFound: 8,
+        firecrawlUsed: false
+      },
+      processingTime: 2800,
+      statusCode: 200
+    });
+
+    storeJobResult(testJobId, 'competitor_2', {
+      success: false,
+      error: 'Failed to scrape - site requires authentication',
+      processingTime: 1500,
+      statusCode: 403
+    });
 
     // Populate Amazon scraper result
     storeJobResult(testJobId, 'amazon', {

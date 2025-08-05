@@ -88,15 +88,6 @@ export default function DebugPage() {
     const dbData = rawData.dbData || {};
     const dataSourceStatuses = rawData.dataSourceStatuses || {};
     
-    // Extract competitor URLs from user inputs
-    const competitorUrls = dbData.competitor_urls || [];
-    const competitors: DataSourceStatus[] = competitorUrls.map((url: string, index: number) => ({
-      name: `Competitor ${index + 1}`,
-      url,
-      status: 'not_started',
-      reviewsCollected: 0,
-      extractionMethod: 'Unknown'
-    }));
 
     // Helper function to convert API status to our status format
     const convertStatus = (apiStatus: any): DataSourceStatus => ({
@@ -126,7 +117,16 @@ export default function DebugPage() {
           statusCode: dataSourceStatuses.website?.statusCode,
           errorMessage: dataSourceStatuses.website?.errorMessage
         },
-        competitors,
+        competitors: (dataSourceStatuses.competitors || []).map((comp: any) => ({
+          name: `Competitor ${comp.index + 1}`,
+          url: comp.url,
+          status: comp.status || 'not_started',
+          reviewsCollected: comp.reviewsCollected || 0,
+          extractionMethod: comp.extractionMethod || 'Unknown',
+          processingTime: comp.processingTime,
+          statusCode: comp.statusCode,
+          errorMessage: comp.errorMessage
+        })),
         amazonReviews: {
           name: 'Amazon Reviews',
           url: dbData.amazon_url || cachedData.amazonUrl,
@@ -162,7 +162,7 @@ export default function DebugPage() {
           errorMessage: dataSourceStatuses.persona?.errorMessage
         }
       },
-      finalPersona: dbData.persona_analysis || cachedData.persona || cachedData.finalPersona
+      finalPersona: rawData.finalPersona || dbData.persona_analysis || cachedData.persona
     };
   };
 
