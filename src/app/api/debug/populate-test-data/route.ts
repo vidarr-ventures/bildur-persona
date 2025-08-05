@@ -36,6 +36,11 @@ export async function POST(request: NextRequest) {
         { title: 'Anyone tried grounding sheets?', content: 'Thinking about getting some...', score: 15 },
         { title: 'Review: GroundLuxe sheets', content: 'Been using for 3 months, definitely notice better sleep', score: 23 }
       ],
+      analysis: {
+        method: 'custom_reddit_scraper',
+        postsFound: 2,
+        commentsFound: 3
+      },
       metadata: {
         extraction_method: 'custom_reddit_scraper',
         processing_time: 3200,
@@ -75,6 +80,10 @@ export async function POST(request: NextRequest) {
         { text: 'Great video about grounding!', likes: 45 },
         { text: 'I use these sheets and love them', likes: 23 }
       ],
+      analysis: {
+        method: 'youtube_api',
+        commentsFound: 2
+      },
       metadata: {
         extraction_method: 'youtube_api',
         processing_time: 1200
@@ -83,12 +92,26 @@ export async function POST(request: NextRequest) {
       statusCode: 200
     });
 
-    // Populate Persona Generator (in progress)
+    // Populate Persona Generator (completed with sample data)
     storeJobResult(testJobId, 'persona', {
-      success: false,
-      status: 'processing',
-      processingTime: null,
-      error: 'Analyzing collected data from all sources...'
+      success: true,
+      status: 'completed',
+      processingTime: 8500,
+      statusCode: 200,
+      persona: {
+        name: 'Sarah Wellness',
+        age: 45,
+        occupation: 'Yoga Instructor',
+        location: 'California',
+        bio: 'Health-conscious individual seeking natural wellness solutions',
+        painPoints: ['Poor sleep quality', 'Chronic inflammation', 'Stress from daily life'],
+        motivations: ['Natural health remedies', 'Better sleep', 'Holistic wellness'],
+        buyingBehavior: 'Researches thoroughly before purchasing wellness products'
+      },
+      analysis: {
+        method: 'gpt_analysis',
+        confidence: 0.92
+      }
     });
 
     console.log('✅ Test data populated for debug dashboard');

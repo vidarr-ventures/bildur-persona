@@ -95,6 +95,7 @@ function analyzeDataSourceStatus(jobResults: any, dataType: string) {
 }
 
 function extractReviewCount(data: any): number {
+  // Amazon reviews
   if (data.reviews && Array.isArray(data.reviews)) {
     return data.reviews.length;
   }
@@ -104,6 +105,22 @@ function extractReviewCount(data: any): number {
   if (data.analysis && typeof data.analysis.reviewsFound === 'number') {
     return data.analysis.reviewsFound;
   }
+  // Reddit posts and comments
+  if (data.posts && Array.isArray(data.posts)) {
+    return data.posts.length;
+  }
+  if (data.analysis && typeof data.analysis.postsFound === 'number') {
+    const comments = data.analysis.commentsFound || 0;
+    return data.analysis.postsFound + comments;
+  }
+  // YouTube comments
+  if (data.comments && Array.isArray(data.comments)) {
+    return data.comments.length;
+  }
+  if (data.analysis && typeof data.analysis.commentsFound === 'number') {
+    return data.analysis.commentsFound;
+  }
+  // Website reviews
   if (data.websiteData && data.websiteData.customerReviews && Array.isArray(data.websiteData.customerReviews)) {
     return data.websiteData.customerReviews.length;
   }
@@ -113,6 +130,9 @@ function extractReviewCount(data: any): number {
 function extractMethod(data: any): string {
   if (data.analysis && data.analysis.method) {
     return data.analysis.method;
+  }
+  if (data.metadata && data.metadata.extraction_method) {
+    return data.metadata.extraction_method;
   }
   if (data.method) {
     return data.method;
