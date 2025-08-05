@@ -45,7 +45,7 @@ export async function GET(
       website: analyzeDataSourceStatus(jobResults, 'website'),
       amazon: analyzeDataSourceStatus(jobResults, 'amazon'),
       reddit: analyzeDataSourceStatus(jobResults, 'reddit'),
-      youtube: analyzeDataSourceStatus(jobResults, 'youtube'),
+      youtube: analyzeDataSourceStatus(jobResults, 'youtube_comments') || analyzeDataSourceStatus(jobResults, 'youtube'),
       persona: analyzeDataSourceStatus(jobResults, 'persona'),
       competitors: competitorStatuses
     };

@@ -57,29 +57,31 @@ async function processJobWithWorkersSequential(
     // Update status to processing
     await updateJobStatus(jobId, 'processing');
     
-    // Import and call workers directly to avoid HTTP overhead
-    const { POST: websiteCrawlerWorker } = await import('@/app/api/workers/website-crawler/route');
-    const { POST: youtubeWorker } = await import('@/app/api/workers/youtube-comments/route');
-    const { POST: redditWorker } = await import('@/app/api/workers/reddit-scraper/route');
-    const { POST: amazonWorker } = await import('@/app/api/workers/amazon-reviews/route');
-    const { POST: personaWorker } = await import('@/app/api/workers/persona-generator/route');
+    // Helper function to call workers via HTTP to ensure proper caching
+    const callWorker = async (endpoint: string, data: any) => {
+      const response = await fetch(`http://localhost:3000/api/workers/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Worker ${endpoint} failed: ${response.status} - ${errorText}`);
+      }
+      
+      return await response.json();
+    };
 
     // 1. Website Crawler Worker (OpenAI-powered)
     console.log('1️⃣ Starting website crawler worker (OpenAI-powered)...');
     try {
-      const websiteRequest = new Request('http://localhost:3000/api/workers/website-crawler', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId,
-          websiteUrl,
-          keywords: targetKeywords,
-          competitorUrls
-        })
+      const websiteData = await callWorker('website-crawler', {
+        jobId,
+        websiteUrl,
+        keywords: targetKeywords,
+        competitorUrls
       });
-      
-      const websiteResult = await websiteCrawlerWorker(websiteRequest as any);
-      const websiteData = await websiteResult.json();
       console.log(`✅ Website crawler completed: ${websiteData.data?.reviewsFound || 0} reviews found`);
     } catch (error) {
       console.error('❌ Website crawler failed:', error);
@@ -90,18 +92,11 @@ async function processJobWithWorkersSequential(
     if (amazonUrl) {
       console.log('2️⃣ Starting Amazon reviews worker (tiered extraction)...');
       try {
-        const amazonRequest = new Request('http://localhost:3000/api/workers/amazon-reviews', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jobId,
-            amazonUrl,
-            keywords: targetKeywords
-          })
+        const amazonData = await callWorker('amazon-reviews', {
+          jobId,
+          amazonUrl,
+          keywords: targetKeywords
         });
-        
-        const amazonResult = await amazonWorker(amazonRequest as any);
-        const amazonData = await amazonResult.json();
         console.log(`✅ Amazon reviews completed: ${amazonData.data?.totalReviews || 0} reviews found`);
       } catch (error) {
         console.error('❌ Amazon reviews failed:', error);
@@ -112,17 +107,10 @@ async function processJobWithWorkersSequential(
     // 3. YouTube Comments Worker (Per-keyword metrics)
     console.log('3️⃣ Starting YouTube comments worker (per-keyword metrics)...');
     try {
-      const youtubeRequest = new Request('http://localhost:3000/api/workers/youtube-comments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId,
-          keywords: targetKeywords
-        })
+      const youtubeData = await callWorker('youtube-comments', {
+        jobId,
+        keywords: targetKeywords
       });
-      
-      const youtubeResult = await youtubeWorker(youtubeRequest as any);
-      const youtubeData = await youtubeResult.json();
       console.log(`✅ YouTube comments completed: ${youtubeData.data?.totalComments || 0} comments from ${youtubeData.data?.videosAnalyzed || 0} videos`);
     } catch (error) {
       console.error('❌ YouTube comments failed:', error);
@@ -132,17 +120,10 @@ async function processJobWithWorkersSequential(
     // 4. Reddit Scraper Worker (Hybrid API + OpenAI)
     console.log('4️⃣ Starting Reddit scraper worker (hybrid API + OpenAI)...');
     try {
-      const redditRequest = new Request('http://localhost:3000/api/workers/reddit-scraper', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId,
-          targetKeywords
-        })
+      const redditData = await callWorker('reddit-scraper', {
+        jobId,
+        targetKeywords
       });
-      
-      const redditResult = await redditWorker(redditRequest as any);
-      const redditData = await redditResult.json();
       console.log(`✅ Reddit scraper completed: ${redditData.data?.postCount || 0} posts found`);
     } catch (error) {
       console.error('❌ Reddit scraper failed:', error);
@@ -152,17 +133,10 @@ async function processJobWithWorkersSequential(
     // 5. Persona Generator Worker (Sequential analysis)
     console.log('5️⃣ Starting persona generator worker (sequential analysis)...');
     try {
-      const personaRequest = new Request('http://localhost:3000/api/workers/persona-generator', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId,
-          keywords: targetKeywords
-        })
+      const personaData = await callWorker('persona-generator', {
+        jobId,
+        keywords: targetKeywords
       });
-      
-      const personaResult = await personaWorker(personaRequest as any);
-      const personaData = await personaResult.json();
       console.log(`✅ Persona generator completed: Stage ${personaData.data?.stageNumber || 1} analysis`);
     } catch (error) {
       console.error('❌ Persona generator failed:', error);

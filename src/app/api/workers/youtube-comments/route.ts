@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateJobStatus, saveJobData } from '@/lib/db';
 import { validateInternalApiKey, createAuthErrorResponse } from '@/lib/auth';
+import { storeJobResult } from '@/lib/job-cache';
 
 interface YouTubeComment {
   text: string;
@@ -537,6 +538,18 @@ export async function POST(request: NextRequest) {
         }))
       }
     };
+
+    // Store result in cache for debug dashboard
+    storeJobResult(jobId, 'youtube', {
+      success: true,
+      comments: comments,
+      analysis: analysis,
+      keywordMetrics: keywordMetrics,
+      metadata: youtubeData.metadata,
+      processingTime: Date.now(),
+      statusCode: 200,
+      timestamp: new Date().toISOString()
+    });
 
     await saveJobData(jobId, 'youtube_comments', youtubeData);
 

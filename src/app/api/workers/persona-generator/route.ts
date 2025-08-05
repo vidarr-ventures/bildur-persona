@@ -3,6 +3,7 @@ import { updateJobStatus } from '@/lib/db';
 import { getJobData, saveJobData, markPersonaReportSent } from '@/lib/db';
 import { sendPersonaReport } from '@/lib/email';
 import { validateInternalApiKey, createAuthErrorResponse } from '@/lib/auth';
+import { storeJobResult } from '@/lib/job-cache';
 import DemographicsFoundationProcessor from '@/lib/prompts/demographics-foundation';
 
 export async function POST(request: NextRequest) {
@@ -60,6 +61,20 @@ export async function POST(request: NextRequest) {
     });
 
     await updateJobStatus(jobId, 'processing');
+
+    // Store result in cache for debug dashboard
+    storeJobResult(jobId, 'persona', {
+      success: true,
+      persona: personaProfile.persona,
+      stage: personaProfile.stage,
+      stageNumber: personaProfile.stageNumber,
+      dataQuality: personaProfile.dataQuality,
+      insights: personaProfile.insights,
+      metadata: personaProfile.metadata,
+      processingTime: Date.now(),
+      statusCode: 200,
+      timestamp: new Date().toISOString()
+    });
 
     // Save the enhanced persona analysis
     await saveJobData(jobId, 'persona_profile', personaProfile);
