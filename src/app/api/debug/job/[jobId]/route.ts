@@ -36,6 +36,28 @@ export async function GET(
       persona: analyzeDataSourceStatus(jobResults, 'persona')
     };
     
+    // Extract final persona content
+    let finalPersona = null;
+    if (jobResults?.persona?.persona) {
+      const p = jobResults.persona.persona;
+      finalPersona = `Name: ${p.name}
+Age: ${p.age}
+Occupation: ${p.occupation}
+Location: ${p.location}
+
+Bio: ${p.bio}
+
+Pain Points:
+${p.painPoints?.map((point: string) => `• ${point}`).join('\n')}
+
+Motivations:
+${p.motivations?.map((mot: string) => `• ${mot}`).join('\n')}
+
+Buying Behavior: ${p.buyingBehavior}
+
+Confidence Score: ${jobResults.persona.analysis?.confidence ? (jobResults.persona.analysis.confidence * 100).toFixed(0) + '%' : 'N/A'}`;
+    }
+    
     return NextResponse.json({
       jobId,
       cachedData,
@@ -43,6 +65,7 @@ export async function GET(
       allCachedJobs,
       dbData,
       dataSourceStatuses,
+      finalPersona,
       summary: {
         cacheHasAmazonUrl: !!cachedData?.amazonUrl,
         dbHasAmazonUrl: !!dbData?.amazon_url,
