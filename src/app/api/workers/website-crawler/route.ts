@@ -309,7 +309,27 @@ function extractReviews(html: string): string[] {
   // Step 2: Extract testimonials from visible content (GroundLuxe specific)
   console.log(`💬 Extracting customer testimonials from visible content...`);
   
-  // Look for testimonial patterns with customer names
+  // Look for GroundLuxe specific testimonial structure: <h3>Name</h3>...<p>"Quote"</p>
+  const groundluxePattern = /<h3>([A-Z][a-z]+(?:\s+[A-Z]\.?)?)<\/h3>[\s\S]{0,200}?<p>"([^"]{30,500})"<\/p>/gi;
+  const groundluxeMatches = Array.from(html.matchAll(groundluxePattern));
+  
+  console.log(`🎯 GroundLuxe testimonial pattern found ${groundluxeMatches.length} matches`);
+  groundluxeMatches.forEach(match => {
+    const customerName = match[1].trim();
+    const reviewText = match[2].trim();
+    
+    console.log(`   Found GroundLuxe testimonial: ${customerName} - "${reviewText.substring(0, 50)}..."`);
+    
+    if (isValidCustomerReview(reviewText, customerName)) {
+      const formattedReview = `"${reviewText}" - ${customerName}`;
+      reviews.push(formattedReview);
+      console.log(`   ✅ Added testimonial: ${customerName}`);
+    } else {
+      console.log(`   ❌ Filtered out testimonial from ${customerName}`);
+    }
+  });
+  
+  // Fallback patterns for other sites
   const testimonialPatterns = [
     // Pattern: "Quote text" - Name
     /"([^"]{30,500})"\s*[-—]\s*([A-Z][a-z]+(?:\s+[A-Z]\.?)?)/g,
