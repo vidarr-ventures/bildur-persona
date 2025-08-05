@@ -146,13 +146,38 @@ export async function saveJobData(jobId: string, dataType: string, data: any) {
       return data;
     }
     
-    // For other data types, just update status for now
+    // Store worker data using available columns or create a job_data table
+    // For now, use the results_blob_url field to store a reference to job data
+    // We'll store all worker data in a single JSON structure
+    
+    // Use error_message field to store worker data (temporary workaround)
+    // First, get existing job data 
+    const existingJob = await sql`
+      SELECT error_message FROM jobs WHERE id = ${jobId}
+    `;
+    
+    let existingData = {};
+    if (existingJob.rows[0]?.error_message && existingJob.rows[0].error_message.startsWith('{')) {
+      try {
+        existingData = JSON.parse(existingJob.rows[0].error_message);
+      } catch (e) {
+        // If it's not JSON, start fresh
+        existingData = {};
+      }
+    }
+    
+    // Add the new data
+    existingData[dataType] = data;
+    
+    // Store back in error_message as JSON (using as temporary storage)
     const result = await sql`
       UPDATE jobs 
-      SET status = 'processing'
+      SET error_message = ${JSON.stringify(existingData)}, status = 'processing'
       WHERE id = ${jobId}
       RETURNING *
     `;
+    
+    console.log(`Saved ${dataType} data to database for job ${jobId}`);
     return result.rows[0];
   } catch (error) {
     console.error('Error saving job data:', error);
@@ -162,10 +187,44 @@ export async function saveJobData(jobId: string, dataType: string, data: any) {
 
 export async function getJobData(jobId: string, dataType?: string) {
   try {
-    // For now, return empty array since we don't have separate job_data table
-    // You might want to implement proper data storage later
     console.log(`Getting ${dataType} data for job ${jobId}`);
-    return [];
+    
+    // Get job data from the error_message field (temporary storage location)
+    const result = await sql`
+      SELECT error_message
+      FROM jobs 
+      WHERE id = ${jobId}
+    `;
+    
+    if (result.rows.length === 0) {
+      console.log(`No job found with ID ${jobId}`);
+      return null;
+    }
+    
+    const row = result.rows[0];
+    
+    // Check if error_message contains JSON worker data
+    if (!row.error_message || !row.error_message.startsWith('{')) {
+      console.log(`No worker data found for job ${jobId}`);
+      return dataType ? null : {};
+    }
+    
+    let jobData;
+    try {
+      jobData = JSON.parse(row.error_message);
+    } catch (e) {
+      console.log(`error_message contains invalid JSON for job ${jobId}:`, e);
+      return dataType ? null : {};
+    }
+    
+    // If specific dataType requested, return just that data
+    if (dataType) {
+      return jobData[dataType] || null;
+    }
+    
+    console.log(`Retrieved job data for ${jobId}. Available data types:`, Object.keys(jobData));
+    return jobData;
+    
   } catch (error) {
     console.error('Error getting job data:', error);
     throw error;
