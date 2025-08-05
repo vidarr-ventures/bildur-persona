@@ -156,7 +156,7 @@ export async function saveJobData(jobId: string, dataType: string, data: any) {
       SELECT error_message FROM jobs WHERE id = ${jobId}
     `;
     
-    let existingData = {};
+    let existingData: { [key: string]: any } = {};
     if (existingJob.rows[0]?.error_message && existingJob.rows[0].error_message.startsWith('{')) {
       try {
         existingData = JSON.parse(existingJob.rows[0].error_message);
