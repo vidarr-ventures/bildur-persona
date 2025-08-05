@@ -1,0 +1,68 @@
+{
+  "source_type": "customer_and_competitors",
+  "source_url": "https://earthing.com",
+  "scrape_timestamp": null,
+  "job_id": "earthing_test_1754411056792",
+  "target_keywords": [],
+  "reviews": [],
+  "total_review_count": 0,
+  "customer_review_count": 0,
+  "competitor_review_count": 0,
+  "company_info": {
+    "name": "Earthing",
+    "description": "Shopify store analysis including competitor research for e-commerce products",
+    "website": "https://earthing.com",
+    "platform": "Shopify"
+  },
+  "competitor_info": [],
+  "products": [],
+  "analysis": {
+    "total_reviews": 0,
+    "customer_reviews": 0,
+    "competitor_reviews": 0,
+    "has_ratings": false,
+    "has_dates": false,
+    "average_review_length": 0.0,
+    "review_quality": "poor",
+    "average_rating": null,
+    "customer_avg_rating": null,
+    "competitor_avg_rating": null,
+    "verified_purchase_rate": 0.0,
+    "value_propositions": [],
+    "competitor_insights": [],
+    "features": [],
+    "brand_messaging": "Multi-store analysis: Earthing vs competitors"
+  },
+  "data_quality": {
+    "scrape_successful": false,
+    "stores_scraped": 1,
+    "successful_scrapes": 0,
+    "reviews_found": false,
+    "has_minimum_reviews": false,
+    "customer_has_minimum": false,
+    "confidence_level": "very_low",
+    "extraction_methods": [
+      "selenium"
+    ],
+    "geographic_scope": "Multi-store (Shopify)",
+    "verification_rate": 0.0
+  },
+  "metadata": {
+    "pipeline_stage": "multi_store_shopify_collection",
+    "next_stage": "demographics_foundation",
+    "processing_notes": [
+      "Customer store: earthing (0 reviews)",
+      "Customer extraction method: selenium",
+      "Total reviews collected: 0",
+      "Successful scrapes: 0/1",
+      "WARNING: Below minimum recommended review count for reliable analysis"
+    ],
+    "timestamp": "2025-08-05T12:24:29.335544",
+    "customer_shop": "earthing",
+    "competitor_shops": [],
+    "extraction_methods": {
+      "customer": "selenium",
+      "competitors": []
+    }
+  }
+}

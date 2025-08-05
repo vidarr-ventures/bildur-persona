@@ -1,0 +1,33 @@
+{
+  "scrape_type": "single_store",
+  "customer_data": {
+    "source": "shopify_store",
+    "url": "https://earthing.com",
+    "shop_name": "earthing",
+    "domain": "earthing.com",
+    "scrape_date": "2025-08-05T12:28:38.562263",
+    "scrape_method": "selenium",
+    "tier": "premium",
+    "max_reviews_per_site": 200,
+    "reviews": [],
+    "products": [],
+    "total_reviews": 0,
+    "data_quality": {
+      "reviews_found": false,
+      "ratings_available": false,
+      "dates_available": false,
+      "method_used": "selenium",
+      "api_attempts": [
+        "judge.me - failed",
+        "shopify_products - failed",
+        "yotpo - failed"
+      ],
+      "errors": [],
+      "tier_limit_applied": false,
+      "available_reviews_estimated": 0
+    }
+  },
+  "competitor_data": [],
+  "total_customer_reviews": 0,
+  "total_competitor_reviews": 0
+}

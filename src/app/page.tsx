@@ -4,11 +4,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, ArrowRight, Globe, MessageSquare, Brain, CheckCircle, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-import { validateAndCorrectUrl, validateAmazonUrl } from '@/lib/url-utils';
+import { validateAndCorrectUrl } from '@/lib/url-utils';
 
 interface FormData {
   websiteUrl: string;
-  amazonUrl: string;
   primaryKeyword: string;
   secondaryKeyword: string;
   additionalKeyword: string;
@@ -22,7 +21,6 @@ interface FormData {
 
 interface ValidationState {
   websiteUrl: { isValid: boolean; message: string; wasCorrected: boolean; };
-  amazonUrl: { isValid: boolean; message: string; wasCorrected: boolean; };
   competitor1: { isValid: boolean; message: string; wasCorrected: boolean; };
   competitor2: { isValid: boolean; message: string; wasCorrected: boolean; };
   competitor3: { isValid: boolean; message: string; wasCorrected: boolean; };
@@ -34,7 +32,6 @@ export default function HomePage() {
   const router = useRouter();
   const [formData, setFormData] = useState<FormData>({
     websiteUrl: '',
-    amazonUrl: '',
     primaryKeyword: '',
     secondaryKeyword: '',
     additionalKeyword: '',
@@ -49,7 +46,6 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [validation, setValidation] = useState<ValidationState>({
     websiteUrl: { isValid: true, message: '', wasCorrected: false },
-    amazonUrl: { isValid: true, message: '', wasCorrected: false },
     competitor1: { isValid: true, message: '', wasCorrected: false },
     competitor2: { isValid: true, message: '', wasCorrected: false },
     competitor3: { isValid: true, message: '', wasCorrected: false },
@@ -88,7 +84,6 @@ export default function HomePage() {
       // Redirect to pricing page with form data as URL parameters
       const searchParams = new URLSearchParams({
         websiteUrl: formData.websiteUrl,
-        amazonUrl: formData.amazonUrl || '',
         keywords: keywords,
         email: formData.customerEmail,
         competitorUrls: competitorUrls.join(',')
@@ -113,11 +108,7 @@ export default function HomePage() {
     }
 
     let result;
-    if (field === 'amazonUrl') {
-      result = validateAmazonUrl(value);
-    } else {
-      result = validateAndCorrectUrl(value);
-    }
+    result = validateAndCorrectUrl(value);
 
     // Update form data with corrected URL if needed
     if (result.isValid && result.wasCorrected) {
@@ -141,7 +132,7 @@ export default function HomePage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
     
     // Validate URL fields on blur (we'll add onBlur handlers to inputs)
-    const urlFields = ['websiteUrl', 'amazonUrl', 'competitor1', 'competitor2', 'competitor3', 'competitor4', 'competitor5'];
+    const urlFields = ['websiteUrl', 'competitor1', 'competitor2', 'competitor3', 'competitor4', 'competitor5'];
     if (urlFields.includes(field)) {
       // Clear validation state while typing
       setValidation(prev => ({
@@ -293,46 +284,6 @@ export default function HomePage() {
                   )}
                 </div>
 
-                <div>
-                  <label htmlFor="amazonUrl" className="text-white font-medium block">
-                    Amazon Product URL <span className="text-gray-400">(Optional)</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="amazonUrl"
-                      type="text"
-                      placeholder="amazon.com/your-product or full Amazon URL"
-                      value={formData.amazonUrl}
-                      onChange={(e) => handleInputChange('amazonUrl', e.target.value)}
-                      onBlur={(e) => handleUrlBlur('amazonUrl', e.target.value)}
-                      className={`w-full px-4 py-3 bg-gray-800 border rounded-lg focus:outline-none focus:ring-2 text-white placeholder-gray-400 pr-10 ${
-                        validation.amazonUrl.isValid 
-                          ? 'border-gray-700 focus:ring-purple-500' 
-                          : 'border-red-500 focus:ring-red-500'
-                      }`}
-                    />
-                    {validation.amazonUrl.message && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        {validation.amazonUrl.isValid ? (
-                          validation.amazonUrl.wasCorrected ? (
-                            <CheckCircle className="h-5 w-5 text-green-400" />
-                          ) : null
-                        ) : (
-                          <AlertCircle className="h-5 w-5 text-red-400" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {validation.amazonUrl.message && (
-                    <p className={`text-xs mt-1 ${
-                      validation.amazonUrl.isValid 
-                        ? validation.amazonUrl.wasCorrected ? 'text-green-400' : 'text-gray-400'
-                        : 'text-red-400'
-                    }`}>
-                      {validation.amazonUrl.message}
-                    </p>
-                  )}
-                </div>
 
                 <div className="space-y-4">
                   <div>
@@ -563,7 +514,7 @@ export default function HomePage() {
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
-                <span>Analysis uses your keywords to extract relevant data from website content, YouTube comments, Amazon reviews, Reddit research, and <strong>enhanced competitor intelligence (50+ reviews each)</strong></span>
+                <span>Analysis uses your keywords to extract relevant data from website content, YouTube comments, Reddit research, and <strong>enhanced competitor intelligence (50+ reviews each)</strong></span>
               </div>
             </div>
           </div>

@@ -15,25 +15,48 @@ import {
   MessageSquare,
   Youtube,
   User,
-  TrendingUp
+  TrendingUp,
+  ChevronDown,
+  ChevronUp,
+  Star,
+  Target,
+  Zap,
+  Brain,
+  Quote
 } from 'lucide-react';
 
 interface DataSourceStatus {
   name: string;
   url?: string;
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'not_started';
-  reviewsCollected?: number;
+  reviewsFound?: number;
   extractionMethod?: string;
   processingTime?: number;
   statusCode?: number;
   errorMessage?: string;
   metadata?: any;
+  data?: OpenAIExtractedData;
+}
+
+interface OpenAIExtractedData {
+  customerReviews: string[];
+  testimonials: string[];
+  valuePropositions: string[];
+  features: string[];
+  brandMessaging: string;
+  painPointsAddressed: string[];
+  dataQuality: {
+    method: string;
+    model?: string;
+    tokensUsed?: number;
+    contentLength: number;
+  };
 }
 
 interface JobDebugData {
   jobId: string;
   cachedData?: any;
-  dbData?: any;
+  jobResults?: any;
   dataSources: {
     customerWebsite: DataSourceStatus;
     competitors: DataSourceStatus[];
@@ -52,6 +75,7 @@ export default function DebugPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!jobId) return;
@@ -62,7 +86,6 @@ export default function DebugPage() {
         const data = await response.json();
 
         if (response.ok) {
-          // Transform the raw debug data into our structured format
           const transformedData = transformDebugData(data);
           setDebugData(transformedData);
         } else {
@@ -85,53 +108,54 @@ export default function DebugPage() {
 
   const transformDebugData = (rawData: any): JobDebugData => {
     const cachedData = rawData.cachedData || {};
-    const dbData = rawData.dbData || {};
+    const jobResults = rawData.jobResults || {};
     const dataSourceStatuses = rawData.dataSourceStatuses || {};
     
-
-    // Helper function to convert API status to our status format
-    const convertStatus = (apiStatus: any): DataSourceStatus => ({
-      name: apiStatus.name || 'Unknown',
-      url: apiStatus.url,
-      status: apiStatus.status || 'not_started',
-      reviewsCollected: apiStatus.reviewsCollected || 0,
-      extractionMethod: apiStatus.extractionMethod || 'Unknown',
-      processingTime: apiStatus.processingTime,
-      statusCode: apiStatus.statusCode,
-      errorMessage: apiStatus.errorMessage,
-      metadata: apiStatus.metadata
-    });
+    // Helper to extract OpenAI data from job results
+    const getOpenAIData = (resultKey: string): OpenAIExtractedData | undefined => {
+      const result = jobResults[resultKey];
+      if (result?.success && result.data) {
+        return result.data;
+      }
+      return undefined;
+    };
 
     return {
       jobId: rawData.jobId,
       cachedData,
-      dbData,
+      jobResults,
       dataSources: {
         customerWebsite: {
           name: 'Customer Website',
-          url: dbData.website_url || cachedData.websiteUrl,
-          status: dataSourceStatuses.website?.status || 'not_started',
-          reviewsCollected: dataSourceStatuses.website?.reviewsCollected || 0,
-          extractionMethod: dataSourceStatuses.website?.extractionMethod || 'Unknown',
-          processingTime: dataSourceStatuses.website?.processingTime,
-          statusCode: dataSourceStatuses.website?.statusCode,
-          errorMessage: dataSourceStatuses.website?.errorMessage
+          url: cachedData.websiteUrl,
+          status: jobResults.website?.success ? 'completed' : (jobResults.website ? 'failed' : 'not_started'),
+          reviewsFound: jobResults.website?.data?.customerReviews?.length || 0,
+          extractionMethod: jobResults.website?.data?.dataQuality?.method || 'Unknown',
+          processingTime: jobResults.website?.processingTime,
+          statusCode: jobResults.website?.statusCode || 200,
+          errorMessage: jobResults.website?.error,
+          metadata: jobResults.website?.data?.dataQuality,
+          data: getOpenAIData('website')
         },
-        competitors: (dataSourceStatuses.competitors || []).map((comp: any) => ({
-          name: `Competitor ${comp.index + 1}`,
-          url: comp.url,
-          status: comp.status || 'not_started',
-          reviewsCollected: comp.reviewsCollected || 0,
-          extractionMethod: comp.extractionMethod || 'Unknown',
-          processingTime: comp.processingTime,
-          statusCode: comp.statusCode,
-          errorMessage: comp.errorMessage
-        })),
+        competitors: Object.keys(jobResults)
+          .filter(key => key.startsWith('competitor_'))
+          .map((key, index) => ({
+            name: `Competitor ${index + 1}`,
+            url: jobResults[key]?.competitorUrl,
+            status: jobResults[key]?.success ? 'completed' : (jobResults[key] ? 'failed' : 'not_started'),
+            reviewsFound: jobResults[key]?.reviewsFound || jobResults[key]?.data?.customerReviews?.length || 0,
+            extractionMethod: jobResults[key]?.data?.dataQuality?.method || 'Unknown',
+            processingTime: jobResults[key]?.processingTime,
+            statusCode: jobResults[key]?.statusCode || 200,
+            errorMessage: jobResults[key]?.error,
+            metadata: jobResults[key]?.data?.dataQuality,
+            data: getOpenAIData(key)
+          })),
         amazonReviews: {
           name: 'Amazon Reviews',
-          url: dbData.amazon_url || cachedData.amazonUrl,
+          url: cachedData.amazonUrl,
           status: dataSourceStatuses.amazon?.status || 'not_started',
-          reviewsCollected: dataSourceStatuses.amazon?.reviewsCollected || 0,
+          reviewsFound: dataSourceStatuses.amazon?.reviewsCollected || 0,
           extractionMethod: dataSourceStatuses.amazon?.extractionMethod || 'Unknown',
           processingTime: dataSourceStatuses.amazon?.processingTime,
           statusCode: dataSourceStatuses.amazon?.statusCode,
@@ -140,7 +164,7 @@ export default function DebugPage() {
         redditScraper: {
           name: 'Reddit Scraper',
           status: dataSourceStatuses.reddit?.status || 'not_started',
-          reviewsCollected: dataSourceStatuses.reddit?.reviewsCollected || 0,
+          reviewsFound: dataSourceStatuses.reddit?.reviewsCollected || 0,
           extractionMethod: dataSourceStatuses.reddit?.extractionMethod || 'Unknown',
           processingTime: dataSourceStatuses.reddit?.processingTime,
           statusCode: dataSourceStatuses.reddit?.statusCode,
@@ -148,12 +172,17 @@ export default function DebugPage() {
         },
         youtubeComments: {
           name: 'YouTube Comments',
-          status: dataSourceStatuses.youtube?.status || 'not_started',
-          reviewsCollected: dataSourceStatuses.youtube?.reviewsCollected || 0,
-          extractionMethod: dataSourceStatuses.youtube?.extractionMethod || 'Unknown',
+          status: dataSourceStatuses.youtube?.status || (jobResults.youtube_comments?.success ? 'completed' : 'not_started'),
+          reviewsFound: jobResults.youtube_comments?.totalComments || dataSourceStatuses.youtube?.reviewsCollected || 0,
+          extractionMethod: jobResults.youtube_comments?.metadata?.extractionMethod || dataSourceStatuses.youtube?.extractionMethod || 'youtube_api_v3',
           processingTime: dataSourceStatuses.youtube?.processingTime,
           statusCode: dataSourceStatuses.youtube?.statusCode,
-          errorMessage: dataSourceStatuses.youtube?.errorMessage
+          errorMessage: dataSourceStatuses.youtube?.errorMessage,
+          metadata: {
+            ...jobResults.youtube_comments?.metadata,
+            keywordMetrics: jobResults.youtube_comments?.keywordMetrics,
+            keywordSummary: jobResults.youtube_comments?.analysis?.keywordSummary
+          }
         },
         personaGenerator: {
           name: 'Persona Generator',
@@ -162,18 +191,19 @@ export default function DebugPage() {
           errorMessage: dataSourceStatuses.persona?.errorMessage
         }
       },
-      finalPersona: rawData.finalPersona || dbData.persona_analysis || cachedData.persona
+      finalPersona: rawData.finalPersona || cachedData.persona
     };
   };
 
   const formatMethod = (method: string): string => {
     const methodMap: { [key: string]: string } = {
+      'openai_extraction': 'OpenAI GPT-4o-mini',
       'shopify_scraper': 'Shopify API',
       'custom_amazon_scraper': 'Custom Amazon Scraper',
       'custom_reddit_scraper': 'Custom Reddit Scraper',
       'selenium_fallback': 'Selenium fallback',
-      'firecrawl': 'Firecrawl (Legacy)',
-      'basic_fetch': 'Basic HTTP',
+      'firecrawl': 'Firecrawl (Deprecated)',
+      'basic_fetch': 'Basic HTTP (Deprecated)',
       'amazon_api': 'Amazon API',
       'reddit_api': 'Reddit API',
       'youtube_api': 'YouTube API'
@@ -230,6 +260,16 @@ export default function DebugPage() {
     return <TrendingUp className="h-5 w-5" />;
   };
 
+  const toggleExpanded = (sourceName: string) => {
+    const newExpanded = new Set(expandedSources);
+    if (newExpanded.has(sourceName)) {
+      newExpanded.delete(sourceName);
+    } else {
+      newExpanded.add(sourceName);
+    }
+    setExpandedSources(newExpanded);
+  };
+
   const copyPersonaToClipboard = async () => {
     if (!debugData?.finalPersona) return;
     
@@ -240,6 +280,255 @@ export default function DebugPage() {
     } catch (err) {
       console.error('Failed to copy persona:', err);
     }
+  };
+
+  const DataSourceBox = ({ source }: { source: DataSourceStatus }) => {
+    const isExpanded = expandedSources.has(source.name);
+    const hasDetailedData = (
+      (source.data && (
+        source.data.customerReviews.length > 0 ||
+        source.data.valuePropositions.length > 0 ||
+        source.data.painPointsAddressed.length > 0
+      )) ||
+      (source.metadata?.keywordMetrics && source.metadata.keywordMetrics.length > 0)
+    );
+
+    return (
+      <div className={`border rounded-lg p-6 ${getStatusColor(source.status)}`}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            {getSourceIcon(source.name)}
+            <h3 className="text-lg font-semibold text-white">{source.name}</h3>
+          </div>
+          <div className="flex items-center space-x-2">
+            {getStatusIcon(source.status)}
+            {hasDetailedData && (
+              <button
+                onClick={() => toggleExpanded(source.name)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </button>
+            )}
+          </div>
+        </div>
+        
+        {source.url && (
+          <div className="mb-3">
+            <p className="text-sm text-gray-400">URL</p>
+            <div className="flex items-center space-x-2">
+              <p className="font-mono text-sm text-white break-all">{source.url}</p>
+              <a 
+                href={source.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-purple-400 hover:text-purple-300 flex-shrink-0"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+          </div>
+        )}
+        
+        <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+          <div>
+            <p className="text-gray-400">Status</p>
+            <p className="font-medium text-white capitalize">{source.status.replace('_', ' ')}</p>
+          </div>
+          
+          {source.reviewsFound !== undefined && (
+            <div>
+              <p className="text-gray-400">Reviews</p>
+              <p className="font-medium text-white">
+                {source.reviewsFound > 0 ? `${source.reviewsFound} extracted` : 'No reviews found'}
+              </p>
+            </div>
+          )}
+          
+          {source.extractionMethod && (
+            <div>
+              <p className="text-gray-400">Method</p>
+              <p className="font-medium text-white">{formatMethod(source.extractionMethod)}</p>
+            </div>
+          )}
+          
+          {source.metadata?.tokensUsed && (
+            <div>
+              <p className="text-gray-400">AI Tokens</p>
+              <p className="font-medium text-white">{source.metadata.tokensUsed.toLocaleString()}</p>
+            </div>
+          )}
+          
+          {source.metadata?.keywordSummary && (
+            <div>
+              <p className="text-gray-400">Keywords</p>
+              <p className="font-medium text-white">
+                {source.metadata.keywordSummary.successfulKeywords}/{source.metadata.keywordSummary.totalKeywords} successful
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* OpenAI Detailed Data Section */}
+        {isExpanded && source.data && (
+          <div className="border-t border-gray-600 pt-4 space-y-4">
+            {/* Customer Reviews */}
+            {source.data.customerReviews.length > 0 && (
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Quote className="h-4 w-4 text-blue-400" />
+                  <h4 className="font-semibold text-white">Customer Reviews ({source.data.customerReviews.length})</h4>
+                </div>
+                <div className="space-y-2">
+                  {source.data.customerReviews.map((review, index) => (
+                    <div key={index} className="bg-gray-800 p-3 rounded text-sm">
+                      <p className="text-gray-300 italic">"{review}"</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Pain Points */}
+            {source.data.painPointsAddressed.length > 0 && (
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Target className="h-4 w-4 text-red-400" />
+                  <h4 className="font-semibold text-white">Pain Points Addressed ({source.data.painPointsAddressed.length})</h4>
+                </div>
+                <div className="space-y-1">
+                  {source.data.painPointsAddressed.map((pain, index) => (
+                    <div key={index} className="flex items-start space-x-2">
+                      <div className="w-2 h-2 bg-red-400 rounded-full mt-2 flex-shrink-0"></div>
+                      <p className="text-gray-300 text-sm">{pain}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Value Propositions */}
+            {source.data.valuePropositions.length > 0 && (
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Star className="h-4 w-4 text-yellow-400" />
+                  <h4 className="font-semibold text-white">Value Propositions ({source.data.valuePropositions.length})</h4>
+                </div>
+                <div className="space-y-1">
+                  {source.data.valuePropositions.map((prop, index) => (
+                    <div key={index} className="flex items-start space-x-2">
+                      <div className="w-2 h-2 bg-yellow-400 rounded-full mt-2 flex-shrink-0"></div>
+                      <p className="text-gray-300 text-sm">{prop}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Features */}
+            {source.data.features.length > 0 && (
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Zap className="h-4 w-4 text-green-400" />
+                  <h4 className="font-semibold text-white">Features ({source.data.features.length})</h4>
+                </div>
+                <div className="space-y-1">
+                  {source.data.features.map((feature, index) => (
+                    <div key={index} className="flex items-start space-x-2">
+                      <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
+                      <p className="text-gray-300 text-sm">{feature}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Brand Messaging */}
+            {source.data.brandMessaging && (
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Brain className="h-4 w-4 text-purple-400" />
+                  <h4 className="font-semibold text-white">Brand Messaging</h4>
+                </div>
+                <div className="bg-purple-900/20 border border-purple-500/20 p-3 rounded">
+                  <p className="text-purple-200 text-sm italic">"{source.data.brandMessaging}"</p>
+                </div>
+              </div>
+            )}
+
+            {/* Testimonials */}
+            {source.data.testimonials.length > 0 && (
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <User className="h-4 w-4 text-blue-400" />
+                  <h4 className="font-semibold text-white">Testimonials ({source.data.testimonials.length})</h4>
+                </div>
+                <div className="space-y-2">
+                  {source.data.testimonials.map((testimonial, index) => (
+                    <div key={index} className="bg-blue-900/20 border border-blue-500/20 p-3 rounded">
+                      <p className="text-blue-200 text-sm">"{testimonial}"</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* YouTube Keyword Metrics */}
+            {source.metadata?.keywordMetrics && source.metadata.keywordMetrics.length > 0 && (
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Youtube className="h-4 w-4 text-red-400" />
+                  <h4 className="font-semibold text-white">Per-Keyword Breakdown ({source.metadata.keywordMetrics.length} keywords)</h4>
+                </div>
+                <div className="space-y-2">
+                  {source.metadata.keywordMetrics.map((metric: any, index: number) => {
+                    const statusIcon = metric.extractionStatus === 'success' ? '✅' : 
+                                     metric.extractionStatus === 'partial' ? '⚠️' : 
+                                     metric.extractionStatus === 'no_videos' ? '🚫' : '❌';
+                    const statusColor = metric.extractionStatus === 'success' ? 'text-green-400' : 
+                                      metric.extractionStatus === 'partial' ? 'text-yellow-400' : 
+                                      'text-red-400';
+                    return (
+                      <div key={index} className="bg-gray-800 p-3 rounded">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm">{statusIcon}</span>
+                            <span className="font-medium text-white">"{metric.keyword}"</span>
+                          </div>
+                          <span className={`text-sm ${statusColor} capitalize`}>{metric.extractionStatus.replace('_', ' ')}</span>
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          {metric.commentsExtracted} comments • {metric.videosProcessed}/{metric.videosFound} videos processed
+                          {metric.topVideo && (
+                            <div className="truncate mt-1">Top video: {metric.topVideo}</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {source.metadata.keywordSummary && (
+                  <div className="mt-3 p-3 bg-gray-800 rounded">
+                    <h5 className="font-medium text-white mb-2">Summary</h5>
+                    <div className="text-sm text-gray-300 space-y-1">
+                      <div>Most productive: <span className="text-green-400">"{source.metadata.keywordSummary.mostProductiveKeyword}"</span></div>
+                      <div>Success rate: <span className="text-blue-400">{source.metadata.keywordSummary.successfulKeywords}/{source.metadata.keywordSummary.totalKeywords}</span></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {source.errorMessage && (
+          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded">
+            <p className="text-sm text-red-300">{source.errorMessage}</p>
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -279,88 +568,19 @@ export default function DebugPage() {
     );
   }
 
-  const DataSourceBox = ({ source }: { source: DataSourceStatus }) => (
-    <div className={`border rounded-lg p-6 ${getStatusColor(source.status)}`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          {getSourceIcon(source.name)}
-          <h3 className="text-lg font-semibold text-white">{source.name}</h3>
-        </div>
-        {getStatusIcon(source.status)}
-      </div>
-      
-      {source.url && (
-        <div className="mb-3">
-          <p className="text-sm text-gray-400">URL</p>
-          <div className="flex items-center space-x-2">
-            <p className="font-mono text-sm text-white break-all">{source.url}</p>
-            <a 
-              href={source.url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-purple-400 hover:text-purple-300 flex-shrink-0"
-            >
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          </div>
-        </div>
-      )}
-      
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <p className="text-gray-400">Status</p>
-          <p className="font-medium text-white capitalize">{source.status.replace('_', ' ')}</p>
-        </div>
-        
-        {source.reviewsCollected !== undefined && (
-          <div>
-            <p className="text-gray-400">Reviews</p>
-            <p className="font-medium text-white">
-              {source.reviewsCollected > 0 ? `${source.reviewsCollected} extracted` : 'No reviews found'}
-            </p>
-          </div>
-        )}
-        
-        {source.extractionMethod && (
-          <div>
-            <p className="text-gray-400">Method</p>
-            <p className="font-medium text-white">{source.extractionMethod}</p>
-          </div>
-        )}
-        
-        {source.processingTime && (
-          <div>
-            <p className="text-gray-400">Processing Time</p>
-            <p className="font-medium text-white">{source.processingTime}ms</p>
-          </div>
-        )}
-        
-        {source.statusCode && (
-          <div>
-            <p className="text-gray-400">Status Code</p>
-            <p className="font-medium text-white">{source.statusCode}</p>
-          </div>
-        )}
-      </div>
-      
-      {source.errorMessage && (
-        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded">
-          <p className="text-sm text-red-300">{source.errorMessage}</p>
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-black py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Debug Dashboard</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">OpenAI Debug Dashboard</h1>
           <p className="text-gray-400">Job ID: {jobId}</p>
+          <div className="mt-2 text-sm text-gray-500">
+            Click the expand arrow to view detailed extracted data from OpenAI
+          </div>
         </div>
 
         {/* Data Sources Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Customer Website */}
           <DataSourceBox source={debugData.dataSources.customerWebsite} />
           

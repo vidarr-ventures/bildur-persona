@@ -16,7 +16,6 @@ function PricingContent() {
   // Get pre-filled form data from search params
   const formData = {
     websiteUrl: searchParams.get('websiteUrl') || '',
-    amazonUrl: searchParams.get('amazonUrl') || '',
     keywords: searchParams.get('keywords') || '',
     email: searchParams.get('email') || '',
     competitorUrls: searchParams.get('competitorUrls') || ''
