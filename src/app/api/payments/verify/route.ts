@@ -19,12 +19,29 @@ export async function GET(request: NextRequest) {
     // Handle free orders (with discount code TESTER) - check this FIRST
     if (isFree && sessionId.startsWith('free_')) {
       console.log('Verifying free order:', sessionId);
+      
+      const existingJobId = searchParams.get('job_id');
+      if (existingJobId) {
+        console.log('Free order already has job ID:', existingJobId);
+        return NextResponse.json({
+          success: true,
+          isFree: true,
+          email: 'Free Analysis',
+          planName: 'Free Analysis',
+          jobId: existingJobId
+        });
+      }
+
+      // If no job ID, we need to create one by extracting form data from session
+      // For now, return without job ID and let the frontend handle job creation
+      console.log('Free order verified but no job created yet');
       return NextResponse.json({
         success: true,
         isFree: true,
         email: 'Free Analysis',
         planName: 'Free Analysis',
-        jobId: searchParams.get('job_id') || null
+        jobId: null,
+        needsJobCreation: true
       });
     }
 

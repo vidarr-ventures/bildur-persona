@@ -16,14 +16,27 @@ interface WebsiteData {
 }
 
 async function crawlWebsiteContent(websiteUrl: string, targetKeywords: string, jobId?: string): Promise<WebsiteData & { firecrawlUsed: boolean; dataQuality: any }> {
+  console.log(`=== WEBSITE CRAWLER DEBUG START ===`);
+  console.log(`📍 Starting customer site extraction for URL: ${websiteUrl}`);
+  console.log(`🔍 Target keywords: ${targetKeywords}`);
+  console.log(`🆔 Job ID: ${jobId || 'none'}`);
+  console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
+  
   // Step 1: Try enhanced crawling with Shopify detection
-  console.log(`🚀 Starting enhanced website crawling: ${websiteUrl}`);
+  console.log(`🚀 Step 1: Attempting enhanced website crawling with Shopify detection`);
   
   try {
+    console.log(`🔧 Calling enhancedWebsiteCrawling function...`);
     const enhancedResult = await enhancedWebsiteCrawling(websiteUrl, targetKeywords, 'premium', jobId);
+    
+    console.log(`📊 Enhanced crawling result received:`);
+    console.log(`   - Method: ${enhancedResult.dataQuality.method}`);
+    console.log(`   - Success: ${enhancedResult.dataQuality.method !== 'fallback_needed'}`);
+    console.log(`   - Customer reviews found: ${enhancedResult.customerReviews?.length || 0}`);
     
     if (enhancedResult.dataQuality.method !== 'fallback_needed') {
       console.log(`✅ Enhanced crawling successful using method: ${enhancedResult.dataQuality.method}`);
+      console.log(`📋 Data extracted: ${enhancedResult.customerReviews?.length || 0} reviews found`);
       return {
         ...enhancedResult,
         dataQuality: {
@@ -31,22 +44,28 @@ async function crawlWebsiteContent(websiteUrl: string, targetKeywords: string, j
           enhanced: true
         }
       };
+    } else {
+      console.log(`⚠️ Enhanced crawling requested fallback, proceeding to Step 2`);
     }
   } catch (error) {
-    console.warn('Enhanced crawling failed, falling back to standard methods:', error);
+    console.error('❌ Enhanced crawling failed with error:', error);
+    console.error('🔍 Error details:', error instanceof Error ? error.message : 'Unknown error');
+    console.warn('📍 Falling back to standard methods...');
   }
   
   // Step 2: Skip Firecrawl entirely for cost optimization
-  console.log(`💰 Skipping Firecrawl to eliminate API costs - using basic scraping instead`);
+  console.log(`💰 Step 2: Skipping Firecrawl to eliminate API costs - using basic scraping instead`);
 
   // Fallback to basic scraping
-  console.log(`Using basic scraping for: ${websiteUrl}`);
+  console.log(`🔧 Step 3: Attempting basic HTTP fetch for: ${websiteUrl}`);
   
   try {
+    console.log(`⏱️ Creating 10-second timeout controller...`);
     // Create a timeout controller
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
     
+    console.log(`🌐 Making HTTP request to ${websiteUrl}...`);
     const response = await fetch(websiteUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -55,14 +74,19 @@ async function crawlWebsiteContent(websiteUrl: string, targetKeywords: string, j
     });
     
     clearTimeout(timeoutId);
+    console.log(`📡 HTTP Response received: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
+      console.error(`❌ HTTP request failed: ${response.status} ${response.statusText}`);
       throw new Error(`Failed to fetch website: ${response.status} ${response.statusText}`);
     }
 
+    console.log(`📄 Reading HTML content...`);
     const html = await response.text();
+    console.log(`📊 HTML content received: ${html.length} characters`);
     
-    return {
+    console.log(`🔍 Extracting data using basic scraping methods...`);
+    const extractedData = {
       homePageContent: extractMainContent(html),
       customerReviews: extractReviews(html),
       testimonials: extractTestimonials(html),
@@ -76,9 +100,18 @@ async function crawlWebsiteContent(websiteUrl: string, targetKeywords: string, j
         hasMetadata: false
       }
     };
+    
+    console.log(`📋 Extraction method used: basic_fetch`);
+    console.log(`📋 Data extracted: ${extractedData.customerReviews?.length || 0} reviews found`);
+    console.log(`📋 Testimonials found: ${extractedData.testimonials?.length || 0}`);
+    console.log(`📋 Features found: ${extractedData.features?.length || 0}`);
+    console.log(`📋 Content length: ${extractedData.homePageContent?.length || 0} characters`);
+    
+    return extractedData;
 
   } catch (error) {
-    console.error('Error crawling website:', error);
+    console.error('❌ Basic scraping failed with error:', error);
+    console.error('🔍 Error details:', error instanceof Error ? error.message : 'Unknown error');
     return {
       homePageContent: '',
       customerReviews: [],
@@ -346,6 +379,9 @@ function extractBrandMessage(html: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  console.log(`=== WEBSITE CRAWLER WORKER START ===`);
+  console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
+  
   // TEMPORARILY DISABLED: Validate internal API key for testing
   // if (!validateInternalApiKey(request)) {
   //   return createAuthErrorResponse();
@@ -354,22 +390,39 @@ export async function POST(request: NextRequest) {
   let jobId: string | undefined;
   
   try {
+    console.log(`📨 Reading request body...`);
     const requestBody = await request.json();
     jobId = requestBody.jobId;
     const { websiteUrl, targetKeywords } = requestBody;
+    
+    console.log(`📋 Request parameters received:`);
+    console.log(`   - Job ID: ${jobId}`);
+    console.log(`   - Website URL: ${websiteUrl}`);
+    console.log(`   - Target Keywords: ${targetKeywords || 'none'}`);
 
     if (!jobId || !websiteUrl) {
+      console.error(`❌ Missing required parameters - jobId: ${!!jobId}, websiteUrl: ${!!websiteUrl}`);
       return NextResponse.json({ error: 'Job ID and website URL are required' }, { status: 400 });
     }
 
-    console.log(`Starting enhanced website crawling for job ${jobId}: ${websiteUrl}`);
-    console.log(`Firecrawl available: ${isFirecrawlAvailable()}`);
+    console.log(`🚀 Starting enhanced website crawling for job ${jobId}: ${websiteUrl}`);
+    console.log(`🔧 Firecrawl available: ${isFirecrawlAvailable()}`);
     
-    await updateJobStatus(jobId, 'processing');
+    console.log(`📊 Attempting database status update to 'processing'...`);
+    try {
+      await updateJobStatus(jobId, 'processing');
+      console.log(`✅ Database status updated successfully`);
+    } catch (statusError) {
+      console.error(`⚠️ Database status update failed:`, statusError);
+      console.log(`📍 Continuing with crawling despite status update failure...`);
+    }
     
+    console.log(`🕷️ Starting website content crawling...`);
     // Crawl website for content and reviews using enhanced method
     const websiteData = await crawlWebsiteContent(websiteUrl, targetKeywords || '', jobId);
+    console.log(`✅ Website crawling completed!`);
     
+    console.log(`📊 Analyzing crawled data...`);
     const analysis = {
       method: websiteData.dataQuality.method,
       firecrawlUsed: websiteData.firecrawlUsed,
@@ -382,6 +435,14 @@ export async function POST(request: NextRequest) {
       dataQuality: websiteData.dataQuality
     };
     
+    console.log(`📋 Analysis complete:`);
+    console.log(`   - Method: ${analysis.method}`);
+    console.log(`   - Reviews found: ${analysis.reviewsFound}`);
+    console.log(`   - Content length: ${analysis.contentLength} chars`);
+    console.log(`   - Testimonials: ${analysis.testimonialsFound}`);
+    console.log(`   - Features: ${analysis.featuresFound}`);
+    
+    console.log(`📦 Preparing data package for storage...`);
     const crawlerData = {
       websiteData: websiteData,
       analysis: analysis,
@@ -393,22 +454,39 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    await saveJobData(jobId, 'website', crawlerData);
+    console.log(`💾 Attempting database write...`);
+    try {
+      await saveJobData(jobId, 'website', crawlerData);
+      console.log(`✅ Database write successful!`);
+    } catch (dbError) {
+      console.error(`❌ Database write failed:`, dbError);
+      console.error(`🔍 Database error details:`, dbError instanceof Error ? dbError.message : 'Unknown error');
+      // Continue to try job cache storage
+    }
     
-    // Store result in cache for debug dashboard
-    storeJobResult(jobId, 'website', {
-      success: true,
-      websiteData: websiteData,
-      analysis: analysis,
-      processingTime: Date.now() - (new Date().getTime() - 30000), // Approximate processing time
-      statusCode: 200
-    });
+    console.log(`💾 Attempting job cache storage...`);
+    try {
+      // Store result in cache for debug dashboard
+      storeJobResult(jobId, 'website', {
+        success: true,
+        websiteData: websiteData,
+        analysis: analysis,
+        processingTime: Date.now() - 30000, // Approximate processing time
+        statusCode: 200
+      });
+      console.log(`✅ Job cache storage successful!`);
+    } catch (cacheError) {
+      console.error(`❌ Job cache storage failed:`, cacheError);
+      console.error(`🔍 Cache error details:`, cacheError instanceof Error ? cacheError.message : 'Unknown error');
+    }
 
-    console.log(`Enhanced website crawling completed for job ${jobId}:`);
-    console.log(`- Method: ${analysis.method} (Firecrawl: ${analysis.firecrawlUsed})`);
-    console.log(`- Content: ${analysis.contentLength} chars`);
-    console.log(`- Reviews: ${analysis.reviewsFound}, Testimonials: ${analysis.testimonialsFound}`);
-    console.log(`- Value Props: ${analysis.valuePropsFound}, Features: ${analysis.featuresFound}`);
+    console.log(`🎉 Enhanced website crawling completed for job ${jobId}:`);
+    console.log(`📊 Final Results Summary:`);
+    console.log(`   - Method: ${analysis.method} (Firecrawl: ${analysis.firecrawlUsed})`);
+    console.log(`   - Content: ${analysis.contentLength} chars`);
+    console.log(`   - Reviews: ${analysis.reviewsFound}, Testimonials: ${analysis.testimonialsFound}`);
+    console.log(`   - Value Props: ${analysis.valuePropsFound}, Features: ${analysis.featuresFound}`);
+    console.log(`=== WEBSITE CRAWLER WORKER END ===`);
 
     return NextResponse.json({
       success: true,
@@ -428,19 +506,31 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Website crawling error:', error);
+    console.error('❌ WEBSITE CRAWLER WORKER FAILED ===');
+    console.error('🔍 Error details:', error);
+    console.error('🆔 Failed job ID:', jobId);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     
+    console.log(`💾 Attempting error result storage in job cache...`);
     // Store error result in cache for debug dashboard (if jobId is available)
     if (jobId) {
-      storeJobResult(jobId, 'website', {
-        success: false,
-        error: errorMessage,
-        processingTime: 0,
-        statusCode: 500
-      });
+      try {
+        storeJobResult(jobId, 'website', {
+          success: false,
+          error: errorMessage,
+          processingTime: 0,
+          statusCode: 500
+        });
+        console.log(`✅ Error result stored in job cache`);
+      } catch (cacheError) {
+        console.error(`❌ Failed to store error in job cache:`, cacheError);
+      }
+    } else {
+      console.error(`❌ No job ID available for error storage`);
     }
+    
+    console.log(`=== WEBSITE CRAWLER WORKER END (WITH ERROR) ===`);
     
     return NextResponse.json(
       { error: 'Website crawling failed', details: errorMessage },
