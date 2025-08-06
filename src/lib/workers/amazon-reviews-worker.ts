@@ -50,9 +50,22 @@ export async function amazonReviewsWorker({
       transformedResult.extractionFailed || false
     );
     
+    // Determine if we actually collected meaningful data
+    const hasActualData = (
+      transformedResult.reviews.length > 0 &&
+      analysis.extractionStatus === 'SUCCESS'
+    );
+
     const result = {
+      success: true, // Process completed successfully
+      hasActualData: hasActualData, // Whether meaningful data was extracted
+      dataCollected: hasActualData, // Legacy compatibility
       reviews: transformedResult.reviews,
-      analysis: analysis,
+      analysis: {
+        ...analysis,
+        hasActualData: hasActualData,
+        dataQuality: hasActualData ? 'good' : 'empty_results'
+      },
       metadata: {
         timestamp: new Date().toISOString(),
         amazonUrl: amazonUrl,
@@ -62,18 +75,46 @@ export async function amazonReviewsWorker({
         extractionStatus: analysis.extractionStatus,
         dataType: 'amazon_reviews_extraction',
         planName: planName,
-        firecrawlUsed: !!process.env.FIRECRAWL_API_KEY
+        firecrawlUsed: !!process.env.FIRECRAWL_API_KEY,
+        hasActualData: hasActualData
       }
     };
 
-    console.log(`✅ Amazon reviews completed for job ${jobId}`);
-    console.log(`📊 Results: ${transformedResult.realReviewsCount} reviews, status: ${analysis.extractionStatus}`);
+    if (hasActualData) {
+      console.log(`✅ Amazon reviews completed with data for job ${jobId}`);
+      console.log(`📊 Results: ${transformedResult.realReviewsCount} reviews, status: ${analysis.extractionStatus}`);
+    } else {
+      console.log(`⚠️ Amazon reviews completed but found no meaningful data for job ${jobId}`);
+      console.log(`📊 Empty results: ${transformedResult.realReviewsCount} reviews, status: ${analysis.extractionStatus}`);
+    }
     
     return result;
 
   } catch (error) {
     console.error(`❌ Amazon reviews failed for job ${jobId}:`, error);
-    throw error;
+    
+    // Return failure result instead of throwing to allow pipeline to continue
+    return {
+      success: false, // Process failed
+      hasActualData: false, // No data extracted
+      dataCollected: false, // Legacy compatibility
+      reviews: [],
+      analysis: {
+        totalReviews: 0,
+        realReviews: 0,
+        extractionStatus: 'FAILED',
+        hasActualData: false,
+        dataQuality: 'failed'
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        amazonUrl: amazonUrl,
+        targetKeywords: targetKeywords,
+        extractionMethod: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        hasActualData: false
+      }
+    };
   }
 }
 

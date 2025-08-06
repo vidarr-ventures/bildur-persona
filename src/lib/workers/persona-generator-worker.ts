@@ -49,8 +49,22 @@ export async function personaGeneratorWorker({
       youtubeData
     });
 
-    console.log(`✅ Persona generator completed for job ${jobId}`);
-    console.log(`📊 Generated persona at stage ${personaProfile.stageNumber}`);
+    // Add success criteria to persona profile
+    const hasActualData = !personaProfile.error && (
+      personaProfile.persona && personaProfile.persona.length > 100
+    );
+    
+    personaProfile.success = true;
+    personaProfile.hasActualData = hasActualData;
+    personaProfile.dataCollected = hasActualData;
+
+    if (hasActualData) {
+      console.log(`✅ Persona generator completed with data for job ${jobId}`);
+      console.log(`📊 Generated persona at stage ${personaProfile.stageNumber}`);
+    } else {
+      console.log(`⚠️ Persona generator completed but generated minimal content for job ${jobId}`);
+      console.log(`📊 Low-quality persona at stage ${personaProfile.stageNumber}`);
+    }
     
     return personaProfile;
 

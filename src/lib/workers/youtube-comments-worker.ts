@@ -32,18 +32,38 @@ export async function youtubeCommentsWorker({
       insights: []
     };
 
+    // Determine if we have actual data (comments/videos)
+    const hasActualData = (
+      mockAnalysis.totalComments > 0 ||
+      mockAnalysis.videosAnalyzed > 0
+    );
+
     const result = {
+      success: true, // Process completed successfully
+      hasActualData: hasActualData, // Whether meaningful data was extracted
+      dataCollected: hasActualData, // Legacy compatibility
       comments: [],
-      analysis: mockAnalysis,
+      analysis: {
+        ...mockAnalysis,
+        hasActualData: hasActualData,
+        dataQuality: hasActualData ? 'good' : 'mock_empty'
+      },
       metadata: {
         timestamp: new Date().toISOString(),
         keywords: keywords,
         extractionMethod: 'youtube_api_v3_mock',
-        status: 'mock_data'
+        status: 'mock_data',
+        hasActualData: hasActualData
       }
     };
 
-    console.log(`✅ YouTube comments completed for job ${jobId} (mock data)`);
+    if (hasActualData) {
+      console.log(`✅ YouTube comments completed with data for job ${jobId}`);
+      console.log(`📊 Results: ${mockAnalysis.totalComments} comments from ${mockAnalysis.videosAnalyzed} videos`);
+    } else {
+      console.log(`⚠️ YouTube comments completed but found no data for job ${jobId} (mock)`);
+      console.log(`📊 Mock results: ${mockAnalysis.totalComments} comments, ${mockAnalysis.videosAnalyzed} videos`);
+    }
     
     return result;
 

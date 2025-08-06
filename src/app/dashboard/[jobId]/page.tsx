@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle, Clock, XCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, AlertCircle, ExternalLink, Copy, User } from 'lucide-react';
 
 interface JobStatus {
   id: string;
@@ -18,8 +18,10 @@ export default function DashboardPage() {
   const params = useParams();
   const jobId = params.jobId as string;
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
+  const [personaData, setPersonaData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   useEffect(() => {
     if (!jobId) return;
@@ -31,6 +33,11 @@ export default function DashboardPage() {
 
         if (data.success) {
           setJobStatus(data.job);
+          
+          // If job is completed, also fetch persona data
+          if (data.job.status === 'completed') {
+            fetchPersonaData();
+          }
         } else {
           setError('Failed to fetch job status');
         }
@@ -39,6 +46,19 @@ export default function DashboardPage() {
         console.error('Dashboard fetch error:', err);
       } finally {
         setLoading(false);
+      }
+    };
+
+    const fetchPersonaData = async () => {
+      try {
+        const response = await fetch(`/api/jobs/${jobId}/persona`);
+        const data = await response.json();
+        
+        if (data.persona) {
+          setPersonaData(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch persona data:', err);
       }
     };
 
@@ -77,6 +97,18 @@ export default function DashboardPage() {
         return 'text-red-400';
       default:
         return 'text-yellow-400';
+    }
+  };
+
+  const copyPersonaToClipboard = async () => {
+    if (!personaData?.persona) return;
+    
+    try {
+      await navigator.clipboard.writeText(personaData.persona);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy persona:', err);
     }
   };
 
@@ -220,17 +252,77 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+
+            {/* Persona Content Box - Show when completed and persona data is available */}
+            {jobStatus.status === 'completed' && personaData?.persona && (
+              <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-white flex items-center space-x-2">
+                    <User className="h-5 w-5" />
+                    <span>Generated Customer Persona</span>
+                  </h2>
+                  <button
+                    onClick={copyPersonaToClipboard}
+                    className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Copy className="h-4 w-4" />
+                    <span>{copySuccess ? 'Copied!' : 'Copy'}</span>
+                  </button>
+                </div>
+                
+                {/* Persona stage info */}
+                {personaData.stageNumber && (
+                  <div className="mb-4 text-sm text-gray-400">
+                    Stage {personaData.stageNumber} of {personaData.totalStages || 9}: {personaData.stage?.replace('_', ' ')}
+                  </div>
+                )}
+                
+                <div className="bg-gray-900 border border-gray-600 rounded p-4 max-h-96 overflow-y-auto">
+                  <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
+                    {personaData.persona}
+                  </pre>
+                </div>
+                
+                {/* Data quality indicator */}
+                {personaData.dataQuality && (
+                  <div className="mt-3 text-xs text-gray-500">
+                    Data Quality: {personaData.dataQuality} | Generated: {new Date(personaData.createdAt).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* No Persona Message for completed jobs */}
+            {jobStatus.status === 'completed' && !personaData?.persona && (
+              <div className="bg-yellow-500/10 border border-yellow-500/20 p-6 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <AlertCircle className="h-6 w-6 text-yellow-400" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-yellow-400">Persona Generation Issue</h3>
+                    <p className="text-yellow-300">The analysis completed but no persona was generated. This may indicate insufficient data was collected.</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             {jobStatus.status === 'completed' && (
-              <Link 
-                href={`/report/${jobId}`}
-                className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium text-center"
-              >
-                View Persona Report
-              </Link>
+              <>
+                <Link 
+                  href={`/report/${jobId}`}
+                  className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium text-center"
+                >
+                  View Detailed Report
+                </Link>
+                <Link 
+                  href={`/debug/${jobId}`}
+                  className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-500 transition-colors font-medium text-center"
+                >
+                  View Debug Dashboard
+                </Link>
+              </>
             )}
             <Link 
               href="/"

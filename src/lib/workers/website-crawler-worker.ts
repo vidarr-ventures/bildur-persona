@@ -65,22 +65,56 @@ export async function websiteCrawlerWorker({
       }
     };
 
+    // Determine if we actually collected meaningful data
+    const hasActualData = (
+      websiteData.customerReviews.length > 0 ||
+      websiteData.features.length > 0 ||
+      websiteData.valuePropositions.length > 0 ||
+      websiteData.painPointsAddressed.length > 0 ||
+      websiteData.testimonials.length > 0 ||
+      (websiteData.brandMessaging && websiteData.brandMessaging.length > 10)
+    );
+
+    // Check competitor data too
+    const hasCompetitorData = competitorResults.some(r => 
+      r.success && r.data && (
+        r.data.customerReviews?.length > 0 ||
+        r.data.features?.length > 0 ||
+        r.data.valuePropositions?.length > 0
+      )
+    );
+
+    const overallDataSuccess = hasActualData || hasCompetitorData;
+
     const result = {
+      success: true, // Process completed successfully
+      hasActualData: overallDataSuccess, // Whether meaningful data was extracted
+      dataCollected: overallDataSuccess, // Legacy compatibility
       websiteData: websiteData,
       competitorData: competitorResults,
-      analysis: analysis,
+      analysis: {
+        ...analysis,
+        hasActualData: overallDataSuccess,
+        dataQuality: overallDataSuccess ? 'good' : 'empty_results'
+      },
       metadata: {
         timestamp: new Date().toISOString(),
         websiteUrl: websiteUrl,
         targetKeywords: targetKeywords,
         competitorUrls: competitorUrls || [],
         crawlType: competitorUrls && competitorUrls.length > 0 ? 'openai_content_reviews_and_competitors' : 'openai_content_and_reviews',
-        extractionMethod: 'openai_gpt4_mini'
+        extractionMethod: 'openai_gpt4_mini',
+        hasActualData: overallDataSuccess
       }
     };
 
-    console.log(`✅ Website crawler completed for job ${jobId}`);
-    console.log(`📊 Results: ${analysis.reviewsFound} reviews, ${analysis.featuresFound} features, ${analysis.painPointsFound} pain points`);
+    if (overallDataSuccess) {
+      console.log(`✅ Website crawler completed with data for job ${jobId}`);
+      console.log(`📊 Results: ${analysis.reviewsFound} reviews, ${analysis.featuresFound} features, ${analysis.painPointsFound} pain points`);
+    } else {
+      console.log(`⚠️ Website crawler completed but found no meaningful data for job ${jobId}`);
+      console.log(`📊 Empty results: ${analysis.reviewsFound} reviews, ${analysis.featuresFound} features, ${analysis.painPointsFound} pain points`);
+    }
     
     return result;
 

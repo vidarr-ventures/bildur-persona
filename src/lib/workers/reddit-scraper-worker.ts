@@ -28,10 +28,23 @@ export async function redditScraperWorker({
       insights: [] // Will be extracted by AI analysis
     };
 
+    // Determine if we actually collected meaningful data
+    const hasActualData = (
+      (redditResult.posts && redditResult.posts.length > 0) ||
+      (redditResult.comments && redditResult.comments.length > 0)
+    );
+
     const result = {
+      success: true, // Process completed successfully
+      hasActualData: hasActualData, // Whether meaningful data was extracted
+      dataCollected: hasActualData, // Legacy compatibility
       posts: redditResult.posts || [],
       comments: redditResult.comments || [],
-      analysis: analysis,
+      analysis: {
+        ...analysis,
+        hasActualData: hasActualData,
+        dataQuality: hasActualData ? 'good' : 'empty_results'
+      },
       metadata: {
         timestamp: new Date().toISOString(),
         targetKeywords: targetKeywords,
@@ -39,12 +52,18 @@ export async function redditScraperWorker({
         subredditsSearched: redditResult.metadata?.subreddits_searched || [],
         searchQueries: redditResult.metadata?.queries_used || [],
         processingTime: redditResult.metadata?.processing_time || 0,
-        totalResults: redditResult.metadata?.total_results || 0
+        totalResults: redditResult.metadata?.total_results || 0,
+        hasActualData: hasActualData
       }
     };
 
-    console.log(`✅ Reddit scraper completed for job ${jobId}`);
-    console.log(`📊 Results: ${analysis.totalPosts} posts, ${analysis.totalComments} comments`);
+    if (hasActualData) {
+      console.log(`✅ Reddit scraper completed with data for job ${jobId}`);
+      console.log(`📊 Results: ${analysis.totalPosts} posts, ${analysis.totalComments} comments`);
+    } else {
+      console.log(`⚠️ Reddit scraper completed but found no data for job ${jobId}`);
+      console.log(`📊 Empty results: ${analysis.totalPosts} posts, ${analysis.totalComments} comments`);
+    }
     
     return result;
 
@@ -53,6 +72,9 @@ export async function redditScraperWorker({
     
     // Return minimal data on failure so the pipeline can continue
     const fallbackResult = {
+      success: false, // Process failed
+      hasActualData: false, // No data extracted
+      dataCollected: false, // Legacy compatibility
       posts: [],
       analysis: {
         totalPosts: 0,
@@ -61,13 +83,16 @@ export async function redditScraperWorker({
         topics: [],
         painPoints: [],
         solutions: [],
-        insights: []
+        insights: [],
+        hasActualData: false,
+        dataQuality: 'failed'
       },
       metadata: {
         timestamp: new Date().toISOString(),
         targetKeywords: targetKeywords,
         extractionMethod: 'reddit_api_failed',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
+        hasActualData: false
       }
     };
 

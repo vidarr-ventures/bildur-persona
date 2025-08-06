@@ -28,7 +28,7 @@ import {
 interface DataSourceStatus {
   name: string;
   url?: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'not_started';
+  status: 'pending' | 'processing' | 'completed' | 'completed_no_data' | 'failed' | 'not_started';
   // Legacy metric for backward compatibility
   reviewsFound?: number;
   // AI-Powered Worker metrics
@@ -142,8 +142,8 @@ export default function DebugPage() {
         customerWebsite: {
           name: 'Customer Website',
           url: cachedData.websiteUrl,
-          status: dataSourceStatuses.website?.status || (jobResults.website?.success ? 'completed' : (jobResults.website ? 'failed' : 'not_started')),
-          dataReturned: dataSourceStatuses.website?.dataReturned ?? (jobResults.website?.success || false),
+          status: dataSourceStatuses.website?.status || (jobResults.website?.hasActualData === true ? 'completed' : (jobResults.website?.hasActualData === false ? 'completed_no_data' : (jobResults.website?.success ? 'completed' : (jobResults.website ? 'failed' : 'not_started')))),
+          dataReturned: dataSourceStatuses.website?.dataReturned ?? (jobResults.website?.hasActualData === true || jobResults.website?.success || false),
           contentVolume: dataSourceStatuses.website?.contentVolume || calculateWebsiteContentVolume(jobResults.website),
           extractionMethod: dataSourceStatuses.website?.extractionMethod || jobResults.website?.data?.dataQuality?.method || 'Unknown',
           processingTime: dataSourceStatuses.website?.processingTime || jobResults.website?.processingTime,
@@ -152,19 +152,43 @@ export default function DebugPage() {
           metadata: jobResults.website?.data?.dataQuality,
           data: getOpenAIData('website')
         },
-        competitors: competitorSources.map((competitor: any) => ({
-            name: `Competitor ${competitor.index + 1}`,
-            url: competitor.url,
-            status: competitor.status || 'not_started',
-            dataReturned: competitor.dataReturned,
-            contentVolume: competitor.contentVolume,
-            extractionMethod: competitor.extractionMethod || 'Unknown',
-            processingTime: competitor.processingTime,
-            statusCode: competitor.statusCode,
-            errorMessage: competitor.errorMessage,
-            metadata: competitor.metadata,
-            data: getOpenAIData(`competitor_${competitor.index}`)
-          })),
+        competitors: (() => {
+          // Handle competitors more robustly
+          if (competitorSources && competitorSources.length > 0) {
+            return competitorSources.map((competitor: any) => ({
+              name: `Competitor ${competitor.index + 1}`,
+              url: competitor.url,
+              status: competitor.status || (competitor.hasActualData === true ? 'completed' : (competitor.hasActualData === false ? 'completed_no_data' : 'not_started')),
+              dataReturned: competitor.dataReturned ?? (competitor.hasActualData === true),
+              contentVolume: competitor.contentVolume,
+              extractionMethod: competitor.extractionMethod || 'Unknown',
+              processingTime: competitor.processingTime,
+              statusCode: competitor.statusCode,
+              errorMessage: competitor.errorMessage,
+              metadata: competitor.metadata,
+              data: getOpenAIData(`competitor_${competitor.index}`)
+            }));
+          }
+          // Generate competitor boxes from cached data if not in status
+          if (cachedData?.competitorUrls && Array.isArray(cachedData.competitorUrls)) {
+            return cachedData.competitorUrls.map((url: string, index: number) => ({
+              name: `Competitor ${index + 1}`,
+              url: url,
+              status: jobResults?.[`competitor_${index}`]?.hasActualData === true ? 'completed' : 
+                     (jobResults?.[`competitor_${index}`]?.hasActualData === false ? 'completed_no_data' : 
+                     (jobResults?.[`competitor_${index}`] ? 'failed' : 'not_started')),
+              dataReturned: jobResults?.[`competitor_${index}`]?.hasActualData === true || false,
+              contentVolume: jobResults?.[`competitor_${index}`] ? calculateWebsiteContentVolume(jobResults[`competitor_${index}`]) : 'No data',
+              extractionMethod: jobResults?.[`competitor_${index}`]?.data?.dataQuality?.method || 'Unknown',
+              processingTime: jobResults?.[`competitor_${index}`]?.processingTime || 'Unknown',
+              statusCode: jobResults?.[`competitor_${index}`]?.statusCode || 200,
+              errorMessage: jobResults?.[`competitor_${index}`]?.error || null,
+              metadata: jobResults?.[`competitor_${index}`]?.data?.dataQuality,
+              data: getOpenAIData(`competitor_${index}`)
+            }));
+          }
+          return [];
+        })(),
         // Amazon Reviews hidden for MVP
         // amazonReviews: {
         //   name: 'Amazon Reviews',
@@ -179,19 +203,19 @@ export default function DebugPage() {
         // },
         redditScraper: {
           name: 'Reddit Scraper',
-          status: dataSourceStatuses.reddit?.status || 'not_started',
-          dataReturned: dataSourceStatuses.reddit?.dataReturned,
-          contentVolume: dataSourceStatuses.reddit?.contentVolume,
-          extractionMethod: dataSourceStatuses.reddit?.extractionMethod || 'Unknown',
+          status: dataSourceStatuses.reddit?.status || (jobResults.reddit?.hasActualData === true ? 'completed' : (jobResults.reddit?.hasActualData === false ? 'completed_no_data' : 'not_started')),
+          dataReturned: dataSourceStatuses.reddit?.dataReturned ?? (jobResults.reddit?.hasActualData === true),
+          contentVolume: dataSourceStatuses.reddit?.contentVolume || (jobResults.reddit ? `${jobResults.reddit.posts?.length || 0} posts` : 'No data'),
+          extractionMethod: dataSourceStatuses.reddit?.extractionMethod || 'API + AI Analysis',
           processingTime: dataSourceStatuses.reddit?.processingTime,
           statusCode: dataSourceStatuses.reddit?.statusCode,
           errorMessage: dataSourceStatuses.reddit?.errorMessage
         },
         youtubeComments: {
           name: 'YouTube Comments',
-          status: dataSourceStatuses.youtube?.status || (jobResults.youtube_comments?.success ? 'completed' : 'not_started'),
-          commentsFound: dataSourceStatuses.youtube?.commentsFound,
-          videosProcessed: dataSourceStatuses.youtube?.videosProcessed,
+          status: dataSourceStatuses.youtube?.status || (jobResults.youtube_comments?.hasActualData === true ? 'completed' : (jobResults.youtube_comments?.hasActualData === false ? 'completed_no_data' : (jobResults.youtube_comments?.success ? 'completed' : 'not_started'))),
+          commentsFound: dataSourceStatuses.youtube?.commentsFound || (jobResults.youtube_comments?.comments ? `${jobResults.youtube_comments.comments.length} comments` : '0 comments'),
+          videosProcessed: dataSourceStatuses.youtube?.videosProcessed || (jobResults.youtube_comments?.analysis?.topVideos ? `${jobResults.youtube_comments.analysis.topVideos.length} videos` : '0 videos'),
           extractionMethod: jobResults.youtube_comments?.metadata?.extractionMethod || dataSourceStatuses.youtube?.extractionMethod || 'youtube_api_v3',
           processingTime: dataSourceStatuses.youtube?.processingTime,
           statusCode: dataSourceStatuses.youtube?.statusCode,
@@ -204,9 +228,9 @@ export default function DebugPage() {
         },
         personaGenerator: {
           name: 'Persona Generator',
-          status: dataSourceStatuses.persona?.status || 'not_started',
-          outputGenerated: dataSourceStatuses.persona?.outputGenerated,
-          personaLength: dataSourceStatuses.persona?.personaLength,
+          status: dataSourceStatuses.persona?.status || (jobResults.persona?.hasActualData === true ? 'completed' : (jobResults.persona?.hasActualData === false ? 'completed_no_data' : 'not_started')),
+          outputGenerated: dataSourceStatuses.persona?.outputGenerated ?? (jobResults.persona?.hasActualData === true),
+          personaLength: dataSourceStatuses.persona?.personaLength || (jobResults.persona?.persona ? `${jobResults.persona.persona.length} chars` : '0 chars'),
           processingTime: dataSourceStatuses.persona?.processingTime,
           errorMessage: dataSourceStatuses.persona?.errorMessage
         }
@@ -270,6 +294,8 @@ export default function DebugPage() {
     switch (status) {
       case 'completed':
         return <CheckCircle className="h-6 w-6 text-green-400" />;
+      case 'completed_no_data':
+        return <AlertCircle className="h-6 w-6 text-yellow-400" />;
       case 'processing':
         return <Clock className="h-6 w-6 text-blue-400 animate-pulse" />;
       case 'failed':
@@ -285,6 +311,8 @@ export default function DebugPage() {
     switch (status) {
       case 'completed':
         return 'text-green-400 bg-green-400/10 border-green-400/20';
+      case 'completed_no_data':
+        return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
       case 'processing':
         return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
       case 'failed':
@@ -388,7 +416,9 @@ export default function DebugPage() {
         <div className="grid grid-cols-2 gap-4 text-sm mb-4">
           <div>
             <p className="text-gray-400">Status</p>
-            <p className="font-medium text-white capitalize">{source.status.replace('_', ' ')}</p>
+            <p className="font-medium text-white capitalize">
+              {source.status === 'completed_no_data' ? 'Completed (No Data)' : source.status.replace('_', ' ')}
+            </p>
           </div>
           
           {/* AI-Powered Workers: Show Data Returned and Content Volume */}

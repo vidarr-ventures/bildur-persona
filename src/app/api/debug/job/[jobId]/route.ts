@@ -124,8 +124,18 @@ function analyzeDataSourceStatusFromDb(dbJobData: any, dataType: string) {
   const isAIPowered = ['website', 'amazon_reviews', 'reddit'].includes(dataType);
   const isPersona = dataType === 'persona_profile';
   
+  // NEW: Determine proper status based on data collection success
+  let status = 'completed';
+  if (data.error || data.success === false) {
+    status = 'failed';
+  } else if (data.hasActualData === false || data.dataCollected === false) {
+    status = 'completed_no_data'; // Yellow status
+  } else if (data.hasActualData === true || data.dataCollected === true) {
+    status = 'completed'; // Green status
+  }
+  
   const baseStatus = {
-    status: data.error ? 'failed' : 'completed',
+    status: status,
     extractionMethod: extractMethodFromDb(data, dataType),
     processingTime: formatProcessingTime(data.metadata?.processingTime || Date.now()),
     statusCode: 200,
@@ -133,28 +143,33 @@ function analyzeDataSourceStatusFromDb(dbJobData: any, dataType: string) {
     metadata: {
       timestamp: data.metadata?.timestamp || new Date().toISOString(),
       dataQuality: data.dataQuality || data.analysis?.dataQuality,
-      analysis: data.analysis
+      analysis: data.analysis,
+      hasActualData: data.hasActualData
     }
   };
 
   if (isPersona) {
+    const hasPersonaData = (!!data.persona && data.persona.length > 100) || (!!data.analysis && !data.error);
     return {
       ...baseStatus,
-      outputGenerated: !!data.persona || !!data.analysis,
+      status: data.error ? 'failed' : (hasPersonaData ? 'completed' : 'completed_no_data'),
+      outputGenerated: hasPersonaData,
       personaLength: calculatePersonaLength(data),
       extractionMethod: 'Sequential AI Analysis'
     };
   } else if (isAIPowered) {
     return {
       ...baseStatus,
-      dataReturned: !data.error && (!!data.analysis || !!data.websiteData),
+      dataReturned: data.hasActualData === true,
       contentVolume: calculateContentVolume(data, dataType),
       extractionMethod: getAIMethod(dataType)
     };
   } else {
     // YouTube and other direct API workers
+    const hasComments = extractCommentsCountNumber(data, dataType) > 0;
     return {
       ...baseStatus,
+      status: data.error ? 'failed' : (hasComments ? 'completed' : 'completed_no_data'),
       commentsFound: extractCommentsCount(data, dataType),
       videosProcessed: extractVideosCount(data, dataType),
       extractionMethod: 'YouTube API'
@@ -181,10 +196,20 @@ function analyzeDataSourceStatus(jobResults: any, dataType: string) {
   const isAIPowered = ['website', 'amazon_reviews', 'reddit'].includes(dataType);
   const isPersona = dataType === 'persona_profile';
   
+  // NEW: Determine proper status based on data collection success
+  let status = 'completed';
+  if (data.success === false || data.error) {
+    status = 'failed';
+  } else if (data.processing) {
+    status = 'processing';
+  } else if (data.hasActualData === false || data.dataCollected === false) {
+    status = 'completed_no_data'; // Yellow status
+  } else if (data.hasActualData === true || data.dataCollected === true) {
+    status = 'completed'; // Green status
+  }
+  
   const baseStatus = {
-    status: data.success === false ? 'failed' : 
-            data.error ? 'failed' : 
-            data.processing ? 'processing' : 'completed',
+    status: status,
     extractionMethod: extractMethod(data),
     processingTime: formatProcessingTime(data.processingTime || data.metadata?.processingTime),
     statusCode: data.statusCode || data.response?.status,
@@ -192,28 +217,33 @@ function analyzeDataSourceStatus(jobResults: any, dataType: string) {
     metadata: {
       timestamp: data.timestamp,
       dataQuality: data.dataQuality,
-      analysis: data.analysis
+      analysis: data.analysis,
+      hasActualData: data.hasActualData
     }
   };
 
   if (isPersona) {
+    const hasPersonaData = (!!data.persona && data.persona.length > 100) || (!!data.analysis && !data.error);
     return {
       ...baseStatus,
-      outputGenerated: !!data.persona || !!data.analysis,
+      status: data.error ? 'failed' : (hasPersonaData ? 'completed' : 'completed_no_data'),
+      outputGenerated: hasPersonaData,
       personaLength: calculatePersonaLength(data),
       extractionMethod: 'Sequential AI Analysis'
     };
   } else if (isAIPowered) {
     return {
       ...baseStatus,
-      dataReturned: !data.error && (!!data.analysis || !!data.websiteData),
+      dataReturned: data.hasActualData === true,
       contentVolume: calculateContentVolume(data, dataType),
       extractionMethod: getAIMethod(dataType)
     };
   } else {
     // YouTube and other direct API workers
+    const hasComments = extractCommentsCountNumber(data, dataType) > 0;
     return {
       ...baseStatus,
+      status: data.error ? 'failed' : (hasComments ? 'completed' : 'completed_no_data'),
       commentsFound: extractCommentsCount(data, dataType),
       videosProcessed: extractVideosCount(data, dataType),
       extractionMethod: 'YouTube API'
@@ -437,6 +467,13 @@ function extractVideosCount(data: any, dataType: string): string {
   return '0 videos';
 }
 
+function extractCommentsCountNumber(data: any, dataType: string): number {
+  if (dataType === 'youtube_comments') {
+    return data.comments?.length || data.analysis?.totalComments || 0;
+  }
+  return 0;
+}
+
 async function getWorkerStatusData(jobId: string, cachedData: any, dbData: any) {
   const baseUrl = 'https://persona.bildur.ai';
   
@@ -511,10 +548,19 @@ function analyzeDataSourceStatusFromWorkers(workerResults: any, dataType: string
   const isAIPowered = ['website', 'amazon', 'reddit'].includes(dataType);
   const isPersona = dataType === 'persona';
 
+  // NEW: Determine proper status based on actual data collection
+  let status = 'completed';
+  if (data.hasActualData === false || data.dataCollected === false) {
+    status = 'completed_no_data'; // Yellow status
+  } else if (data.hasActualData === true || data.dataCollected === true) {
+    status = 'completed'; // Green status
+  }
+
   if (isPersona) {
+    const hasPersonaData = (!!workerData.persona && workerData.persona.length > 100) || (!!workerData.analysis && !data.error);
     return {
-      status: 'completed',
-      outputGenerated: !!workerData.persona || !!workerData.analysis,
+      status: data.error ? 'failed' : (hasPersonaData ? 'completed' : 'completed_no_data'),
+      outputGenerated: hasPersonaData,
       personaLength: calculatePersonaLength(workerData),
       extractionMethod: 'Sequential AI Analysis',
       processingTime: 'Real-time',
@@ -534,8 +580,8 @@ function analyzeDataSourceStatusFromWorkers(workerResults: any, dataType: string
                        0;
     
     return {
-      status: 'completed',
-      dataReturned: !data.error && (!!workerData.analysis || !!workerData.websiteData || hasReviews),
+      status: data.hasActualData === true ? 'completed' : (data.hasActualData === false ? 'completed_no_data' : status),
+      dataReturned: data.hasActualData === true,
       contentVolume: hasReviews ? `${reviewCount} items found` : (workerData.contentLength ? `${workerData.contentLength} chars` : 'No data'),
       extractionMethod: getAIMethod(dataType),
       processingTime: 'Real-time',
@@ -545,9 +591,10 @@ function analyzeDataSourceStatusFromWorkers(workerResults: any, dataType: string
   } else if (dataType === 'youtube') {
     const totalComments = workerData.totalComments || workerData.comments?.length || 0;
     const videosAnalyzed = workerData.videosAnalyzed || workerData.videos?.length || 0;
+    const hasComments = totalComments > 0;
     
     return {
-      status: 'completed',
+      status: data.error ? 'failed' : (hasComments ? 'completed' : 'completed_no_data'),
       commentsFound: `${totalComments} comments`,
       videosProcessed: `${videosAnalyzed} videos`,
       extractionMethod: 'YouTube API',
@@ -557,7 +604,7 @@ function analyzeDataSourceStatusFromWorkers(workerResults: any, dataType: string
   }
 
   return {
-    status: 'completed',
+    status: data.hasActualData === false ? 'completed_no_data' : 'completed',
     extractionMethod: 'Unknown',
     processingTime: 'Real-time',
     statusCode: 200
