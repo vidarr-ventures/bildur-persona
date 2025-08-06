@@ -54,9 +54,13 @@ export async function personaGeneratorWorker({
       personaProfile.persona && personaProfile.persona.length > 100
     );
     
-    personaProfile.success = true;
-    personaProfile.hasActualData = hasActualData;
-    personaProfile.dataCollected = hasActualData;
+    // Return enhanced persona profile with success criteria
+    const enhancedProfile = {
+      ...personaProfile,
+      success: true,
+      hasActualData: hasActualData,
+      dataCollected: hasActualData
+    };
 
     if (hasActualData) {
       console.log(`✅ Persona generator completed with data for job ${jobId}`);
@@ -66,7 +70,7 @@ export async function personaGeneratorWorker({
       console.log(`📊 Low-quality persona at stage ${personaProfile.stageNumber}`);
     }
     
-    return personaProfile;
+    return enhancedProfile;
 
   } catch (error) {
     console.error(`❌ Persona generator failed for job ${jobId}:`, error);
