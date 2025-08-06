@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe, PRICING_PLANS } from '@/lib/stripe';
+import { createJob } from '@/lib/db';
+import { processJobWithWorkersSequential } from '@/lib/job-processor';
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,38 +34,43 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // If no job ID, create a free job with minimal data for testing
+      // If no job ID, create a free job directly in the database
       console.log('Creating free test job');
       
-      // Create a test job with sample data for free analysis
-      const testJobResponse = await fetch(`${request.nextUrl.origin}/api/jobs/create-v2`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          primaryProductUrl: 'https://example.com',
-          targetKeywords: 'free analysis test',
-          amazonProductUrl: 'https://amazon.com/test'
-        })
-      });
+      try {
+        // Create job directly using database function
+        const job = await createJob({
+          website_url: 'https://example.com',
+          target_keywords: 'free analysis test',
+          amazon_url: 'https://amazon.com/test',
+          status: 'pending'
+        });
 
-      if (!testJobResponse.ok) {
-        console.error('Failed to create free test job:', await testJobResponse.text());
+        console.log('Free test job created:', job.id);
+
+        // Start worker processing asynchronously (fire and forget)
+        processJobWithWorkersSequential(
+          job.id, 
+          'https://example.com', 
+          'free analysis test', 
+          'https://amazon.com/test', 
+          []
+        ).catch(error => console.error('Worker processing error:', error));
+
+        return NextResponse.json({
+          success: true,
+          isFree: true,
+          email: 'Free Analysis',
+          planName: 'Free Analysis',
+          jobId: job.id
+        });
+      } catch (error) {
+        console.error('Failed to create free test job:', error);
         return NextResponse.json({
           success: false,
           error: 'Failed to create free analysis job'
         }, { status: 500 });
       }
-
-      const testJobData = await testJobResponse.json();
-      console.log('Free test job created:', testJobData.jobId);
-
-      return NextResponse.json({
-        success: true,
-        isFree: true,
-        email: 'Free Analysis',
-        planName: 'Free Analysis',
-        jobId: testJobData.jobId
-      });
     }
 
     // Only check Stripe for paid orders
