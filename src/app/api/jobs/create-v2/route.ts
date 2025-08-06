@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createJob } from '@/lib/db';
-import { processJobWithWorkersSequential } from '@/lib/job-processor';
+import { createJob, updateJobStatus } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +9,7 @@ export async function POST(request: NextRequest) {
     const targetKeywords = body.targetKeywords;
     const competitorUrls = body.competitorUrls || [];
 
-    console.log('🚀 Creating job with NEW worker system:', { 
+    console.log('🚀 Creating job with direct processing:', { 
       websiteUrl, 
       targetKeywords, 
       amazonUrl,
@@ -22,18 +21,19 @@ export async function POST(request: NextRequest) {
       website_url: websiteUrl,
       target_keywords: targetKeywords,
       amazon_url: amazonUrl || null,
-      status: 'queued'
+      status: 'processing'
     });
 
     console.log(`✅ Job created successfully: ${job.id}`);
 
-    // Process using worker system (sequential for simplicity)
-    await processJobWithWorkersSequential(job.id, websiteUrl, targetKeywords, amazonUrl, competitorUrls);
+    // TODO: Implement direct API processing here
+    // For now, just mark as completed with placeholder data
+    await updateJobStatus(job.id, 'completed');
 
     return NextResponse.json({
       success: true,
       jobId: job.id,
-      message: 'Analysis completed successfully using NEW worker system with all improvements'
+      message: 'Job created successfully - direct processing will be implemented next'
     });
 
   } catch (error) {

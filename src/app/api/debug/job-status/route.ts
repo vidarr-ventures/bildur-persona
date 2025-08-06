@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
-import { Queue } from '@/lib/queue';
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,54 +20,14 @@ export async function GET(request: NextRequest) {
     const researchResult = await sql`SELECT * FROM research_requests WHERE job_id = ${jobId}`;
     const researchRequest = researchResult.rows[0];
 
-    // Get queue stats
-    const queueStats = await Queue.getQueueStats();
+    // Queue system has been removed
+    const queueStats = { pending: 0, processing: 0, note: 'Queue system removed' };
 
-    // Check if job is in processing queue using Vercel KV
-    let inProcessingQueue = false;
-    let inPendingQueue = false;
-    
-    try {
-      const { kv } = await import('@vercel/kv');
-      
-      // Check processing queue
-      const processingJobs = await kv.hgetall('processing_jobs');
-      if (processingJobs) {
-        for (const [queueJobId, jobDataStr] of Object.entries(processingJobs)) {
-          if (typeof jobDataStr === 'string') {
-            try {
-              const queueJob = JSON.parse(jobDataStr);
-              if (queueJob.data?.jobId === jobId) {
-                inProcessingQueue = true;
-                break;
-              }
-            } catch (e) {
-              console.error('Error parsing processing job:', e);
-            }
-          }
-        }
-      }
+    // Queue system has been removed - no queue checks needed
+    const inProcessingQueue = false;
+    const inPendingQueue = false;
 
-      // Check pending queue
-      const pendingJobs = await kv.lrange('job_queue', 0, -1);
-      if (pendingJobs && Array.isArray(pendingJobs)) {
-        for (const jobDataStr of pendingJobs) {
-          if (typeof jobDataStr === 'string') {
-            try {
-              const queueJob = JSON.parse(jobDataStr);
-              if (queueJob.data?.jobId === jobId) {
-                inPendingQueue = true;
-                break;
-              }
-            } catch (e) {
-              console.error('Error parsing pending job:', e);
-            }
-          }
-        }
-      }
-    } catch (kvError) {
-      console.error('Error checking KV queues:', kvError);
-    }
+    // Queue system has been removed - no queue checking needed
 
     return NextResponse.json({
       jobId,
@@ -121,27 +80,10 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'retry_processing':
-        // Add job back to queue
-        const researchResult = await sql`SELECT * FROM research_requests WHERE job_id = ${jobId}`;
-        const researchRequest = researchResult.rows[0];
-        
-        if (!researchRequest) {
-          return NextResponse.json({ error: 'Research request not found' }, { status: 404 });
-        }
-
-        await Queue.addJob({
-          type: 'persona_research',
-          data: {
-            jobId,
-            websiteUrl: researchRequest.website_url,
-            targetKeywords: researchRequest.keywords,
-            amazonUrl: researchRequest.amazon_url
-          }
-        });
-
+        // Queue system removed - cannot retry through queue
         return NextResponse.json({ 
-          success: true, 
-          message: `Job ${jobId} added back to queue for retry` 
+          success: false, 
+          message: `Queue system has been removed. Job retry not available.` 
         });
 
       case 'force_complete':
@@ -155,16 +97,10 @@ export async function POST(request: NextRequest) {
         });
 
       case 'clear_from_queue':
-        // Remove from processing queue if stuck
-        try {
-          await Queue.completeJob(jobId);
-        } catch (e) {
-          console.log('Job not in queue or already removed');
-        }
-        
+        // Queue system removed - no queue to clear from
         return NextResponse.json({ 
           success: true, 
-          message: `Job ${jobId} cleared from processing queue` 
+          message: `Queue system has been removed. No queue to clear from.` 
         });
 
       default:

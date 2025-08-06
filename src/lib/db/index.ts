@@ -246,14 +246,14 @@ export async function createResearchRequest(data: {
   keywords: string;
   email: string;
   competitorUrls: string[];
-  planId: string;
-  planName: string;
+  planId?: string;
+  planName?: string;
   discountCode?: string;
-  paymentSessionId: string;
-  amountPaid: number;
-  originalPrice: number;
-  finalPrice: number;
-  isFree: boolean;
+  paymentSessionId?: string;
+  amountPaid?: number;
+  originalPrice?: number;
+  finalPrice?: number;
+  isFree?: boolean;
 }): Promise<ResearchRequest> {
   try {
     // Fix keywords format: use PostgreSQL ARRAY constructor to preserve search intent
@@ -263,8 +263,8 @@ export async function createResearchRequest(data: {
         discount_code, payment_session_id, amount_paid, original_price, final_price, is_free
       ) VALUES (
         ${data.jobId}, ${data.websiteUrl}, ${data.amazonUrl || null}, ${data.email}, ARRAY[${data.keywords}], 
-        ${JSON.stringify(data.competitorUrls)}, ${data.planId}, ${data.planName}, ${data.discountCode || null}, 
-        ${data.paymentSessionId}, ${data.amountPaid}, ${data.originalPrice}, ${data.finalPrice}, ${data.isFree}
+        ${JSON.stringify(data.competitorUrls || [])}, ${data.planId || 'free'}, ${data.planName || 'Free Analysis'}, ${data.discountCode || null}, 
+        ${data.paymentSessionId || 'free_access'}, ${data.amountPaid || 0}, ${data.originalPrice || 0}, ${data.finalPrice || 0}, ${data.isFree !== false}
       )
       RETURNING *
     `;

@@ -471,53 +471,12 @@ function extractCommentsCountNumber(data: any, dataType: string): number {
 }
 
 async function getWorkerStatusData(jobId: string, cachedData: any, dbData: any) {
-  const baseUrl = 'https://persona.bildur.ai';
+  // Worker system has been removed - return empty results
+  console.log('Worker system has been removed - returning empty worker status data');
   
-  const workers = [
-    { name: 'website-crawler', key: 'website' },
-    { name: 'amazon-reviews', key: 'amazon' },
-    { name: 'reddit-scraper', key: 'reddit' },
-    { name: 'youtube-comments', key: 'youtube' },
-    { name: 'persona-generator', key: 'persona' }
-  ];
-
   const results: { [key: string]: any } = {};
 
-  try {
-    const workerPromises = workers.map(async (worker) => {
-      try {
-        const response = await fetch(`${baseUrl}/api/workers/${worker.name}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`,
-          },
-          body: JSON.stringify({
-            jobId,
-            websiteUrl: cachedData?.websiteUrl || dbData?.website_url || 'https://example.com',
-            targetKeywords: cachedData?.keywords || dbData?.keywords || 'test',
-            keywords: cachedData?.keywords || dbData?.keywords || 'test',
-            amazonUrl: cachedData?.amazonUrl || dbData?.amazon_url || '',
-            email: cachedData?.email || dbData?.email,
-            planName: cachedData?.planName || dbData?.plan_name || 'Essential'
-          }),
-          signal: AbortSignal.timeout(10000) // 10 second timeout for debug calls
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          results[worker.key] = data;
-        }
-      } catch (error) {
-        console.log(`Worker ${worker.name} failed:`, error);
-      }
-    });
-
-    await Promise.all(workerPromises);
-  } catch (error) {
-    console.error('Error calling workers:', error);
-  }
-
+  // Return empty results since worker endpoints no longer exist
   return results;
 }
 

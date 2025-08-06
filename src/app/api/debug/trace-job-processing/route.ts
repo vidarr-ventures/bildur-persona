@@ -36,123 +36,48 @@ export async function POST(request: NextRequest) {
 
     const testResults = [];
 
-    // Test each worker individually
+    // Worker system has been removed
     const workers = [
-      { name: 'website-crawler', endpoint: '/api/workers/website-crawler' },
-      { name: 'amazon-reviews', endpoint: '/api/workers/amazon-reviews' },
-      { name: 'reddit-scraper', endpoint: '/api/workers/reddit-scraper' },
-      { name: 'youtube-comments', endpoint: '/api/workers/youtube-comments' },
-      { name: 'persona-generator', endpoint: '/api/workers/persona-generator' }
+      { name: 'website-crawler', status: 'removed' },
+      { name: 'amazon-reviews', status: 'removed' },
+      { name: 'reddit-scraper', status: 'removed' },
+      { name: 'youtube-comments', status: 'removed' },
+      { name: 'persona-generator', status: 'removed' }
     ];
 
     for (const worker of workers) {
-      try {
-        console.log(`🔧 Testing ${worker.name}...`);
-        
-        // Different payload for persona generator
-        const payload = worker.name === 'persona-generator' ? {
-          jobId,
-          websiteUrl: 'https://groundluxe.com',
-          targetKeywords: 'grounding sheets',
-          keywords: 'grounding sheets',
-          amazonUrl: 'https://amazon.com/dp/B07RLNS58H',
-          email: 'test@example.com',
-          planName: 'Test Plan'
-        } : {
-          jobId,
-          websiteUrl: 'https://groundluxe.com',
-          targetKeywords: 'grounding sheets',
-          keywords: 'grounding sheets', // For YouTube worker
-          amazonUrl: 'https://amazon.com/dp/B07RLNS58H'
-        };
-
-        const startTime = Date.now();
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        
-        // Add internal API key if available
-        if (process.env.INTERNAL_API_KEY) {
-          headers['Authorization'] = `Bearer ${process.env.INTERNAL_API_KEY}`;
-        }
-        
-        const response = await fetch(`${baseUrl}${worker.endpoint}`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(30000) // 30 second timeout
-        });
-
-        const endTime = Date.now();
-        const responseText = await response.text();
-
-        testResults.push({
-          worker: worker.name,
-          endpoint: worker.endpoint,
-          status: response.status,
-          success: response.ok,
-          responseTime: endTime - startTime,
-          responseSize: responseText.length,
-          responsePreview: responseText.substring(0, 200),
-          headers: Object.fromEntries(response.headers.entries())
-        });
-
-        console.log(`${response.ok ? '✅' : '❌'} ${worker.name}: ${response.status} (${endTime - startTime}ms)`);
-
-      } catch (error) {
-        console.error(`❌ ${worker.name} failed:`, error);
-        testResults.push({
-          worker: worker.name,
-          endpoint: worker.endpoint,
-          status: 0,
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timeout: error instanceof Error && error.name === 'AbortError'
-        });
-      }
-    }
-
-    // Test queue processing trigger
-    try {
-      console.log('🔧 Testing queue processor...');
-      const startTime = Date.now();
-      const queueHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      console.log(`Worker ${worker.name} has been removed`);
       
-      // Add internal API key if available
-      if (process.env.INTERNAL_API_KEY) {
-        queueHeaders['Authorization'] = `Bearer ${process.env.INTERNAL_API_KEY}`;
-      }
-      
-      const queueResponse = await fetch(`${baseUrl}/api/queue/processor`, {
-        method: 'POST',
-        headers: queueHeaders,
-        body: JSON.stringify({ trigger: true }),
-        signal: AbortSignal.timeout(15000)
-      });
-      const endTime = Date.now();
-      const queueText = await queueResponse.text();
-
       testResults.push({
-        worker: 'queue-processor',
-        endpoint: '/api/queue/processor',
-        status: queueResponse.status,
-        success: queueResponse.ok,
-        responseTime: endTime - startTime,
-        responsePreview: queueText.substring(0, 200)
-      });
-
-    } catch (error) {
-      testResults.push({
-        worker: 'queue-processor',
-        endpoint: '/api/queue/processor',
+        worker: worker.name,
+        endpoint: 'N/A - Worker removed',
+        status: 404,
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        responseTime: 0,
+        responseSize: 0,
+        responsePreview: 'Worker system has been removed',
+        headers: {},
+        note: 'All worker endpoints have been removed as part of system simplification'
       });
     }
 
-    // Analyze results
-    const workingWorkers = testResults.filter(r => r.success).length;
+    // Queue system has also been removed
+    console.log('Queue processor has also been removed');
+    testResults.push({
+      worker: 'queue-processor',
+      endpoint: 'N/A - Queue removed',
+      status: 404,
+      success: false,
+      responseTime: 0,
+      responsePreview: 'Queue system has been removed',
+      note: 'Queue processor endpoints have been removed'
+    });
+
+    // Analyze results - all workers have been removed
+    const workingWorkers = 0;
     const totalWorkers = testResults.length;
-    const failedWorkers = testResults.filter(r => !r.success);
-    const timeoutWorkers = testResults.filter(r => r.timeout);
+    const failedWorkers = testResults; // All are effectively "failed" since they're removed
+    const timeoutWorkers = []; // No timeout workers since system is removed
 
     return NextResponse.json({
       jobId,
@@ -170,7 +95,7 @@ export async function POST(request: NextRequest) {
       },
       failedWorkers: failedWorkers.map(w => ({ 
         name: w.worker, 
-        error: w.error,
+        error: 'Worker system removed',
         status: w.status 
       })),
       detailedResults: testResults,

@@ -43,66 +43,51 @@ export async function GET(
     const hasApiKey = !!process.env.INTERNAL_API_KEY;
     const apiKeyLength = process.env.INTERNAL_API_KEY?.length || 0;
 
-    const workers = [
-      { name: 'website-crawler', endpoint: '/api/workers/website-crawler' },
-      { name: 'amazon-reviews', endpoint: '/api/workers/amazon-reviews' },
-      { name: 'reddit-scraper', endpoint: '/api/workers/reddit-scraper' },
-      { name: 'youtube-comments', endpoint: '/api/workers/youtube-comments' },
-      { name: 'persona-generator', endpoint: '/api/workers/persona-generator' }
+    // Worker system has been removed - return placeholder status
+    console.log('Worker system has been removed - returning placeholder status');
+
+    const workerStatuses = [
+      {
+        worker: 'website-crawler',
+        status: 'removed',
+        httpStatus: null,
+        responseTime: 0,
+        message: 'Worker system has been removed',
+        details: { note: 'Worker endpoints no longer exist' }
+      },
+      {
+        worker: 'amazon-reviews',
+        status: 'removed',
+        httpStatus: null,
+        responseTime: 0,
+        message: 'Worker system has been removed',
+        details: { note: 'Worker endpoints no longer exist' }
+      },
+      {
+        worker: 'reddit-scraper',
+        status: 'removed',
+        httpStatus: null,
+        responseTime: 0,
+        message: 'Worker system has been removed',
+        details: { note: 'Worker endpoints no longer exist' }
+      },
+      {
+        worker: 'youtube-comments',
+        status: 'removed',
+        httpStatus: null,
+        responseTime: 0,
+        message: 'Worker system has been removed',
+        details: { note: 'Worker endpoints no longer exist' }
+      },
+      {
+        worker: 'persona-generator',
+        status: 'removed',
+        httpStatus: null,
+        responseTime: 0,
+        message: 'Worker system has been removed',
+        details: { note: 'Worker endpoints no longer exist' }
+      }
     ];
-
-    const workerStatuses = await Promise.all(
-      workers.map(async (worker) => {
-        try {
-          const startTime = Date.now();
-          const response = await fetch(`${baseUrl}${worker.endpoint}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`,
-            },
-            body: JSON.stringify({
-              jobId,
-              websiteUrl: cachedJobData?.websiteUrl || researchRequest?.website_url || 'https://example.com',
-              targetKeywords: cachedJobData?.keywords || researchRequest?.keywords || 'test',
-              keywords: cachedJobData?.keywords || researchRequest?.keywords || 'test', // YouTube worker expects 'keywords'
-              amazonUrl: cachedJobData?.amazonUrl || researchRequest?.amazon_url || '', // Prefer cache over database
-              email: cachedJobData?.email || researchRequest?.email,
-              planName: cachedJobData?.planName || researchRequest?.plan_name || 'Essential'
-            }),
-            signal: AbortSignal.timeout(30000) // 30 second timeout for API calls
-          });
-
-          const responseTime = Date.now() - startTime;
-          const isSuccess = response.ok;
-          
-          let responseData;
-          try {
-            responseData = await response.json();
-          } catch {
-            responseData = { error: 'Invalid JSON response' };
-          }
-
-          return {
-            worker: worker.name,
-            status: isSuccess ? 'success' : 'failed',
-            httpStatus: response.status,
-            responseTime,
-            message: isSuccess ? responseData?.message || 'Completed' : responseData?.error || 'Failed',
-            details: responseData
-          };
-        } catch (error) {
-          return {
-            worker: worker.name,
-            status: 'error',
-            httpStatus: 0,
-            responseTime: 0,
-            message: error instanceof Error ? error.message : 'Unknown error',
-            details: null
-          };
-        }
-      })
-    );
 
     return NextResponse.json({
       success: true,
@@ -126,9 +111,11 @@ export async function GET(
       workers: workerStatuses,
       summary: {
         total: workerStatuses.length,
-        successful: workerStatuses.filter(w => w.status === 'success').length,
-        failed: workerStatuses.filter(w => w.status === 'failed').length,
-        errors: workerStatuses.filter(w => w.status === 'error').length
+        successful: 0,
+        failed: 0,
+        errors: 0,
+        removed: workerStatuses.filter(w => w.status === 'removed').length,
+        note: 'Worker system has been removed'
       },
       debug: {
         baseUrl,

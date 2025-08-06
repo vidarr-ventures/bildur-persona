@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
-import { Queue } from '@/lib/queue';
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,8 +28,8 @@ export async function GET(request: NextRequest) {
       LIMIT 20
     `;
 
-    // Get queue statistics
-    const queueStats = await Queue.getQueueStats();
+    // Queue system has been removed
+    const queueStats = { pending: 0, processing: 0, note: 'Queue system removed' };
 
     // Get stuck jobs (processing for more than 30 minutes)
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();

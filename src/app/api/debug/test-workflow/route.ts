@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createJob, updateJobStatus } from '@/lib/db';
-import { Queue } from '@/lib/queue';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,32 +10,14 @@ export async function POST(request: NextRequest) {
       website_url: 'https://example.com',
       target_keywords: 'test keywords',
       amazon_url: 'https://amazon.com/dp/test',
-      status: 'pending'
+      status: 'completed'  // Mark as completed since queue system is removed
     });
 
     const jobId = job.id;
     console.log(`🧪 Creating test job: ${jobId}`);
     console.log(`✅ Test job created: ${job.id}`);
 
-    // Only do queue processing if explicitly requested (skip by default to avoid fetch errors)
-    if (!skipProcessing) {
-      try {
-        // Add to queue for processing
-        const queueJobId = await Queue.addJob({
-          type: 'persona_research',
-          data: {
-            jobId,
-            websiteUrl: 'https://example.com',
-            targetKeywords: 'test keywords',
-            amazonUrl: 'https://amazon.com/dp/test'
-          }
-        });
-
-        console.log(`📤 Test job added to queue: ${queueJobId}`);
-      } catch (queueError) {
-        console.warn('Queue processing failed, but job creation succeeded:', queueError);
-      }
-    }
+    // Queue system has been removed - no processing needed
 
     return NextResponse.json({
       success: true,
@@ -47,13 +28,13 @@ export async function POST(request: NextRequest) {
         dashboardUrl: `/dashboard/${jobId}`,
         debugUrl: `/api/debug/job-status?jobId=${jobId}`,
         statusCheckUrl: `/api/jobs/${jobId}/persona`,
-        queueProcessing: !skipProcessing
+        queueProcessing: false  // Queue system removed
       },
-      message: `Test job ${jobId} created successfully`,
+      message: `Test job ${jobId} created successfully - queue system removed`,
       nextSteps: [
         '1. Check job status at the debug URL',
-        '2. Monitor queue processing (skipped by default)',
-        '3. Verify persona generation',
+        '2. Queue system has been removed',
+        '3. Direct API processing will be implemented',
         '4. Test email delivery (if enabled)',
         '5. Check results display on success page'
       ]
@@ -81,7 +62,7 @@ export async function GET() {
     endpoints: {
       systemStatus: '/api/debug/system-status',
       jobStatus: '/api/debug/job-status?jobId=JOB_ID',
-      queueStatus: '/api/queue/status'
+      note: 'Queue endpoints have been removed'
     }
   });
 }

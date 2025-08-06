@@ -83,17 +83,29 @@ export default function HomePage() {
         formData.additionalKeyword
       ].filter(Boolean).join(', ');
 
-      // Redirect to pricing page with form data as URL parameters
-      const searchParams = new URLSearchParams({
-        websiteUrl: formData.websiteUrl,
-        keywords: keywords,
-        email: formData.customerEmail,
-        competitorUrls: competitorUrls.join(',')
+      // Create job directly without payment
+      const response = await fetch('/api/jobs/create-v2', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          primaryProductUrl: formData.websiteUrl,
+          targetKeywords: keywords,
+          email: formData.customerEmail,
+          competitorUrls: competitorUrls,
+        }),
       });
 
-      router.push(`/pricing?${searchParams.toString()}`);
+      const result = await response.json();
+
+      if (result.success && result.jobId) {
+        router.push(`/dashboard/${result.jobId}`);
+      } else {
+        throw new Error(result.error || 'Failed to create analysis job');
+      }
     } catch (err) {
-      setError('Failed to proceed to payment. Please try again.');
+      setError('Failed to start analysis. Please try again.');
       console.error('Submission error:', err);
     } finally {
       setIsSubmitting(false);
@@ -162,9 +174,6 @@ export default function HomePage() {
             <div className="relative z-2 flex flex-col items-center justify-center m-auto lg:flex-row">
               <Link href="/dashboard" className="block relative font-code text-2xl uppercase text-n-1 transition-colors hover:text-color-1 lg:text-xs lg:font-semibold lg:leading-5 lg:hover:text-color-1 xl:px-12">
                 Dashboard
-              </Link>
-              <Link href="/pricing" className="block relative font-code text-2xl uppercase text-n-1 transition-colors hover:text-color-1 lg:text-xs lg:font-semibold lg:leading-5 lg:hover:text-color-1 xl:px-12">
-                Pricing
               </Link>
             </div>
           </nav>
@@ -467,22 +476,12 @@ export default function HomePage() {
                   )}
 
                   <Button
-                    type="submit"
-                    disabled={isSubmitting}
+                    href="/analyze"
                     className="w-full"
                     white
                   >
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-n-8 mr-2"></div>
-                        <span>Proceeding to Payment...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Continue</span>
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </>
-                    )}
+                    <span>Start Free Analysis</span>
+                    <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </form>
 

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { sql } from '@vercel/postgres';
-import { Queue } from '@/lib/queue';
 
 export async function GET() {
   const checks = {
@@ -10,12 +9,11 @@ export async function GET() {
     checks: {
       database: { status: 'unknown', message: '', responseTime: 0 },
       redis: { status: 'unknown', message: '', responseTime: 0 },
-      queue: { status: 'unknown', message: '', stats: null as any },
       environment: { status: 'unknown', message: '', missing: [] as string[] },
     },
     summary: {
       healthy: 0,
-      total: 4,
+      total: 3,
     },
   };
 
@@ -55,22 +53,7 @@ export async function GET() {
     };
   }
 
-  // Queue check
-  try {
-    const stats = await Queue.getQueueStats();
-    checks.checks.queue = {
-      status: 'healthy',
-      message: 'Queue system operational',
-      stats: stats,
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown queue error';
-    checks.checks.queue = {
-      status: 'unhealthy',
-      message: `Queue error: ${errorMessage}`,
-      stats: null,
-    };
-  }
+  // Queue system removed - no longer needed
 
   // Environment variables check
   const requiredEnvVars = [
@@ -118,18 +101,12 @@ export async function GET() {
 
 export async function POST() {
   try {
-    // Trigger system maintenance
-    console.log('Running system maintenance...');
-    
-    // Clean up stuck jobs
-    await Queue.processRetryableJobs();
-    
-    // Trigger queue processing
-    await Queue.triggerProcessing();
+    // System maintenance - queue system has been removed
+    console.log('Running simplified system maintenance...');
     
     return NextResponse.json({
       success: true,
-      message: 'System maintenance completed',
+      message: 'System maintenance completed - queue system removed',
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
