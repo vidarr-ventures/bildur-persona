@@ -131,6 +131,9 @@ export default function DebugPage() {
       return undefined;
     };
 
+    // Extract competitor data from dataSourceStatuses
+    const competitorSources = dataSourceStatuses.competitors || [];
+    
     return {
       jobId: rawData.jobId,
       cachedData,
@@ -149,20 +152,18 @@ export default function DebugPage() {
           metadata: jobResults.website?.data?.dataQuality,
           data: getOpenAIData('website')
         },
-        competitors: Object.keys(jobResults)
-          .filter(key => key.startsWith('competitor_'))
-          .map((key, index) => ({
-            name: `Competitor ${index + 1}`,
-            url: jobResults[key]?.competitorUrl,
-            status: jobResults[key]?.success ? 'completed' : (jobResults[key] ? 'failed' : 'not_started'),
-            dataReturned: jobResults[key]?.success || false,
-            contentVolume: calculateWebsiteContentVolume(jobResults[key]),
-            extractionMethod: jobResults[key]?.data?.dataQuality?.method || 'Unknown',
-            processingTime: jobResults[key]?.processingTime,
-            statusCode: jobResults[key]?.statusCode || 200,
-            errorMessage: jobResults[key]?.error,
-            metadata: jobResults[key]?.data?.dataQuality,
-            data: getOpenAIData(key)
+        competitors: competitorSources.map((competitor) => ({
+            name: `Competitor ${competitor.index + 1}`,
+            url: competitor.url,
+            status: competitor.status || 'not_started',
+            dataReturned: competitor.dataReturned,
+            contentVolume: competitor.contentVolume,
+            extractionMethod: competitor.extractionMethod || 'Unknown',
+            processingTime: competitor.processingTime,
+            statusCode: competitor.statusCode,
+            errorMessage: competitor.errorMessage,
+            metadata: competitor.metadata,
+            data: getOpenAIData(`competitor_${competitor.index}`)
           })),
         // Amazon Reviews hidden for MVP
         // amazonReviews: {
@@ -706,7 +707,8 @@ export default function DebugPage() {
           ))}
           
           {/* Other Sources */}
-          <DataSourceBox source={debugData.dataSources.amazonReviews} />
+          {/* Amazon Reviews hidden for MVP */}
+          {/* <DataSourceBox source={debugData.dataSources.amazonReviews} /> */}
           <DataSourceBox source={debugData.dataSources.redditScraper} />
           <DataSourceBox source={debugData.dataSources.youtubeComments} />
           <DataSourceBox source={debugData.dataSources.personaGenerator} />
