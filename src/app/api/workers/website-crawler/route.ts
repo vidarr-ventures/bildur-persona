@@ -60,7 +60,9 @@ async function extractDataWithOpenAI(url: string, keywords: string): Promise<Web
     if (cleanHtml.length > 15000) {
       // Prioritize content that might contain reviews and product info
       const parts = cleanHtml.split(' ');
-      const relevantKeywords = ['review', 'testimonial', 'customer', 'amazing', 'love', 'great', 'excellent', 'product', keywords];
+      // Split keywords into individual phrases for content prioritization
+      const keywordPhrases = keywords.split(/[,;|]/).map(k => k.trim()).filter(k => k.length > 0);
+      const relevantKeywords = ['review', 'testimonial', 'customer', 'amazing', 'love', 'great', 'excellent', 'product', ...keywordPhrases];
       
       let relevantContent = '';
       let wordCount = 0;

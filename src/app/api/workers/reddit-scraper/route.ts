@@ -62,7 +62,10 @@ async function discoverRelevantSubreddits(keywords: string): Promise<string[]> {
     'findareddit', 'tipofmytongue', 'HelpMeFind', 'whatisthisthing'
   ];
   
-  const keywordSubreddits = keywords.toLowerCase().split(' ')
+  // Extract subreddit names from phrases (first word of each phrase)
+  const keywordSubreddits = keywords.toLowerCase()
+    .split(/[,;|]/)  // Split by commas to get phrases
+    .map(phrase => phrase.trim().split(' ')[0])  // Take first word of each phrase
     .filter(word => word.length > 3)
     .slice(0, 3);
   
