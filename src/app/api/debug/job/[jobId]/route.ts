@@ -29,11 +29,9 @@ export async function GET(
       const { getJobData: getDbJobData } = await import('@/lib/db');
       dbJobData = await getDbJobData(jobId);
       
-      // If no database data, try to get current status from workers (same as job status API)
-      if (!dbJobData || Object.keys(dbJobData).length === 0) {
-        console.log('No database data found, calling workers directly...');
-        workerResults = await getWorkerStatusData(jobId, cachedData, dbData);
-      }
+      // Always get current status from workers for accurate debug data
+      console.log('Getting real-time worker status...');
+      workerResults = await getWorkerStatusData(jobId, cachedData, dbData);
     } catch (error) {
       console.log('Database error:', error);
     }
@@ -53,11 +51,11 @@ export async function GET(
     }
     
     const dataSourceStatuses = {
-      website: analyzeDataSourceStatusFromDb(dbJobData, 'website') || analyzeDataSourceStatusFromWorkers(workerResults, 'website') || analyzeDataSourceStatus(jobResults, 'website'),
-      amazon: analyzeDataSourceStatusFromDb(dbJobData, 'amazon_reviews') || analyzeDataSourceStatusFromWorkers(workerResults, 'amazon') || analyzeDataSourceStatus(jobResults, 'amazon'),
-      reddit: analyzeDataSourceStatusFromDb(dbJobData, 'reddit') || analyzeDataSourceStatusFromWorkers(workerResults, 'reddit') || analyzeDataSourceStatus(jobResults, 'reddit'),
-      youtube: analyzeDataSourceStatusFromDb(dbJobData, 'youtube_comments') || analyzeDataSourceStatusFromWorkers(workerResults, 'youtube') || analyzeDataSourceStatus(jobResults, 'youtube_comments') || analyzeDataSourceStatus(jobResults, 'youtube'),
-      persona: analyzeDataSourceStatusFromDb(dbJobData, 'persona_profile') || analyzeDataSourceStatusFromWorkers(workerResults, 'persona') || analyzeDataSourceStatus(jobResults, 'persona'),
+      website: analyzeDataSourceStatusFromWorkers(workerResults, 'website') || analyzeDataSourceStatusFromDb(dbJobData, 'website') || analyzeDataSourceStatus(jobResults, 'website'),
+      amazon: analyzeDataSourceStatusFromWorkers(workerResults, 'amazon') || analyzeDataSourceStatusFromDb(dbJobData, 'amazon_reviews') || analyzeDataSourceStatus(jobResults, 'amazon'),
+      reddit: analyzeDataSourceStatusFromWorkers(workerResults, 'reddit') || analyzeDataSourceStatusFromDb(dbJobData, 'reddit') || analyzeDataSourceStatus(jobResults, 'reddit'),
+      youtube: analyzeDataSourceStatusFromWorkers(workerResults, 'youtube') || analyzeDataSourceStatusFromDb(dbJobData, 'youtube_comments') || analyzeDataSourceStatus(jobResults, 'youtube_comments') || analyzeDataSourceStatus(jobResults, 'youtube'),
+      persona: analyzeDataSourceStatusFromWorkers(workerResults, 'persona') || analyzeDataSourceStatusFromDb(dbJobData, 'persona_profile') || analyzeDataSourceStatus(jobResults, 'persona'),
       competitors: competitorStatuses
     };
     
@@ -523,19 +521,35 @@ function analyzeDataSourceStatusFromWorkers(workerResults: any, dataType: string
       statusCode: 200
     };
   } else if (isAIPowered) {
+    // Check if we have actual review/content data
+    const hasReviews = workerData.reviews?.length > 0 || 
+                      workerData.websiteData?.customerReviews?.length > 0 ||
+                      workerData.posts?.length > 0;
+    
+    const reviewCount = workerData.reviews?.length || 
+                       workerData.websiteData?.customerReviews?.length || 
+                       workerData.posts?.length || 
+                       workerData.reviewCount || 
+                       workerData.totalReviews || 
+                       0;
+    
     return {
       status: 'completed',
-      dataReturned: !data.error && (!!workerData.analysis || !!workerData.websiteData),
-      contentVolume: calculateContentVolumeFromWorker(workerData, dataType),
+      dataReturned: !data.error && (!!workerData.analysis || !!workerData.websiteData || hasReviews),
+      contentVolume: hasReviews ? `${reviewCount} items found` : (workerData.contentLength ? `${workerData.contentLength} chars` : 'No data'),
       extractionMethod: getAIMethod(dataType),
       processingTime: 'Real-time',
-      statusCode: 200
+      statusCode: 200,
+      reviewsFound: reviewCount // Add this for backward compatibility
     };
   } else if (dataType === 'youtube') {
+    const totalComments = workerData.totalComments || workerData.comments?.length || 0;
+    const videosAnalyzed = workerData.videosAnalyzed || workerData.videos?.length || 0;
+    
     return {
       status: 'completed',
-      commentsFound: `${workerData.totalComments || 0} comments`,
-      videosProcessed: `${workerData.videosAnalyzed || 0} videos`,
+      commentsFound: `${totalComments} comments`,
+      videosProcessed: `${videosAnalyzed} videos`,
       extractionMethod: 'YouTube API',
       processingTime: 'Real-time',
       statusCode: 200
