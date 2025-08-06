@@ -120,10 +120,6 @@ export async function POST(request: NextRequest) {
 
     console.log(`Enhanced persona generation completed for job ${jobId}`);
 
-    const hasPersonaContent = personaProfile?.persona && 
-                              personaProfile.persona.length > 100 && 
-                              !personaProfile.error;
-
     return NextResponse.json({
       success: hasPersonaContent, // Changed: success based on meaningful content generated
       message: 'Enhanced persona generation with Amazon reviews completed',

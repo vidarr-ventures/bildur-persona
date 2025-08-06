@@ -37,16 +37,27 @@ export async function GET(
     }
     
     // Enhanced data source status
+    // Helper function to extract domain from URL for consistent labeling
+    const getDomainFromUrl = (url: string): string => {
+      try {
+        const domain = new URL(url).hostname.replace('www.', '');
+        return domain;
+      } catch {
+        return url; // Fallback to original URL if parsing fails
+      }
+    };
+    
     // Analyze competitor statuses
     const competitorStatuses: any[] = [];
     if (cachedData?.competitorUrls && Array.isArray(cachedData.competitorUrls)) {
       cachedData.competitorUrls.forEach((url: string, index: number) => {
         const competitorKey = `competitor_${index}`;
         const competitorAnalysis = analyzeDataSourceStatus(jobResults, competitorKey);
+        const domain = getDomainFromUrl(url);
         competitorStatuses.push({
           url,
           index,
-          name: `Competitor ${index + 1}`,
+          name: `Competitor: ${domain}`,
           ...competitorAnalysis,
           // Ensure consistent data structure for UI rendering
           extractionMethod: competitorAnalysis.extractionMethod || 'Website Crawler',
@@ -609,17 +620,37 @@ function calculateContentVolumeFromWorker(data: any, dataType: string): string {
 }
 
 /**
- * Determines status based on the exact logic specified:
- * - Red (🔴): if status !== 200
- * - Green (🟢): if status === 200 AND data && data.length > 0
- * - Yellow (🟡): if status === 200 AND NO data found
+ * Determines status based on comprehensive data validation logic:
+ * - Red (🔴): if worker failed (error or success=false)
+ * - Green (🟢): if worker succeeded AND hasActualData=true (meaningful data found)
+ * - Yellow (🟡): if worker succeeded AND hasActualData=false (no meaningful data found)
+ * 
+ * CRITICAL FIX: This function now prioritizes hasActualData flags to prevent false positives
+ * where workers show green status despite finding no meaningful data.
  */
 function determineWorkerStatus(workerResponse: any, dataType: string): string {
   // Check if worker response exists
   if (!workerResponse) {
     return 'not_started';
   }
-
+  
+  // CRITICAL FIX #1: Check for explicit failure first
+  if (workerResponse.error || workerResponse.success === false) {
+    return 'failed'; // Red status
+  }
+  
+  // CRITICAL FIX #2: Use hasActualData flag as primary indicator
+  // This prevents false positives where status=200 but no meaningful data was found
+  if (workerResponse.hasActualData === true || workerResponse.dataCollected === true) {
+    return 'completed'; // Green status - actual data found
+  }
+  
+  if (workerResponse.hasActualData === false || workerResponse.dataCollected === false) {
+    return 'completed_no_data'; // Yellow status - process succeeded but no data
+  }
+  
+  // FALLBACK: Use status code and array-based validation for backward compatibility
+  // This should rarely be used with the new worker implementations
   const statusCode = workerResponse.statusCode || (workerResponse.success ? 200 : 500);
   
   // Red status: if status !== 200
@@ -627,7 +658,7 @@ function determineWorkerStatus(workerResponse: any, dataType: string): string {
     return 'failed'; // Red
   }
   
-  // For status === 200, check if actual data exists
+  // For status === 200, check if actual data exists (legacy support)
   let hasData = false;
   
   if (dataType === 'reddit') {
@@ -651,7 +682,7 @@ function determineWorkerStatus(workerResponse: any, dataType: string): string {
     hasData = persona && typeof persona === 'string' && persona.length > 100;
   }
   
-  // Apply the exact logic specified
+  // Apply the corrected logic
   if (hasData) {
     return 'completed'; // Green (🟢)
   } else {

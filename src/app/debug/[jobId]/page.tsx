@@ -169,11 +169,22 @@ export default function DebugPage() {
           // Handle competitors with improved data structure consistency
           const competitors: any[] = [];
           
+          // Helper function to extract domain from URL for proper labeling
+          const getDomainFromUrl = (url: string): string => {
+            try {
+              const domain = new URL(url).hostname.replace('www.', '');
+              return domain;
+            } catch {
+              return url; // Fallback to original URL if parsing fails
+            }
+          };
+          
           // First priority: Use competitorSources from dataSourceStatuses if available
           if (competitorSources && competitorSources.length > 0) {
             competitorSources.forEach((competitor: any) => {
+              const domain = getDomainFromUrl(competitor.url);
               competitors.push({
-                name: competitor.name || `Competitor ${competitor.index + 1}`,
+                name: `Competitor: ${domain}`,
                 url: competitor.url,
                 status: competitor.status || 'not_started',
                 dataReturned: competitor.dataReturned ?? false,
@@ -193,8 +204,9 @@ export default function DebugPage() {
             cachedData.competitorUrls.forEach((url: string, index: number) => {
               const competitorKey = `competitor_${index}`;
               const competitorResult = jobResults?.[competitorKey];
+              const domain = getDomainFromUrl(url);
               
-              // Determine status more accurately
+              // Determine status more accurately using same logic as other components
               let status = 'not_started';
               if (competitorResult) {
                 if (competitorResult.error) {
@@ -209,7 +221,7 @@ export default function DebugPage() {
               }
               
               competitors.push({
-                name: `Competitor ${index + 1}`,
+                name: `Competitor: ${domain}`,
                 url: url,
                 status: status,
                 dataReturned: competitorResult?.hasActualData === true || false,
@@ -227,18 +239,20 @@ export default function DebugPage() {
           // Always return an array, even if empty
           return competitors;
         })(),
-        // Amazon Reviews hidden for MVP
-        // amazonReviews: {
-        //   name: 'Amazon Reviews',
-        //   url: cachedData.amazonUrl,
-        //   status: dataSourceStatuses.amazon?.status || 'not_started',
-        //   dataReturned: dataSourceStatuses.amazon?.dataReturned,
-        //   contentVolume: dataSourceStatuses.amazon?.contentVolume,
-        //   extractionMethod: dataSourceStatuses.amazon?.extractionMethod || 'Unknown',
-        //   processingTime: dataSourceStatuses.amazon?.processingTime,
-        //   statusCode: dataSourceStatuses.amazon?.statusCode,
-        //   errorMessage: dataSourceStatuses.amazon?.errorMessage
-        // },
+        // Amazon Reviews - conditionally included only when URL provided
+        ...(cachedData.amazonUrl ? {
+          amazonReviews: {
+            name: 'Amazon Reviews',
+            url: cachedData.amazonUrl,
+            status: dataSourceStatuses.amazon?.status || 'not_started',
+            dataReturned: dataSourceStatuses.amazon?.dataReturned,
+            contentVolume: dataSourceStatuses.amazon?.contentVolume,
+            extractionMethod: dataSourceStatuses.amazon?.extractionMethod || 'API + AI Analysis',
+            processingTime: dataSourceStatuses.amazon?.processingTime,
+            statusCode: dataSourceStatuses.amazon?.statusCode,
+            errorMessage: dataSourceStatuses.amazon?.errorMessage
+          }
+        } : {}),
         redditScraper: {
           name: 'Reddit Scraper',
           status: dataSourceStatuses.reddit?.status || (jobResults.reddit?.hasActualData === true ? 'completed' : (jobResults.reddit?.hasActualData === false ? 'completed_no_data' : 'not_started')),
@@ -348,17 +362,19 @@ export default function DebugPage() {
   const getStatusColor = (status: DataSourceStatus['status']) => {
     switch (status) {
       case 'completed':
-        return 'text-green-400 bg-green-400/10 border-green-400/20';
+        return 'text-green-400 bg-green-400/10 border-green-400/20'; // Green - data found
       case 'completed_no_data':
-        return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
+        return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20'; // Yellow - no data found
       case 'processing':
-        return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+        return 'text-blue-400 bg-blue-400/10 border-blue-400/20'; // Blue - in progress
       case 'failed':
-        return 'text-red-400 bg-red-400/10 border-red-400/20';
+        return 'text-red-400 bg-red-400/10 border-red-400/20'; // Red - failed
       case 'pending':
-        return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
+        return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20'; // Yellow - waiting
+      case 'not_started':
+        return 'text-gray-400 bg-gray-400/10 border-gray-400/20'; // Gray - not started
       default:
-        return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
+        return 'text-gray-400 bg-gray-400/10 border-gray-400/20'; // Gray - unknown
     }
   };
 
@@ -460,7 +476,7 @@ export default function DebugPage() {
           </div>
           
           {/* AI-Powered Workers: Show Data Returned and Content Volume */}
-          {(source.name.includes('Website') || source.name.includes('Amazon') || source.name.includes('Reddit')) && source.dataReturned !== undefined && (
+          {(source.name.includes('Website') || source.name.includes('Amazon') || source.name.includes('Reddit') || source.name.includes('Competitor')) && source.dataReturned !== undefined && (
             <>
               <div>
                 <p className="text-gray-400">Data Returned</p>
@@ -533,7 +549,14 @@ export default function DebugPage() {
           {source.processingTime && (
             <div>
               <p className="text-gray-400">Processing Time</p>
-              <p className="font-medium text-white">{source.processingTime}</p>
+              <p className="font-medium text-white">
+                {source.processingTime === 'Unknown' || source.processingTime === 'Not started' 
+                  ? source.processingTime 
+                  : typeof source.processingTime === 'string' 
+                    ? source.processingTime 
+                    : `${source.processingTime}ms`
+                }
+              </p>
             </div>
           )}
           
@@ -782,34 +805,47 @@ export default function DebugPage() {
           {/* Customer Website */}
           <DataSourceBox source={debugData.dataSources.customerWebsite} />
           
-          {/* Competitors - Always show boxes for better UX */}
+          {/* Competitors - Always render one box per competitor URL */}
           {debugData.dataSources.competitors && debugData.dataSources.competitors.length > 0 ? (
+            // Render competitor boxes with actual data
             debugData.dataSources.competitors.map((competitor, index) => (
               <DataSourceBox key={`competitor-${index}-${competitor.url}`} source={competitor} />
             ))
           ) : (
-            // Show placeholder if no competitor data yet but cached URLs exist
-            debugData.cachedData?.competitorUrls?.map((url: string, index: number) => (
-              <DataSourceBox 
-                key={`placeholder-competitor-${index}`} 
-                source={{
-                  name: `Competitor ${index + 1}`,
-                  url: url,
-                  status: 'not_started' as const,
-                  dataReturned: false,
-                  contentVolume: 'Pending analysis',
-                  extractionMethod: 'Website Crawler',
-                  processingTime: 'Not started',
-                  statusCode: 200,
-                  errorMessage: null
-                }} 
-              />
-            )) || null
+            // Show placeholder boxes if no competitor data yet but cached URLs exist
+            debugData.cachedData?.competitorUrls?.map((url: string, index: number) => {
+              const getDomainFromUrl = (url: string): string => {
+                try {
+                  const domain = new URL(url).hostname.replace('www.', '');
+                  return domain;
+                } catch {
+                  return url;
+                }
+              };
+              
+              return (
+                <DataSourceBox 
+                  key={`placeholder-competitor-${index}`} 
+                  source={{
+                    name: `Competitor: ${getDomainFromUrl(url)}`,
+                    url: url,
+                    status: 'not_started' as const,
+                    dataReturned: false,
+                    contentVolume: 'Pending analysis',
+                    extractionMethod: 'Website Crawler',
+                    processingTime: 'Unknown',
+                    statusCode: 200,
+                    errorMessage: undefined
+                  }} 
+                />
+              )
+            }) || null
           )}
           
-          {/* Other Sources */}
-          {/* Amazon Reviews hidden for MVP */}
-          {/* <DataSourceBox source={debugData.dataSources.amazonReviews} /> */}
+          {/* Amazon Reviews - only show when URL provided */}
+          {debugData.dataSources.amazonReviews && (
+            <DataSourceBox source={debugData.dataSources.amazonReviews} />
+          )}
           <DataSourceBox source={debugData.dataSources.redditScraper} />
           <DataSourceBox source={debugData.dataSources.youtubeComments} />
           <DataSourceBox source={debugData.dataSources.personaGenerator} />
