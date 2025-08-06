@@ -37,24 +37,32 @@ export async function GET(request: NextRequest) {
       // If no job ID, create a free job directly in the database
       console.log('Creating free test job with FIXED system');
       
+      // Get actual user input from URL parameters
+      const websiteUrl = searchParams.get('website_url') || 'https://example.com';
+      const targetKeywords = searchParams.get('target_keywords') || searchParams.get('keywords') || 'customer analysis';
+      const amazonUrl = searchParams.get('amazon_url') || '';
+      
+      console.log('Free job parameters:', { websiteUrl, targetKeywords, amazonUrl });
+      
       try {
         // Create job directly using FIXED database function
         const job = await createJob({
-          website_url: 'https://groundluxe.com',
-          target_keywords: 'grounding sheets wellness',
-          amazon_url: '',
+          website_url: websiteUrl,
+          target_keywords: targetKeywords,
+          amazon_url: amazonUrl,
           status: 'pending'
         });
 
         console.log('Free test job created with FIXED system:', job.id);
 
         // Start worker processing asynchronously using FIXED system (fire and forget)
+        const competitorUrls = searchParams.get('competitor_urls')?.split(',').filter(url => url.trim()) || [];
         processJobWithWorkersSequential(
           job.id, 
-          'https://groundluxe.com', 
-          'grounding sheets wellness', 
-          '', 
-          ['https://earthing.com', 'https://groundology.co.uk']
+          websiteUrl, 
+          targetKeywords, 
+          amazonUrl, 
+          competitorUrls
         ).catch(error => console.error('FIXED worker processing error:', error));
 
         return NextResponse.json({
