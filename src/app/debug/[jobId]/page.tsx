@@ -71,7 +71,7 @@ interface JobDebugData {
   dataSources: {
     customerWebsite: DataSourceStatus;
     competitors: DataSourceStatus[];
-    amazonReviews: DataSourceStatus;
+    amazonReviews?: DataSourceStatus; // Optional for MVP - hidden from UI
     redditScraper: DataSourceStatus;
     youtubeComments: DataSourceStatus;
     personaGenerator: DataSourceStatus;
@@ -152,7 +152,7 @@ export default function DebugPage() {
           metadata: jobResults.website?.data?.dataQuality,
           data: getOpenAIData('website')
         },
-        competitors: competitorSources.map((competitor) => ({
+        competitors: competitorSources.map((competitor: any) => ({
             name: `Competitor ${competitor.index + 1}`,
             url: competitor.url,
             status: competitor.status || 'not_started',
