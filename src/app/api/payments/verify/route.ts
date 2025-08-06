@@ -32,16 +32,37 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // If no job ID, we need to create one by extracting form data from session
-      // For now, return without job ID and let the frontend handle job creation
-      console.log('Free order verified but no job created yet');
+      // If no job ID, create a free job with minimal data for testing
+      console.log('Creating free test job');
+      
+      // Create a test job with sample data for free analysis
+      const testJobResponse = await fetch(`${request.nextUrl.origin}/api/jobs/create-v2`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          primaryProductUrl: 'https://example.com',
+          targetKeywords: 'free analysis test',
+          amazonProductUrl: 'https://amazon.com/test'
+        })
+      });
+
+      if (!testJobResponse.ok) {
+        console.error('Failed to create free test job:', await testJobResponse.text());
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to create free analysis job'
+        }, { status: 500 });
+      }
+
+      const testJobData = await testJobResponse.json();
+      console.log('Free test job created:', testJobData.jobId);
+
       return NextResponse.json({
         success: true,
         isFree: true,
         email: 'Free Analysis',
         planName: 'Free Analysis',
-        jobId: null,
-        needsJobCreation: true
+        jobId: testJobData.jobId
       });
     }
 
