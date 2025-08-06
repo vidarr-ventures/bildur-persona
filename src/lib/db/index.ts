@@ -48,13 +48,18 @@ export async function createJob(data: {
     const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Create a simplified research request entry for the job
+    // Format keywords as PostgreSQL array if it contains commas, otherwise as plain string
+    const keywordsFormatted = data.target_keywords.includes(',') 
+      ? `{${data.target_keywords}}` 
+      : data.target_keywords;
+      
     const result = await sql`
       INSERT INTO research_requests (
         job_id, website_url, amazon_url, keywords, email, 
         plan_id, plan_name, is_free, status
       )
       VALUES (
-        ${jobId}, ${data.website_url}, ${data.amazon_url || null}, ${data.target_keywords}, 
+        ${jobId}, ${data.website_url}, ${data.amazon_url || null}, ${keywordsFormatted}, 
         'system@example.com', 'free', 'Free Analysis', true, ${data.status}
       )
       RETURNING job_id as id, *
