@@ -42,10 +42,15 @@ export async function GET(
     if (cachedData?.competitorUrls && Array.isArray(cachedData.competitorUrls)) {
       cachedData.competitorUrls.forEach((url: string, index: number) => {
         const competitorKey = `competitor_${index}`;
+        const competitorAnalysis = analyzeDataSourceStatus(jobResults, competitorKey);
         competitorStatuses.push({
           url,
           index,
-          ...analyzeDataSourceStatus(jobResults, competitorKey)
+          name: `Competitor ${index + 1}`,
+          ...competitorAnalysis,
+          // Ensure consistent data structure for UI rendering
+          extractionMethod: competitorAnalysis.extractionMethod || 'Website Crawler',
+          contentVolume: competitorAnalysis.contentVolume || 'No data'
         });
       });
     }

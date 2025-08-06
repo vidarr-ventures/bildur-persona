@@ -87,6 +87,7 @@ export default function DebugPage() {
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set());
+  const [lastDataUpdate, setLastDataUpdate] = useState<string>('');
 
   useEffect(() => {
     if (!jobId) return;
@@ -98,7 +99,19 @@ export default function DebugPage() {
 
         if (response.ok) {
           const transformedData = transformDebugData(data);
-          setDebugData(transformedData);
+          
+          // Only update if data has actually changed to prevent UI flicker
+          const dataChecksum = JSON.stringify({
+            finalPersona: data.finalPersona,
+            competitorCount: data.dataSourceStatuses?.competitors?.length || 0,
+            websiteStatus: data.dataSourceStatuses?.website?.status,
+            jobResults: Object.keys(data.jobResults || {}).length
+          });
+          
+          if (dataChecksum !== lastDataUpdate) {
+            setDebugData(transformedData);
+            setLastDataUpdate(dataChecksum);
+          }
         } else {
           setError(data.error || 'Failed to fetch debug data');
         }
@@ -153,41 +166,66 @@ export default function DebugPage() {
           data: getOpenAIData('website')
         },
         competitors: (() => {
-          // Handle competitors more robustly
+          // Handle competitors with improved data structure consistency
+          const competitors: any[] = [];
+          
+          // First priority: Use competitorSources from dataSourceStatuses if available
           if (competitorSources && competitorSources.length > 0) {
-            return competitorSources.map((competitor: any) => ({
-              name: `Competitor ${competitor.index + 1}`,
-              url: competitor.url,
-              status: competitor.status || (competitor.hasActualData === true ? 'completed' : (competitor.hasActualData === false ? 'completed_no_data' : 'not_started')),
-              dataReturned: competitor.dataReturned ?? (competitor.hasActualData === true),
-              contentVolume: competitor.contentVolume,
-              extractionMethod: competitor.extractionMethod || 'Unknown',
-              processingTime: competitor.processingTime,
-              statusCode: competitor.statusCode,
-              errorMessage: competitor.errorMessage,
-              metadata: competitor.metadata,
-              data: getOpenAIData(`competitor_${competitor.index}`)
-            }));
+            competitorSources.forEach((competitor: any) => {
+              competitors.push({
+                name: competitor.name || `Competitor ${competitor.index + 1}`,
+                url: competitor.url,
+                status: competitor.status || 'not_started',
+                dataReturned: competitor.dataReturned ?? false,
+                contentVolume: competitor.contentVolume || 'No data',
+                extractionMethod: competitor.extractionMethod || 'Website Crawler',
+                processingTime: competitor.processingTime || 'Unknown',
+                statusCode: competitor.statusCode || 200,
+                errorMessage: competitor.errorMessage || null,
+                metadata: competitor.metadata,
+                data: getOpenAIData(`competitor_${competitor.index}`)
+              });
+            });
           }
-          // Generate competitor boxes from cached data if not in status
-          if (cachedData?.competitorUrls && Array.isArray(cachedData.competitorUrls)) {
-            return cachedData.competitorUrls.map((url: string, index: number) => ({
-              name: `Competitor ${index + 1}`,
-              url: url,
-              status: jobResults?.[`competitor_${index}`]?.hasActualData === true ? 'completed' : 
-                     (jobResults?.[`competitor_${index}`]?.hasActualData === false ? 'completed_no_data' : 
-                     (jobResults?.[`competitor_${index}`] ? 'failed' : 'not_started')),
-              dataReturned: jobResults?.[`competitor_${index}`]?.hasActualData === true || false,
-              contentVolume: jobResults?.[`competitor_${index}`] ? calculateWebsiteContentVolume(jobResults[`competitor_${index}`]) : 'No data',
-              extractionMethod: jobResults?.[`competitor_${index}`]?.data?.dataQuality?.method || 'Unknown',
-              processingTime: jobResults?.[`competitor_${index}`]?.processingTime || 'Unknown',
-              statusCode: jobResults?.[`competitor_${index}`]?.statusCode || 200,
-              errorMessage: jobResults?.[`competitor_${index}`]?.error || null,
-              metadata: jobResults?.[`competitor_${index}`]?.data?.dataQuality,
-              data: getOpenAIData(`competitor_${index}`)
-            }));
+          
+          // Fallback: Generate competitor boxes from cached data or job results  
+          if (competitors.length === 0 && cachedData?.competitorUrls && Array.isArray(cachedData.competitorUrls)) {
+            cachedData.competitorUrls.forEach((url: string, index: number) => {
+              const competitorKey = `competitor_${index}`;
+              const competitorResult = jobResults?.[competitorKey];
+              
+              // Determine status more accurately
+              let status = 'not_started';
+              if (competitorResult) {
+                if (competitorResult.error) {
+                  status = 'failed';
+                } else if (competitorResult.hasActualData === true) {
+                  status = 'completed';
+                } else if (competitorResult.hasActualData === false) {
+                  status = 'completed_no_data';
+                } else if (competitorResult.success) {
+                  status = 'completed';
+                }
+              }
+              
+              competitors.push({
+                name: `Competitor ${index + 1}`,
+                url: url,
+                status: status,
+                dataReturned: competitorResult?.hasActualData === true || false,
+                contentVolume: competitorResult ? calculateWebsiteContentVolume(competitorResult) : 'No data',
+                extractionMethod: competitorResult?.data?.dataQuality?.method || 'Website Crawler',
+                processingTime: competitorResult?.processingTime ? `${competitorResult.processingTime}ms` : 'Unknown',
+                statusCode: competitorResult?.statusCode || (competitorResult?.success ? 200 : competitorResult?.error ? 500 : 200),
+                errorMessage: competitorResult?.error || null,
+                metadata: competitorResult?.data?.dataQuality,
+                data: getOpenAIData(competitorKey)
+              });
+            });
           }
-          return [];
+          
+          // Always return an array, even if empty
+          return competitors;
         })(),
         // Amazon Reviews hidden for MVP
         // amazonReviews: {
@@ -719,11 +757,24 @@ export default function DebugPage() {
     <div className="min-h-screen bg-black py-12 px-4">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">OpenAI Debug Dashboard</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Debug Dashboard</h1>
           <p className="text-gray-400">Job ID: {jobId}</p>
           <div className="mt-2 text-sm text-gray-500">
-            Click the expand arrow to view detailed extracted data from OpenAI
+            Click the expand arrow to view detailed extracted data from data sources
           </div>
+          {debugData && (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              <span className="bg-gray-800 text-gray-300 px-2 py-1 rounded">
+                Data Sources: {Object.keys(debugData.dataSources).length}
+              </span>
+              <span className="bg-gray-800 text-gray-300 px-2 py-1 rounded">
+                Competitors: {debugData.dataSources.competitors?.length || 0}
+              </span>
+              <span className="bg-gray-800 text-gray-300 px-2 py-1 rounded">
+                Last Updated: {new Date().toLocaleTimeString()}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Data Sources Grid */}
@@ -731,10 +782,30 @@ export default function DebugPage() {
           {/* Customer Website */}
           <DataSourceBox source={debugData.dataSources.customerWebsite} />
           
-          {/* Competitors */}
-          {debugData.dataSources.competitors.map((competitor, index) => (
-            <DataSourceBox key={index} source={competitor} />
-          ))}
+          {/* Competitors - Always show boxes for better UX */}
+          {debugData.dataSources.competitors && debugData.dataSources.competitors.length > 0 ? (
+            debugData.dataSources.competitors.map((competitor, index) => (
+              <DataSourceBox key={`competitor-${index}-${competitor.url}`} source={competitor} />
+            ))
+          ) : (
+            // Show placeholder if no competitor data yet but cached URLs exist
+            debugData.cachedData?.competitorUrls?.map((url: string, index: number) => (
+              <DataSourceBox 
+                key={`placeholder-competitor-${index}`} 
+                source={{
+                  name: `Competitor ${index + 1}`,
+                  url: url,
+                  status: 'not_started' as const,
+                  dataReturned: false,
+                  contentVolume: 'Pending analysis',
+                  extractionMethod: 'Website Crawler',
+                  processingTime: 'Not started',
+                  statusCode: 200,
+                  errorMessage: null
+                }} 
+              />
+            )) || null
+          )}
           
           {/* Other Sources */}
           {/* Amazon Reviews hidden for MVP */}

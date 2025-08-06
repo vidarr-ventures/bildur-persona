@@ -56,9 +56,38 @@ export default function DashboardPage() {
         
         if (data.persona) {
           setPersonaData(data);
+        } else {
+          console.log('No persona data yet, checking debug endpoint...');
+          // Fallback: try to get persona from debug endpoint
+          const debugResponse = await fetch(`/api/debug/job/${jobId}`);
+          const debugData = await debugResponse.json();
+          
+          if (debugData.finalPersona) {
+            setPersonaData({
+              persona: debugData.finalPersona,
+              dataQuality: 'Generated from job data',
+              createdAt: new Date().toISOString()
+            });
+          }
         }
       } catch (err) {
         console.error('Failed to fetch persona data:', err);
+        // Try debug endpoint as final fallback
+        try {
+          const debugResponse = await fetch(`/api/debug/job/${jobId}`);
+          const debugData = await debugResponse.json();
+          
+          if (debugData.finalPersona) {
+            console.log('Retrieved persona from debug endpoint');
+            setPersonaData({
+              persona: debugData.finalPersona,
+              dataQuality: 'Generated from cached job data',
+              createdAt: new Date().toISOString()
+            });
+          }
+        } catch (debugErr) {
+          console.error('Debug endpoint also failed:', debugErr);
+        }
       }
     };
 
@@ -300,6 +329,20 @@ export default function DashboardPage() {
                   <div>
                     <h3 className="text-lg font-semibold text-yellow-400">Persona Generation Issue</h3>
                     <p className="text-yellow-300">The analysis completed but no persona was generated. This may indicate insufficient data was collected.</p>
+                    <div className="mt-3 flex space-x-3">
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="text-sm bg-yellow-600 text-white px-3 py-1 rounded hover:bg-yellow-700 transition-colors"
+                      >
+                        Refresh Page
+                      </button>
+                      <Link 
+                        href={`/debug/${jobId}`}
+                        className="text-sm bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 transition-colors"
+                      >
+                        View Debug Info
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
