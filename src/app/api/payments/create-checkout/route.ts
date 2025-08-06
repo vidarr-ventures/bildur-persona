@@ -141,8 +141,18 @@ export async function POST(request: NextRequest) {
           console.warn('WARNING: No jobId returned from lead-gen endpoint');
         }
         
-        // Redirect to success page with free order
-        const successUrl = `${baseUrl}/payment/success?session_id=${freeOrderId}&free=true&job_id=${jobId || ''}`;
+        // Redirect to success page with free order and form data for payment verification
+        const searchParams = new URLSearchParams({
+          session_id: freeOrderId,
+          free: 'true',
+          job_id: jobId || '',
+          website_url: formData.websiteUrl,
+          target_keywords: formData.keywords,
+          amazon_url: formData.amazonUrl || '',
+          competitor_urls: formData.competitorUrls || ''
+        });
+        
+        const successUrl = `${baseUrl}/payment/success?${searchParams.toString()}`;
         console.log('Redirecting to success URL:', successUrl);
         
         return NextResponse.json({

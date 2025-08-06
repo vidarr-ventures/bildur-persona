@@ -112,7 +112,26 @@ function PaymentSuccessContent() {
 
     const verifyPayment = async () => {
       try {
-        const response = await fetch(`/api/payments/verify?session_id=${sessionId}&free=${isFree}`);
+        // For free orders, pass form data from URL params to payment verification
+        const verifyParams = new URLSearchParams({ 
+          session_id: sessionId, 
+          free: isFree.toString() 
+        });
+        
+        if (isFree) {
+          // Add form data parameters for free order verification
+          const websiteUrl = searchParams.get('website_url');
+          const targetKeywords = searchParams.get('target_keywords');
+          const amazonUrl = searchParams.get('amazon_url');
+          const competitorUrls = searchParams.get('competitor_urls');
+          
+          if (websiteUrl) verifyParams.append('website_url', websiteUrl);
+          if (targetKeywords) verifyParams.append('target_keywords', targetKeywords);
+          if (amazonUrl) verifyParams.append('amazon_url', amazonUrl);
+          if (competitorUrls) verifyParams.append('competitor_urls', competitorUrls);
+        }
+        
+        const response = await fetch(`/api/payments/verify?${verifyParams.toString()}`);
         const data = await response.json();
         setStatus(data);
       } catch (error) {
