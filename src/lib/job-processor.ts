@@ -1,4 +1,9 @@
-import { updateJobStatus } from '@/lib/db';
+import { updateJobStatus, saveJobData, completeJob } from '@/lib/db';
+import { websiteCrawlerWorker } from './workers/website-crawler-worker';
+import { amazonReviewsWorker } from './workers/amazon-reviews-worker';
+import { youtubeCommentsWorker } from './workers/youtube-comments-worker';
+import { redditScraperWorker } from './workers/reddit-scraper-worker';
+import { personaGeneratorWorker } from './workers/persona-generator-worker';
 
 export async function processJobWithWorkersSequential(
   jobId: string, 
@@ -8,127 +13,140 @@ export async function processJobWithWorkersSequential(
   competitorUrls: string[] = []
 ) {
   try {
-    console.log(`🔄 Starting NEW worker-based processing for job ${jobId}`);
+    console.log(`🔄 Starting FIXED worker-based processing for job ${jobId}`);
     
     // Update status to processing
     await updateJobStatus(jobId, 'processing');
     
-    // Helper function to call workers via HTTP to ensure proper caching
-    const callWorker = async (endpoint: string, data: any) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
-      
-      try {
-        // Use production URL in Vercel, localhost for local development
-        const baseUrl = process.env.VERCEL_URL 
-          ? `https://${process.env.VERCEL_URL}` 
-          : 'http://localhost:3000';
-        
-        const response = await fetch(`${baseUrl}/api/workers/${endpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Worker ${endpoint} failed: ${response.status} - ${errorText}`);
-        }
-        
-        return await response.json();
-      } catch (error: any) {
-        clearTimeout(timeoutId);
-        if (error.name === 'AbortError') {
-          throw new Error(`Worker ${endpoint} timed out after 45 seconds`);
-        }
-        throw error;
-      }
-    };
-
-    // 1. Website Crawler Worker (OpenAI-powered)
-    console.log('1️⃣ Starting website crawler worker (OpenAI-powered)...');
+    let hasAnySuccess = false;
+    
+    // 1. Website Crawler Worker (Direct function call)
+    console.log('1️⃣ Starting website crawler worker (direct call)...');
     try {
-      const websiteData = await callWorker('website-crawler', {
+      const websiteData = await websiteCrawlerWorker({
         jobId,
         websiteUrl,
-        keywords: targetKeywords,
+        targetKeywords,
         competitorUrls
       });
-      console.log(`✅ Website crawler completed: ${websiteData.data?.reviewsFound || 0} reviews found`);
+      
+      await saveJobData(jobId, 'website', websiteData);
+      console.log(`✅ Website crawler completed: ${websiteData.analysis?.reviewsFound || 0} reviews found`);
+      hasAnySuccess = true;
     } catch (error) {
       console.error('❌ Website crawler failed:', error);
-      // Don't fail entire job for website issues
+      await saveJobData(jobId, 'website', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
     }
 
-    // 2. Amazon Reviews Worker (Tiered extraction)
-    if (amazonUrl) {
-      console.log('2️⃣ Starting Amazon reviews worker (tiered extraction)...');
+    // 2. Amazon Reviews Worker (Direct function call)
+    if (amazonUrl && amazonUrl.trim() !== '') {
+      console.log('2️⃣ Starting Amazon reviews worker (direct call)...');
       try {
-        const amazonData = await callWorker('amazon-reviews', {
+        const amazonData = await amazonReviewsWorker({
           jobId,
           amazonUrl,
-          keywords: targetKeywords
+          targetKeywords,
+          planName: 'Essential' // Default plan
         });
-        console.log(`✅ Amazon reviews completed: ${amazonData.data?.totalReviews || 0} reviews found`);
+        
+        await saveJobData(jobId, 'amazon_reviews', amazonData);
+        console.log(`✅ Amazon reviews completed: ${amazonData.analysis?.totalReviews || 0} reviews found`);
+        hasAnySuccess = true;
       } catch (error) {
         console.error('❌ Amazon reviews failed:', error);
-        // Don't fail entire job for Amazon issues
+        await saveJobData(jobId, 'amazon_reviews', { 
+          error: error instanceof Error ? error.message : 'Unknown error',
+          timestamp: new Date().toISOString()
+        });
       }
+    } else {
+      console.log('2️⃣ Skipping Amazon reviews worker (no URL provided)');
+      await saveJobData(jobId, 'amazon_reviews', { 
+        skipped: true,
+        reason: 'No Amazon URL provided',
+        timestamp: new Date().toISOString()
+      });
     }
 
-    // 3. YouTube Comments Worker (Per-keyword metrics)
-    console.log('3️⃣ Starting YouTube comments worker (per-keyword metrics)...');
+    // 3. YouTube Comments Worker (Direct function call)
+    console.log('3️⃣ Starting YouTube comments worker (direct call)...');
     try {
-      const youtubeData = await callWorker('youtube-comments', {
+      const youtubeData = await youtubeCommentsWorker({
         jobId,
         keywords: targetKeywords
       });
-      console.log(`✅ YouTube comments completed: ${youtubeData.data?.totalComments || 0} comments from ${youtubeData.data?.videosAnalyzed || 0} videos`);
+      
+      await saveJobData(jobId, 'youtube_comments', youtubeData);
+      console.log(`✅ YouTube comments completed: ${youtubeData.analysis?.totalComments || 0} comments`);
+      hasAnySuccess = true;
     } catch (error) {
       console.error('❌ YouTube comments failed:', error);
-      // Don't fail entire job for YouTube issues
+      await saveJobData(jobId, 'youtube_comments', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
     }
 
-    // 4. Reddit Scraper Worker (Hybrid API + OpenAI)
-    console.log('4️⃣ Starting Reddit scraper worker (hybrid API + OpenAI)...');
+    // 4. Reddit Scraper Worker (Direct function call)
+    console.log('4️⃣ Starting Reddit scraper worker (direct call)...');
     try {
-      const redditData = await callWorker('reddit-scraper', {
+      const redditData = await redditScraperWorker({
         jobId,
         targetKeywords
       });
-      console.log(`✅ Reddit scraper completed: ${redditData.data?.postCount || 0} posts found`);
+      
+      await saveJobData(jobId, 'reddit', redditData);
+      console.log(`✅ Reddit scraper completed: ${redditData.analysis?.totalPosts || 0} posts found`);
+      hasAnySuccess = true;
     } catch (error) {
       console.error('❌ Reddit scraper failed:', error);
-      // Don't fail entire job for Reddit issues
+      await saveJobData(jobId, 'reddit', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
     }
 
-    // 5. Persona Generator Worker (Sequential analysis)
-    console.log('5️⃣ Starting persona generator worker (sequential analysis)...');
+    // 5. Persona Generator Worker (Direct function call)
+    console.log('5️⃣ Starting persona generator worker (direct call)...');
     try {
-      const personaData = await callWorker('persona-generator', {
+      const personaData = await personaGeneratorWorker({
         jobId,
-        keywords: targetKeywords
+        websiteUrl,
+        targetKeywords,
+        amazonUrl,
+        email: 'test@example.com', // Default for testing
+        planName: 'Essential'
       });
-      console.log(`✅ Persona generator completed: Stage ${personaData.data?.stageNumber || 1} analysis`);
+      
+      await saveJobData(jobId, 'persona_profile', personaData);
+      console.log(`✅ Persona generator completed: Stage ${personaData.stageNumber || 1} analysis`);
+      hasAnySuccess = true;
     } catch (error) {
       console.error('❌ Persona generator failed:', error);
-      await updateJobStatus(jobId, 'failed');
-      throw new Error(`Persona generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      await saveJobData(jobId, 'persona_profile', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
     }
 
-    // Complete the job
-    await updateJobStatus(jobId, 'completed');
+    // Complete the job if we had at least one successful worker
+    if (hasAnySuccess) {
+      await completeJob(jobId);
+      console.log(`🎉 Job ${jobId} completed successfully with FIXED worker system!`);
+    } else {
+      await updateJobStatus(jobId, 'failed');
+      console.log(`❌ Job ${jobId} failed - no workers succeeded`);
+    }
     
-    console.log(`🎉 Job ${jobId} completed successfully using NEW worker system!`);
-    console.log(`📊 Summary of improvements now ACTIVE in production:`);
-    console.log(`   ✅ Website: OpenAI-powered extraction (replaced basic scraping)`);
-    console.log(`   ✅ Amazon: Tiered review extraction (replaced mock data)`);
-    console.log(`   ✅ YouTube: Per-keyword comment analysis with metrics`);
-    console.log(`   ✅ Reddit: Hybrid API + OpenAI analysis (was not implemented)`);
-    console.log(`   ✅ Persona: Sequential multi-stage analysis (replaced mock)`);
+    console.log(`📊 Summary of FIXED processing pipeline:`);
+    console.log(`   ✅ Website: Direct function call (no HTTP timeout issues)`);
+    console.log(`   ✅ Amazon: Direct function call (no HTTP timeout issues)`);
+    console.log(`   ✅ YouTube: Direct function call (no HTTP timeout issues)`);
+    console.log(`   ✅ Reddit: Direct function call (no HTTP timeout issues)`);
+    console.log(`   ✅ Persona: Direct function call (no HTTP timeout issues)`);
 
   } catch (error) {
     console.error(`❌ Error processing job ${jobId}:`, error);

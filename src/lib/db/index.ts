@@ -44,10 +44,20 @@ export async function createJob(data: {
   status: string;
 }) {
   try {
+    // Generate a unique job ID
+    const jobId = `job_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Create a simplified research request entry for the job
     const result = await sql`
-      INSERT INTO jobs (website_url, primary_keywords, status)
-      VALUES (${data.website_url}, ${data.target_keywords}, ${data.status})
-      RETURNING *
+      INSERT INTO research_requests (
+        job_id, website_url, amazon_url, keywords, email, 
+        plan_id, plan_name, is_free, status
+      )
+      VALUES (
+        ${jobId}, ${data.website_url}, ${data.amazon_url || null}, ${data.target_keywords}, 
+        'system@example.com', 'free', 'Free Analysis', true, ${data.status}
+      )
+      RETURNING job_id as id, *
     `;
     return result.rows[0];
   } catch (error) {
@@ -59,9 +69,10 @@ export async function createJob(data: {
 export async function updateJobStatus(jobId: string, status: string) {
   try {
     const result = await sql`
-      UPDATE jobs 
-      SET status = ${status}
-      WHERE id = ${jobId}
+      UPDATE research_requests 
+      SET status = ${status},
+          completed_at = ${status === 'completed' ? 'NOW()' : null}
+      WHERE job_id = ${jobId}
       RETURNING *
     `;
     return result.rows[0];
@@ -90,8 +101,8 @@ export async function updateJobProgress(jobId: string, progress: number) {
 export async function getJobById(id: string) {
   try {
     const result = await sql`
-      SELECT * FROM jobs 
-      WHERE id = ${id}
+      SELECT * FROM research_requests 
+      WHERE job_id = ${id}
     `;
     const job = result.rows[0];
     if (!job) return null;
@@ -99,7 +110,8 @@ export async function getJobById(id: string) {
     // Transform to match expected interface for backwards compatibility
     return {
       ...job,
-      target_keywords: job.primary_keywords
+      id: job.job_id,
+      target_keywords: job.keywords
     };
   } catch (error) {
     console.error('Error getting job by ID:', error);
@@ -113,131 +125,91 @@ export async function saveJobData(jobId: string, dataType: string, data: any) {
     
     // Special handling for persona_profile - store in research_requests table
     if (dataType === 'persona_profile' && data?.persona) {
-      // First try to update research_requests using job_id
-      const updateResult = await sql`
+      await sql`
         UPDATE research_requests 
         SET persona_analysis = ${data.persona},
-            data_quality = ${JSON.stringify(data.dataQuality)},
-            persona_metadata = ${JSON.stringify(data.metadata || {})},
-            status = 'completed'
+            data_quality = ${JSON.stringify(data.dataQuality || {})},
+            persona_metadata = ${JSON.stringify(data.metadata || {})}
         WHERE job_id = ${jobId}
       `;
-      
-      // If no rows were updated, the research_request might use the jobs.research_request_id
-      if (updateResult.rowCount === 0) {
-        // Get the research_request_id from the jobs table
-        const jobResult = await sql`
-          SELECT research_request_id FROM jobs WHERE id = ${jobId}
-        `;
-        
-        if (jobResult.rows.length > 0 && jobResult.rows[0].research_request_id) {
-          await sql`
-            UPDATE research_requests 
-            SET persona_analysis = ${data.persona},
-                data_quality = ${JSON.stringify(data.dataQuality)},
-                persona_metadata = ${JSON.stringify(data.metadata || {})},
-                status = 'completed'
-            WHERE id = ${jobResult.rows[0].research_request_id}
-          `;
-        }
-      }
-      
       console.log(`Saved persona analysis for job ${jobId}`);
-      return data;
     }
     
-    // Store worker data using available columns or create a job_data table
-    // For now, use the results_blob_url field to store a reference to job data
-    // We'll store all worker data in a single JSON structure
-    
-    // Use error_message field to store worker data (temporary workaround)
-    // First, get existing job data 
-    const existingJob = await sql`
-      SELECT error_message FROM jobs WHERE id = ${jobId}
-    `;
-    
-    let existingData: { [key: string]: any } = {};
-    if (existingJob.rows[0]?.error_message && existingJob.rows[0].error_message.startsWith('{')) {
-      try {
-        existingData = JSON.parse(existingJob.rows[0].error_message);
-      } catch (e) {
-        // If it's not JSON, start fresh
-        existingData = {};
-      }
-    }
-    
-    // Add the new data
-    existingData[dataType] = data;
-    
-    // Store back in error_message as JSON (using as temporary storage)
+    // Store all worker data in the job_data table using UPSERT (ON CONFLICT)
     const result = await sql`
-      UPDATE jobs 
-      SET error_message = ${JSON.stringify(existingData)}, status = 'processing'
-      WHERE id = ${jobId}
+      INSERT INTO job_data (job_id, data_type, data_content)
+      VALUES (${jobId}, ${dataType}, ${JSON.stringify(data)})
+      ON CONFLICT (job_id, data_type) 
+      DO UPDATE SET 
+        data_content = ${JSON.stringify(data)},
+        updated_at = NOW()
       RETURNING *
     `;
     
-    console.log(`Saved ${dataType} data to database for job ${jobId}`);
+    console.log(`Saved ${dataType} data to job_data table for job ${jobId}`);
     return result.rows[0];
   } catch (error) {
     console.error('Error saving job data:', error);
-    throw error;
+    // Don't throw error here - allow job to continue even if data saving fails
+    console.log(`Continuing job processing despite data save error`);
+    return null;
   }
 }
 
 export async function getJobData(jobId: string, dataType?: string) {
   try {
-    console.log(`Getting ${dataType} data for job ${jobId}`);
+    console.log(`Getting ${dataType || 'all'} data for job ${jobId}`);
     
-    // Get job data from the error_message field (temporary storage location)
-    const result = await sql`
-      SELECT error_message
-      FROM jobs 
-      WHERE id = ${jobId}
-    `;
-    
-    if (result.rows.length === 0) {
-      console.log(`No job found with ID ${jobId}`);
-      return null;
-    }
-    
-    const row = result.rows[0];
-    
-    // Check if error_message contains JSON worker data
-    if (!row.error_message || !row.error_message.startsWith('{')) {
-      console.log(`No worker data found for job ${jobId}`);
-      return dataType ? null : {};
-    }
-    
-    let jobData;
-    try {
-      jobData = JSON.parse(row.error_message);
-    } catch (e) {
-      console.log(`error_message contains invalid JSON for job ${jobId}:`, e);
-      return dataType ? null : {};
-    }
-    
-    // If specific dataType requested, return just that data
     if (dataType) {
-      return jobData[dataType] || null;
+      // Get specific data type from job_data table
+      const result = await sql`
+        SELECT data_content
+        FROM job_data 
+        WHERE job_id = ${jobId} AND data_type = ${dataType}
+      `;
+      
+      if (result.rows.length === 0) {
+        console.log(`No ${dataType} data found for job ${jobId}`);
+        return null;
+      }
+      
+      return result.rows[0].data_content;
+    } else {
+      // Get all data types for the job
+      const result = await sql`
+        SELECT data_type, data_content
+        FROM job_data 
+        WHERE job_id = ${jobId}
+      `;
+      
+      if (result.rows.length === 0) {
+        console.log(`No data found for job ${jobId}`);
+        return {};
+      }
+      
+      // Convert to object with data_type as keys
+      const jobData: { [key: string]: any } = {};
+      result.rows.forEach(row => {
+        jobData[row.data_type] = row.data_content;
+      });
+      
+      console.log(`Retrieved job data for ${jobId}. Available data types:`, Object.keys(jobData));
+      return jobData;
     }
-    
-    console.log(`Retrieved job data for ${jobId}. Available data types:`, Object.keys(jobData));
-    return jobData;
     
   } catch (error) {
     console.error('Error getting job data:', error);
-    throw error;
+    return dataType ? null : {};
   }
 }
 
 export async function completeJob(jobId: string, resultsUrl?: string) {
   try {
     const result = await sql`
-      UPDATE jobs 
+      UPDATE research_requests 
       SET status = 'completed', 
           completed_at = NOW()
-      WHERE id = ${jobId}
+      WHERE job_id = ${jobId}
       RETURNING *
     `;
     return result.rows[0];

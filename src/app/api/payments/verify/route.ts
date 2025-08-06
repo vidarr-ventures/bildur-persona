@@ -35,27 +35,27 @@ export async function GET(request: NextRequest) {
       }
 
       // If no job ID, create a free job directly in the database
-      console.log('Creating free test job');
+      console.log('Creating free test job with FIXED system');
       
       try {
-        // Create job directly using database function
+        // Create job directly using FIXED database function
         const job = await createJob({
-          website_url: 'https://example.com',
-          target_keywords: 'free analysis test',
-          amazon_url: 'https://amazon.com/test',
+          website_url: 'https://groundluxe.com',
+          target_keywords: 'grounding sheets wellness',
+          amazon_url: '',
           status: 'pending'
         });
 
-        console.log('Free test job created:', job.id);
+        console.log('Free test job created with FIXED system:', job.id);
 
-        // Start worker processing asynchronously (fire and forget)
+        // Start worker processing asynchronously using FIXED system (fire and forget)
         processJobWithWorkersSequential(
           job.id, 
-          'https://example.com', 
-          'free analysis test', 
-          'https://amazon.com/test', 
-          []
-        ).catch(error => console.error('Worker processing error:', error));
+          'https://groundluxe.com', 
+          'grounding sheets wellness', 
+          '', 
+          ['https://earthing.com', 'https://groundology.co.uk']
+        ).catch(error => console.error('FIXED worker processing error:', error));
 
         return NextResponse.json({
           success: true,
