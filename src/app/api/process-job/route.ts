@@ -48,13 +48,9 @@ export async function POST(request: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jobId,
-          payload: {
-            primaryProductUrl: userInputs.primaryProductUrl,
-            targetKeywords: userInputs.targetKeywords,
-            userProduct: userInputs.userProduct || userInputs.targetKeywords.split(',')[0].trim(),
-            businessType: userInputs.businessType,
-            targetMarket: userInputs.targetMarket
-          }
+          websiteUrl: userInputs.primaryProductUrl,
+          targetKeywords: userInputs.targetKeywords,
+          competitorUrls: userInputs.competitors || []
         }),
       });
       const websiteResult = await websiteResponse.json();
@@ -71,11 +67,7 @@ export async function POST(request: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jobId,
-          payload: {
-            targetKeywords: userInputs.targetKeywords,
-            userProduct: userInputs.userProduct || userInputs.targetKeywords.split(',')[0].trim(),
-            primaryProductUrl: userInputs.primaryProductUrl
-          }
+          targetKeywords: userInputs.targetKeywords
         }),
       });
       const redditResult = await redditResponse.json();
@@ -93,11 +85,9 @@ export async function POST(request: NextRequest) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             jobId,
-            payload: {
-              amazonProductUrl: userInputs.amazonProductUrl,
-              targetKeywords: userInputs.targetKeywords,
-              userProduct: userInputs.userProduct || userInputs.targetKeywords.split(',')[0].trim()
-            }
+            amazonUrl: userInputs.amazonProductUrl,
+            targetKeywords: userInputs.targetKeywords,
+            planName: 'Essential'
           }),
         });
         const amazonResult = await amazonResponse.json();
@@ -115,11 +105,7 @@ export async function POST(request: NextRequest) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jobId,
-          payload: {
-            primaryProductUrl: userInputs.primaryProductUrl,
-            targetKeywords: userInputs.targetKeywords,
-            userProduct: userInputs.userProduct || userInputs.targetKeywords.split(',')[0].trim()
-          }
+          keywords: userInputs.targetKeywords
         }),
       });
       const youtubeResult = await youtubeResponse.json();
