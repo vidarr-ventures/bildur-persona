@@ -208,13 +208,15 @@ export async function POST(request: NextRequest) {
     
     // Store result in cache for debug dashboard
     storeJobResult(jobId, 'amazon', {
-      success: transformedResult.success,
+      success: transformedResult.reviews.length > 0,
       reviews: transformedResult.reviews,
       analysis: analysis,
       metadata: transformedResult.metadata,
       processingTime: transformedResult.metadata.processing_time,
-      statusCode: transformedResult.success ? 200 : 500,
-      error: extractionResult.error
+      statusCode: transformedResult.reviews.length > 0 ? 200 : 404,
+      error: transformedResult.reviews.length === 0 ? 'No Amazon reviews found' : extractionResult.error,
+      hasActualData: transformedResult.reviews.length > 0,
+      dataCollected: transformedResult.reviews.length > 0
     });
     
     const amazonReviewsData = {
@@ -246,7 +248,7 @@ export async function POST(request: NextRequest) {
     console.log(`- Extraction status: ${analysis.extractionStatus}`);
 
     return NextResponse.json({
-      success: true,
+      success: extractionResult.reviews.length > 0, // Changed: success based on actual data found
       message: analysis.extractionStatus === 'SUCCESS' ? 
         `Amazon reviews extraction completed successfully (${planName} tier)` : 
         `Amazon reviews extraction completed with issues (${planName} tier)`,
@@ -262,7 +264,9 @@ export async function POST(request: NextRequest) {
         planName: planName || 'Essential',
         emotions: analysis.emotions,
         errorMessage: analysis.errorMessage
-      }
+      },
+      hasActualData: extractionResult.reviews.length > 0,
+      dataCollected: extractionResult.reviews.length > 0
     });
 
   } catch (error) {

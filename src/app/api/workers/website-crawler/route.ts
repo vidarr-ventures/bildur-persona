@@ -326,13 +326,21 @@ export async function POST(request: NextRequest) {
     console.log(`💾 Attempting job cache storage...`);
     try {
       // Store result in cache for debug dashboard
+      const hasActualData = analysis.reviewsFound > 0 || 
+                           analysis.valuePropsFound > 0 || 
+                           analysis.featuresFound > 0 || 
+                           analysis.painPointsFound > 0;
+      
       storeJobResult(jobId, 'website', {
-        success: true,
+        success: hasActualData,
         websiteData: websiteData,
         competitorData: competitorResults,
         analysis: analysis,
         processingTime: Date.now() - 30000,
-        statusCode: 200
+        statusCode: hasActualData ? 200 : 404,
+        error: hasActualData ? null : 'No meaningful website data found',
+        hasActualData: hasActualData,
+        dataCollected: hasActualData
       });
 
       // Store individual competitor results in separate cache entries
@@ -373,8 +381,13 @@ export async function POST(request: NextRequest) {
     console.log(`   - Pain Points: ${analysis.painPointsFound}`);
     console.log(`=== OPENAI WEBSITE CRAWLER END ===`);
 
+    const hasActualData = analysis.reviewsFound > 0 || 
+                         analysis.valuePropsFound > 0 || 
+                         analysis.featuresFound > 0 || 
+                         analysis.painPointsFound > 0;
+
     return NextResponse.json({
-      success: true,
+      success: hasActualData, // Changed: success based on actual data found
       message: `OpenAI website extraction completed${competitorResults.length > 0 ? ` with ${competitorResults.length} competitors processed` : ''}`,
       data: {
         method: analysis.method,
@@ -388,7 +401,9 @@ export async function POST(request: NextRequest) {
         dataQuality: analysis.dataQuality,
         brandMessagingFound: analysis.brandMessagingPresent,
         competitorResults: analysis.competitorProcessingResults
-      }
+      },
+      hasActualData: hasActualData,
+      dataCollected: hasActualData
     });
 
   } catch (error) {

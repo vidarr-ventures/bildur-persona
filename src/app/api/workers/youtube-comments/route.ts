@@ -553,14 +553,17 @@ export async function POST(request: NextRequest) {
 
     // Store result in cache for debug dashboard
     storeJobResult(jobId, 'youtube', {
-      success: true,
+      success: comments.length > 0,
       comments: comments,
       analysis: analysis,
       keywordMetrics: keywordMetrics,
       metadata: youtubeData.metadata,
       processingTime: Date.now(),
-      statusCode: 200,
-      timestamp: new Date().toISOString()
+      statusCode: comments.length > 0 ? 200 : 404,
+      timestamp: new Date().toISOString(),
+      hasActualData: comments.length > 0,
+      dataCollected: comments.length > 0,
+      error: comments.length === 0 ? 'No YouTube comments found for the given keywords' : null
     });
 
     await saveJobData(jobId, 'youtube_comments', youtubeData);
@@ -582,7 +585,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      success: true,
+      success: comments.length > 0, // Changed: success based on actual data found
       message: comments.length === 0 ? 'YouTube comments extraction completed (no data available)' : 'YouTube comments extraction completed',
       data: {
         totalComments: comments.length,
@@ -599,7 +602,9 @@ export async function POST(request: NextRequest) {
         })),
         keywordSummary: analysis.keywordSummary,
         warning: comments.length === 0 ? 'YouTube API unavailable or no videos found' : undefined
-      }
+      },
+      hasActualData: comments.length > 0,
+      dataCollected: comments.length > 0
     });
 
   } catch (error) {

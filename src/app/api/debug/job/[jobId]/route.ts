@@ -125,39 +125,31 @@ function analyzeDataSourceStatusFromDb(dbJobData: any, dataType: string) {
   
   const data = dbJobData[dataType];
   
+  // Use the exact status determination logic
+  const status = determineWorkerStatus(data, dataType);
+  
   // Determine if this is an AI-powered worker or direct API worker
   const isAIPowered = ['website', 'amazon_reviews', 'reddit'].includes(dataType);
   const isPersona = dataType === 'persona_profile';
-  
-  // NEW: Determine proper status based on data collection success
-  let status = 'completed';
-  if (data.error || data.success === false) {
-    status = 'failed';
-  } else if (data.hasActualData === false || data.dataCollected === false) {
-    status = 'completed_no_data'; // Yellow status
-  } else if (data.hasActualData === true || data.dataCollected === true) {
-    status = 'completed'; // Green status
-  }
   
   const baseStatus = {
     status: status,
     extractionMethod: extractMethodFromDb(data, dataType),
     processingTime: formatProcessingTime(data.metadata?.processingTime || Date.now()),
-    statusCode: 200,
+    statusCode: status === 'completed' ? 200 : (status === 'failed' ? 500 : 404),
     errorMessage: data.error || null,
     metadata: {
       timestamp: data.metadata?.timestamp || new Date().toISOString(),
       dataQuality: data.dataQuality || data.analysis?.dataQuality,
       analysis: data.analysis,
-      hasActualData: data.hasActualData
+      hasActualData: status === 'completed'
     }
   };
 
   if (isPersona) {
-    const hasPersonaData = (!!data.persona && data.persona.length > 100) || (!!data.analysis && !data.error);
+    const hasPersonaData = status === 'completed';
     return {
       ...baseStatus,
-      status: data.error ? 'failed' : (hasPersonaData ? 'completed' : 'completed_no_data'),
       outputGenerated: hasPersonaData,
       personaLength: calculatePersonaLength(data),
       extractionMethod: 'Sequential AI Analysis'
@@ -165,16 +157,15 @@ function analyzeDataSourceStatusFromDb(dbJobData: any, dataType: string) {
   } else if (isAIPowered) {
     return {
       ...baseStatus,
-      dataReturned: data.hasActualData === true,
+      dataReturned: status === 'completed',
       contentVolume: calculateContentVolume(data, dataType),
       extractionMethod: getAIMethod(dataType)
     };
   } else {
     // YouTube and other direct API workers
-    const hasComments = extractCommentsCountNumber(data, dataType) > 0;
+    const hasComments = status === 'completed';
     return {
       ...baseStatus,
-      status: data.error ? 'failed' : (hasComments ? 'completed' : 'completed_no_data'),
       commentsFound: extractCommentsCount(data, dataType),
       videosProcessed: extractVideosCount(data, dataType),
       extractionMethod: 'YouTube API'
@@ -197,41 +188,31 @@ function analyzeDataSourceStatus(jobResults: any, dataType: string) {
   
   const data = jobResults[dataType];
   
+  // Use the exact status determination logic
+  const status = determineWorkerStatus(data, dataType);
+  
   // Determine if this is an AI-powered worker or direct API worker
   const isAIPowered = ['website', 'amazon_reviews', 'reddit'].includes(dataType);
   const isPersona = dataType === 'persona_profile';
-  
-  // NEW: Determine proper status based on data collection success
-  let status = 'completed';
-  if (data.success === false || data.error) {
-    status = 'failed';
-  } else if (data.processing) {
-    status = 'processing';
-  } else if (data.hasActualData === false || data.dataCollected === false) {
-    status = 'completed_no_data'; // Yellow status
-  } else if (data.hasActualData === true || data.dataCollected === true) {
-    status = 'completed'; // Green status
-  }
   
   const baseStatus = {
     status: status,
     extractionMethod: extractMethod(data),
     processingTime: formatProcessingTime(data.processingTime || data.metadata?.processingTime),
-    statusCode: data.statusCode || data.response?.status,
+    statusCode: status === 'completed' ? 200 : (status === 'failed' ? 500 : 404),
     errorMessage: data.error || data.errorMessage,
     metadata: {
       timestamp: data.timestamp,
       dataQuality: data.dataQuality,
       analysis: data.analysis,
-      hasActualData: data.hasActualData
+      hasActualData: status === 'completed'
     }
   };
 
   if (isPersona) {
-    const hasPersonaData = (!!data.persona && data.persona.length > 100) || (!!data.analysis && !data.error);
+    const hasPersonaData = status === 'completed';
     return {
       ...baseStatus,
-      status: data.error ? 'failed' : (hasPersonaData ? 'completed' : 'completed_no_data'),
       outputGenerated: hasPersonaData,
       personaLength: calculatePersonaLength(data),
       extractionMethod: 'Sequential AI Analysis'
@@ -239,16 +220,15 @@ function analyzeDataSourceStatus(jobResults: any, dataType: string) {
   } else if (isAIPowered) {
     return {
       ...baseStatus,
-      dataReturned: data.hasActualData === true,
+      dataReturned: status === 'completed',
       contentVolume: calculateContentVolume(data, dataType),
       extractionMethod: getAIMethod(dataType)
     };
   } else {
     // YouTube and other direct API workers
-    const hasComments = extractCommentsCountNumber(data, dataType) > 0;
+    const hasComments = status === 'completed';
     return {
       ...baseStatus,
-      status: data.error ? 'failed' : (hasComments ? 'completed' : 'completed_no_data'),
       commentsFound: extractCommentsCount(data, dataType),
       videosProcessed: extractVideosCount(data, dataType),
       extractionMethod: 'YouTube API'
@@ -537,7 +517,10 @@ function analyzeDataSourceStatusFromWorkers(workerResults: any, dataType: string
 
   const data = workerResults[dataType];
   
-  if (!data.success) {
+  // Use the exact status determination logic
+  const status = determineWorkerStatus(data, dataType);
+  
+  if (status === 'failed') {
     return {
       status: 'failed',
       dataReturned: false,
@@ -553,29 +536,19 @@ function analyzeDataSourceStatusFromWorkers(workerResults: any, dataType: string
   const isAIPowered = ['website', 'amazon', 'reddit'].includes(dataType);
   const isPersona = dataType === 'persona';
 
-  // NEW: Determine proper status based on actual data collection
-  let status = 'completed';
-  if (data.hasActualData === false || data.dataCollected === false) {
-    status = 'completed_no_data'; // Yellow status
-  } else if (data.hasActualData === true || data.dataCollected === true) {
-    status = 'completed'; // Green status
-  }
-
   if (isPersona) {
-    const hasPersonaData = (!!workerData.persona && workerData.persona.length > 100) || (!!workerData.analysis && !data.error);
+    const hasPersonaData = status === 'completed'; // Based on determineWorkerStatus logic
     return {
-      status: data.error ? 'failed' : (hasPersonaData ? 'completed' : 'completed_no_data'),
+      status: status,
       outputGenerated: hasPersonaData,
       personaLength: calculatePersonaLength(workerData),
       extractionMethod: 'Sequential AI Analysis',
       processingTime: 'Real-time',
-      statusCode: 200
+      statusCode: hasPersonaData ? 200 : 404
     };
   } else if (isAIPowered) {
     // Check if we have actual review/content data
-    const hasReviews = workerData.reviews?.length > 0 || 
-                      workerData.websiteData?.customerReviews?.length > 0 ||
-                      workerData.posts?.length > 0;
+    const hasReviews = status === 'completed'; // Based on determineWorkerStatus logic
     
     const reviewCount = workerData.reviews?.length || 
                        workerData.websiteData?.customerReviews?.length || 
@@ -585,34 +558,34 @@ function analyzeDataSourceStatusFromWorkers(workerResults: any, dataType: string
                        0;
     
     return {
-      status: data.hasActualData === true ? 'completed' : (data.hasActualData === false ? 'completed_no_data' : status),
-      dataReturned: data.hasActualData === true,
-      contentVolume: hasReviews ? `${reviewCount} items found` : (workerData.contentLength ? `${workerData.contentLength} chars` : 'No data'),
+      status: status,
+      dataReturned: hasReviews,
+      contentVolume: hasReviews ? `${reviewCount} items found` : 'No data',
       extractionMethod: getAIMethod(dataType),
       processingTime: 'Real-time',
-      statusCode: 200,
+      statusCode: hasReviews ? 200 : 404,
       reviewsFound: reviewCount // Add this for backward compatibility
     };
   } else if (dataType === 'youtube') {
     const totalComments = workerData.totalComments || workerData.comments?.length || 0;
     const videosAnalyzed = workerData.videosAnalyzed || workerData.videos?.length || 0;
-    const hasComments = totalComments > 0;
+    const hasComments = status === 'completed'; // Based on determineWorkerStatus logic
     
     return {
-      status: data.error ? 'failed' : (hasComments ? 'completed' : 'completed_no_data'),
+      status: status,
       commentsFound: `${totalComments} comments`,
       videosProcessed: `${videosAnalyzed} videos`,
       extractionMethod: 'YouTube API',
       processingTime: 'Real-time',
-      statusCode: 200
+      statusCode: hasComments ? 200 : 404
     };
   }
 
   return {
-    status: data.hasActualData === false ? 'completed_no_data' : 'completed',
+    status: status,
     extractionMethod: 'Unknown',
     processingTime: 'Real-time',
-    statusCode: 200
+    statusCode: status === 'completed' ? 200 : 404
   };
 }
 
@@ -633,4 +606,55 @@ function calculateContentVolumeFromWorker(data: any, dataType: string): string {
     return 'No data';
   }
   return 'No data';
+}
+
+/**
+ * Determines status based on the exact logic specified:
+ * - Red (🔴): if status !== 200
+ * - Green (🟢): if status === 200 AND data && data.length > 0
+ * - Yellow (🟡): if status === 200 AND NO data found
+ */
+function determineWorkerStatus(workerResponse: any, dataType: string): string {
+  // Check if worker response exists
+  if (!workerResponse) {
+    return 'not_started';
+  }
+
+  const statusCode = workerResponse.statusCode || (workerResponse.success ? 200 : 500);
+  
+  // Red status: if status !== 200
+  if (statusCode !== 200) {
+    return 'failed'; // Red
+  }
+  
+  // For status === 200, check if actual data exists
+  let hasData = false;
+  
+  if (dataType === 'reddit') {
+    const posts = workerResponse.posts || workerResponse.data?.posts || [];
+    hasData = Array.isArray(posts) && posts.length > 0;
+  } else if (dataType === 'youtube') {
+    const comments = workerResponse.comments || workerResponse.data?.comments || [];
+    const totalComments = workerResponse.data?.totalComments || 0;
+    hasData = (Array.isArray(comments) && comments.length > 0) || totalComments > 0;
+  } else if (dataType === 'amazon') {
+    const reviews = workerResponse.reviews || workerResponse.data?.reviews || [];
+    hasData = Array.isArray(reviews) && reviews.length > 0;
+  } else if (dataType === 'website') {
+    const reviewsFound = workerResponse.data?.reviewsFound || workerResponse.reviewsFound || 0;
+    const valuePropsFound = workerResponse.data?.valuePropsFound || workerResponse.valuePropsFound || 0;
+    const featuresFound = workerResponse.data?.featuresFound || workerResponse.featuresFound || 0;
+    const painPointsFound = workerResponse.data?.painPointsFound || workerResponse.painPointsFound || 0;
+    hasData = reviewsFound > 0 || valuePropsFound > 0 || featuresFound > 0 || painPointsFound > 0;
+  } else if (dataType === 'persona') {
+    const persona = workerResponse.persona || workerResponse.data?.persona;
+    hasData = persona && typeof persona === 'string' && persona.length > 100;
+  }
+  
+  // Apply the exact logic specified
+  if (hasData) {
+    return 'completed'; // Green (🟢)
+  } else {
+    return 'completed_no_data'; // Yellow (🟡)
+  }
 }

@@ -385,7 +385,9 @@ export async function POST(request: NextRequest) {
       },
       processingTime: Date.now(),
       statusCode: posts.length > 0 ? 200 : 404,
-      error: posts.length === 0 ? 'No Reddit posts found for the given keywords' : null
+      error: posts.length === 0 ? 'No Reddit posts found for the given keywords' : null,
+      hasActualData: posts.length > 0,
+      dataCollected: posts.length > 0
     });
 
     await updateJobStatus(jobId, 'processing');
@@ -428,7 +430,7 @@ export async function POST(request: NextRequest) {
       });
       
       return NextResponse.json({
-        success: true,
+        success: false, // Changed: success should be false when no data found
         message: 'Reddit scraping completed (no posts found)',
         data: {
           postCount: 0,
@@ -438,7 +440,9 @@ export async function POST(request: NextRequest) {
             status: m.extractionStatus
           })),
           keywordSummary: emptyAnalysis.keywordSummary
-        }
+        },
+        hasActualData: false,
+        dataCollected: false
       });
     }
 
@@ -491,7 +495,7 @@ export async function POST(request: NextRequest) {
     console.log(`   🤖 OpenAI Analysis: ${analysis.painPoints.length} pain points, ${analysis.solutionPatterns.length} solutions found`);
 
     return NextResponse.json({
-      success: true,
+      success: posts.length > 0, // Changed: success based on actual data found
       message: 'Reddit data collection and analysis completed',
       data: {
         postCount: posts.length,
@@ -509,7 +513,9 @@ export async function POST(request: NextRequest) {
           status: m.extractionStatus
         })),
         keywordSummary: analysis.keywordSummary
-      }
+      },
+      hasActualData: posts.length > 0,
+      dataCollected: posts.length > 0
     });
 
   } catch (error) {

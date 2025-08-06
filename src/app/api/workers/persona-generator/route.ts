@@ -63,8 +63,12 @@ export async function POST(request: NextRequest) {
     await updateJobStatus(jobId, 'processing');
 
     // Store result in cache for debug dashboard
+    const hasPersonaContent = personaProfile?.persona && 
+                              personaProfile.persona.length > 100 && 
+                              !personaProfile.error;
+    
     storeJobResult(jobId, 'persona', {
-      success: true,
+      success: hasPersonaContent,
       persona: personaProfile.persona,
       stage: personaProfile.stage,
       stageNumber: personaProfile.stageNumber,
@@ -72,8 +76,11 @@ export async function POST(request: NextRequest) {
       insights: personaProfile.insights,
       metadata: personaProfile.metadata,
       processingTime: Date.now(),
-      statusCode: 200,
-      timestamp: new Date().toISOString()
+      statusCode: hasPersonaContent ? 200 : 404,
+      timestamp: new Date().toISOString(),
+      error: hasPersonaContent ? null : 'No meaningful persona content generated',
+      hasActualData: hasPersonaContent,
+      dataCollected: hasPersonaContent
     });
 
     // Save the enhanced persona analysis
@@ -113,10 +120,16 @@ export async function POST(request: NextRequest) {
 
     console.log(`Enhanced persona generation completed for job ${jobId}`);
 
+    const hasPersonaContent = personaProfile?.persona && 
+                              personaProfile.persona.length > 100 && 
+                              !personaProfile.error;
+
     return NextResponse.json({
-      success: true,
+      success: hasPersonaContent, // Changed: success based on meaningful content generated
       message: 'Enhanced persona generation with Amazon reviews completed',
       data: personaProfile,
+      hasActualData: hasPersonaContent,
+      dataCollected: hasPersonaContent
     });
 
   } catch (error) {
