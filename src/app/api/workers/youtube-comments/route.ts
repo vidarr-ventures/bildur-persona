@@ -47,9 +47,11 @@ async function searchYouTubeVideosForKeyword(keyword: string, maxResults: number
     console.log(`Searching YouTube for videos about: "${keyword}"`);
     
     if (!process.env.YOUTUBE_API_KEY) {
-      console.warn('YouTube API key not configured - skipping YouTube extraction');
-      return [];
+      console.error('❌ YOUTUBE_API_KEY environment variable is not set!');
+      throw new Error('YouTube API key not configured');
     }
+    
+    console.log(`YouTube API Key configured: ${process.env.YOUTUBE_API_KEY.substring(0, 10)}...`);
 
     const searchResponse = await fetch(
       `https://www.googleapis.com/youtube/v3/search?` +
@@ -58,11 +60,21 @@ async function searchYouTubeVideosForKeyword(keyword: string, maxResults: number
     );
 
     if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      console.error(`YouTube API error for keyword "${keyword}":`, {
+        status: searchResponse.status,
+        statusText: searchResponse.statusText,
+        error: errorText
+      });
+      
       if (searchResponse.status === 403) {
-        console.warn(`YouTube API quota exceeded or API key invalid (403) - skipping keyword "${keyword}"`);
-        return [];
+        console.error(`❌ YouTube API 403 Error - Check: 
+          1. API key validity
+          2. YouTube Data API v3 is enabled in Google Cloud Console
+          3. API quota not exceeded`);
+        throw new Error(`YouTube API access denied (403): ${errorText}`);
       }
-      throw new Error(`YouTube search failed for "${keyword}": ${searchResponse.status}`);
+      throw new Error(`YouTube search failed for "${keyword}": ${searchResponse.status} - ${errorText}`);
     }
 
     const searchData = await searchResponse.json();

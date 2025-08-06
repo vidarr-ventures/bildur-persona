@@ -70,7 +70,7 @@ export async function GET(
               email: cachedJobData?.email || researchRequest?.email,
               planName: cachedJobData?.planName || researchRequest?.plan_name || 'Essential'
             }),
-            signal: AbortSignal.timeout(10000) // 10 second timeout
+            signal: AbortSignal.timeout(30000) // 30 second timeout for API calls
           });
 
           const responseTime = Date.now() - startTime;

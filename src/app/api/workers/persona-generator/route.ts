@@ -164,6 +164,11 @@ async function generateSequentialPersonaAnalysis(data: any) {
   
   console.log(`Demographics Foundation prompt generated. Data quality score: ${dataQuality.quality_score}%`);
   console.log(`Total reviews analyzed: ${dataQuality.total_reviews}`);
+  
+  // If data quality is too low, generate a minimal persona with available data
+  if (dataQuality.quality_score < 30) {
+    console.warn(`⚠️ Low data quality (${dataQuality.quality_score}%) - generating basic persona with available data`);
+  }
 
   try {
     // Call OpenAI API for Demographics Foundation analysis

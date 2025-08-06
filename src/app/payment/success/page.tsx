@@ -302,16 +302,17 @@ function PaymentSuccessContent() {
         statusCode: competitor.statusCode,
         errorMessage: competitor.errorMessage
       })),
-      {
-        name: 'Amazon Reviews',
-        url: dbData.amazon_url || cachedData.amazonUrl,
-        status: dataSourceStatuses?.amazon?.status || 'not_started',
-        reviewsCollected: dataSourceStatuses?.amazon?.reviewsCollected || 0,
-        extractionMethod: formatMethod(dataSourceStatuses?.amazon?.extractionMethod || 'Unknown'),
-        processingTime: dataSourceStatuses?.amazon?.processingTime,
-        statusCode: dataSourceStatuses?.amazon?.statusCode,
-        errorMessage: dataSourceStatuses?.amazon?.errorMessage
-      },
+      // Amazon Reviews box hidden for MVP
+      // {
+      //   name: 'Amazon Reviews',
+      //   url: dbData.amazon_url || cachedData.amazonUrl,
+      //   status: dataSourceStatuses?.amazon?.status || 'not_started',
+      //   reviewsCollected: dataSourceStatuses?.amazon?.reviewsCollected || 0,
+      //   extractionMethod: formatMethod(dataSourceStatuses?.amazon?.extractionMethod || 'Unknown'),
+      //   processingTime: dataSourceStatuses?.amazon?.processingTime,
+      //   statusCode: dataSourceStatuses?.amazon?.statusCode,
+      //   errorMessage: dataSourceStatuses?.amazon?.errorMessage
+      // },
       {
         name: 'Reddit Scraper',
         status: dataSourceStatuses?.reddit?.status || 'not_started',

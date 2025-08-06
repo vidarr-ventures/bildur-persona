@@ -109,7 +109,17 @@ async function scrapeRedditDataWithTracking(keywords: string): Promise<{ posts: 
         });
         
         if (!response.ok) {
-          console.log(`⚠️ Failed to search r/${subreddit}: ${response.status}`);
+          const errorText = await response.text();
+          console.error(`❌ Reddit API error for r/${subreddit}:`, {
+            status: response.status,
+            error: errorText,
+            searchUrl
+          });
+          
+          if (response.status === 429) {
+            console.error('Reddit rate limit hit - waiting 5 seconds...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          }
           continue;
         }
         

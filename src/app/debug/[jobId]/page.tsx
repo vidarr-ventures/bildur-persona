@@ -164,17 +164,18 @@ export default function DebugPage() {
             metadata: jobResults[key]?.data?.dataQuality,
             data: getOpenAIData(key)
           })),
-        amazonReviews: {
-          name: 'Amazon Reviews',
-          url: cachedData.amazonUrl,
-          status: dataSourceStatuses.amazon?.status || 'not_started',
-          dataReturned: dataSourceStatuses.amazon?.dataReturned,
-          contentVolume: dataSourceStatuses.amazon?.contentVolume,
-          extractionMethod: dataSourceStatuses.amazon?.extractionMethod || 'Unknown',
-          processingTime: dataSourceStatuses.amazon?.processingTime,
-          statusCode: dataSourceStatuses.amazon?.statusCode,
-          errorMessage: dataSourceStatuses.amazon?.errorMessage
-        },
+        // Amazon Reviews hidden for MVP
+        // amazonReviews: {
+        //   name: 'Amazon Reviews',
+        //   url: cachedData.amazonUrl,
+        //   status: dataSourceStatuses.amazon?.status || 'not_started',
+        //   dataReturned: dataSourceStatuses.amazon?.dataReturned,
+        //   contentVolume: dataSourceStatuses.amazon?.contentVolume,
+        //   extractionMethod: dataSourceStatuses.amazon?.extractionMethod || 'Unknown',
+        //   processingTime: dataSourceStatuses.amazon?.processingTime,
+        //   statusCode: dataSourceStatuses.amazon?.statusCode,
+        //   errorMessage: dataSourceStatuses.amazon?.errorMessage
+        // },
         redditScraper: {
           name: 'Reddit Scraper',
           status: dataSourceStatuses.reddit?.status || 'not_started',

@@ -15,18 +15,37 @@ export async function processJobWithWorkersSequential(
     
     // Helper function to call workers via HTTP to ensure proper caching
     const callWorker = async (endpoint: string, data: any) => {
-      const response = await fetch(`http://localhost:3000/api/workers/${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Worker ${endpoint} failed: ${response.status} - ${errorText}`);
+      try {
+        // Use production URL in Vercel, localhost for local development
+        const baseUrl = process.env.VERCEL_URL 
+          ? `https://${process.env.VERCEL_URL}` 
+          : 'http://localhost:3000';
+        
+        const response = await fetch(`${baseUrl}/api/workers/${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Worker ${endpoint} failed: ${response.status} - ${errorText}`);
+        }
+        
+        return await response.json();
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+          throw new Error(`Worker ${endpoint} timed out after 45 seconds`);
+        }
+        throw error;
       }
-      
-      return await response.json();
     };
 
     // 1. Website Crawler Worker (OpenAI-powered)
