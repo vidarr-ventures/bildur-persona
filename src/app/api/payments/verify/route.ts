@@ -74,9 +74,14 @@ export async function GET(request: NextRequest) {
         });
       } catch (error) {
         console.error('Failed to create free test job:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorStack = error instanceof Error ? error.stack : 'No stack';
+        console.error('Detailed error:', { message: errorMessage, stack: errorStack });
+        
         return NextResponse.json({
           success: false,
-          error: 'Failed to create free analysis job'
+          error: 'Failed to create free analysis job',
+          details: errorMessage
         }, { status: 500 });
       }
     }
