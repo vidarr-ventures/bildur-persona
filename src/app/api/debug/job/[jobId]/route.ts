@@ -22,11 +22,18 @@ export async function GET(
     // Get database data (where workers actually save their results)
     let dbData = null;
     let dbJobData = null;
+    let workerResults = null;
     try {
       dbData = await getResearchRequest(jobId);
       // Get all job data from database (this is where workers save their results)
       const { getJobData: getDbJobData } = await import('@/lib/db');
       dbJobData = await getDbJobData(jobId);
+      
+      // If no database data, try to get current status from workers (same as job status API)
+      if (!dbJobData || Object.keys(dbJobData).length === 0) {
+        console.log('No database data found, calling workers directly...');
+        workerResults = await getWorkerStatusData(jobId, cachedData, dbData);
+      }
     } catch (error) {
       console.log('Database error:', error);
     }
@@ -46,17 +53,21 @@ export async function GET(
     }
     
     const dataSourceStatuses = {
-      website: analyzeDataSourceStatusFromDb(dbJobData, 'website') || analyzeDataSourceStatus(jobResults, 'website'),
-      amazon: analyzeDataSourceStatusFromDb(dbJobData, 'amazon_reviews') || analyzeDataSourceStatus(jobResults, 'amazon'),
-      reddit: analyzeDataSourceStatusFromDb(dbJobData, 'reddit') || analyzeDataSourceStatus(jobResults, 'reddit'),
-      youtube: analyzeDataSourceStatusFromDb(dbJobData, 'youtube_comments') || analyzeDataSourceStatus(jobResults, 'youtube_comments') || analyzeDataSourceStatus(jobResults, 'youtube'),
-      persona: analyzeDataSourceStatusFromDb(dbJobData, 'persona_profile') || analyzeDataSourceStatus(jobResults, 'persona'),
+      website: analyzeDataSourceStatusFromDb(dbJobData, 'website') || analyzeDataSourceStatusFromWorkers(workerResults, 'website') || analyzeDataSourceStatus(jobResults, 'website'),
+      amazon: analyzeDataSourceStatusFromDb(dbJobData, 'amazon_reviews') || analyzeDataSourceStatusFromWorkers(workerResults, 'amazon') || analyzeDataSourceStatus(jobResults, 'amazon'),
+      reddit: analyzeDataSourceStatusFromDb(dbJobData, 'reddit') || analyzeDataSourceStatusFromWorkers(workerResults, 'reddit') || analyzeDataSourceStatus(jobResults, 'reddit'),
+      youtube: analyzeDataSourceStatusFromDb(dbJobData, 'youtube_comments') || analyzeDataSourceStatusFromWorkers(workerResults, 'youtube') || analyzeDataSourceStatus(jobResults, 'youtube_comments') || analyzeDataSourceStatus(jobResults, 'youtube'),
+      persona: analyzeDataSourceStatusFromDb(dbJobData, 'persona_profile') || analyzeDataSourceStatusFromWorkers(workerResults, 'persona') || analyzeDataSourceStatus(jobResults, 'persona'),
       competitors: competitorStatuses
     };
     
     // Extract final persona content
     let finalPersona = null;
-    if (jobResults?.persona?.persona) {
+    
+    // Try to get persona from worker results first, then from job cache
+    if (workerResults?.persona?.data?.persona) {
+      finalPersona = workerResults.persona.data.persona;
+    } else if (jobResults?.persona?.persona) {
       const p = jobResults.persona.persona;
       finalPersona = `Name: ${p.name}
 Age: ${p.age}
@@ -426,4 +437,134 @@ function extractVideosCount(data: any, dataType: string): string {
     return `${videosCount} videos`;
   }
   return '0 videos';
+}
+
+async function getWorkerStatusData(jobId: string, cachedData: any, dbData: any) {
+  const baseUrl = 'https://persona.bildur.ai';
+  
+  const workers = [
+    { name: 'website-crawler', key: 'website' },
+    { name: 'amazon-reviews', key: 'amazon' },
+    { name: 'reddit-scraper', key: 'reddit' },
+    { name: 'youtube-comments', key: 'youtube' },
+    { name: 'persona-generator', key: 'persona' }
+  ];
+
+  const results: { [key: string]: any } = {};
+
+  try {
+    const workerPromises = workers.map(async (worker) => {
+      try {
+        const response = await fetch(`${baseUrl}/api/workers/${worker.name}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.INTERNAL_API_KEY}`,
+          },
+          body: JSON.stringify({
+            jobId,
+            websiteUrl: cachedData?.websiteUrl || dbData?.website_url || 'https://example.com',
+            targetKeywords: cachedData?.keywords || dbData?.keywords || 'test',
+            keywords: cachedData?.keywords || dbData?.keywords || 'test',
+            amazonUrl: cachedData?.amazonUrl || dbData?.amazon_url || '',
+            email: cachedData?.email || dbData?.email,
+            planName: cachedData?.planName || dbData?.plan_name || 'Essential'
+          }),
+          signal: AbortSignal.timeout(10000) // 10 second timeout for debug calls
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          results[worker.key] = data;
+        }
+      } catch (error) {
+        console.log(`Worker ${worker.name} failed:`, error);
+      }
+    });
+
+    await Promise.all(workerPromises);
+  } catch (error) {
+    console.error('Error calling workers:', error);
+  }
+
+  return results;
+}
+
+function analyzeDataSourceStatusFromWorkers(workerResults: any, dataType: string) {
+  if (!workerResults || !workerResults[dataType]) {
+    return null;
+  }
+
+  const data = workerResults[dataType];
+  
+  if (!data.success) {
+    return {
+      status: 'failed',
+      dataReturned: false,
+      contentVolume: 'No data',
+      extractionMethod: 'Unknown',
+      processingTime: 'Unknown',
+      statusCode: data.statusCode || 500,
+      errorMessage: data.error || data.message || 'Worker failed'
+    };
+  }
+
+  const workerData = data.data || {};
+  const isAIPowered = ['website', 'amazon', 'reddit'].includes(dataType);
+  const isPersona = dataType === 'persona';
+
+  if (isPersona) {
+    return {
+      status: 'completed',
+      outputGenerated: !!workerData.persona || !!workerData.analysis,
+      personaLength: calculatePersonaLength(workerData),
+      extractionMethod: 'Sequential AI Analysis',
+      processingTime: 'Real-time',
+      statusCode: 200
+    };
+  } else if (isAIPowered) {
+    return {
+      status: 'completed',
+      dataReturned: !data.error && (!!workerData.analysis || !!workerData.websiteData),
+      contentVolume: calculateContentVolumeFromWorker(workerData, dataType),
+      extractionMethod: getAIMethod(dataType),
+      processingTime: 'Real-time',
+      statusCode: 200
+    };
+  } else if (dataType === 'youtube') {
+    return {
+      status: 'completed',
+      commentsFound: `${workerData.totalComments || 0} comments`,
+      videosProcessed: `${workerData.videosAnalyzed || 0} videos`,
+      extractionMethod: 'YouTube API',
+      processingTime: 'Real-time',
+      statusCode: 200
+    };
+  }
+
+  return {
+    status: 'completed',
+    extractionMethod: 'Unknown',
+    processingTime: 'Real-time',
+    statusCode: 200
+  };
+}
+
+function calculateContentVolumeFromWorker(data: any, dataType: string): string {
+  if (dataType === 'website') {
+    const reviewCount = data.reviewsFound || 0;
+    const contentLength = data.contentLength || data.dataQuality?.contentLength || 0;
+    if (reviewCount > 0) return `${reviewCount} reviews, ${contentLength} chars`;
+    if (contentLength > 0) return `${contentLength} characters`;
+    return 'No data';
+  } else if (dataType === 'amazon') {
+    const reviewCount = data.reviewCount || data.totalReviews || 0;
+    if (reviewCount > 0) return `${reviewCount} reviews`;
+    return 'No data';
+  } else if (dataType === 'reddit') {
+    const postCount = data.postCount || 0;
+    if (postCount > 0) return `${postCount} posts`;
+    return 'No data';
+  }
+  return 'No data';
 }
