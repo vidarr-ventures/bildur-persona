@@ -29,9 +29,20 @@ interface DataSourceStatus {
   name: string;
   url?: string;
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'not_started';
+  // Legacy metric for backward compatibility
   reviewsFound?: number;
+  // AI-Powered Worker metrics
+  dataReturned?: boolean;
+  contentVolume?: string;
+  // YouTube Worker metrics  
+  commentsFound?: string;
+  videosProcessed?: string;
+  // Persona Generator metrics
+  outputGenerated?: boolean;
+  personaLength?: string;
+  // Common metrics
   extractionMethod?: string;
-  processingTime?: number;
+  processingTime?: number | string;
   statusCode?: number;
   errorMessage?: string;
   metadata?: any;
@@ -128,10 +139,11 @@ export default function DebugPage() {
         customerWebsite: {
           name: 'Customer Website',
           url: cachedData.websiteUrl,
-          status: jobResults.website?.success ? 'completed' : (jobResults.website ? 'failed' : 'not_started'),
-          reviewsFound: jobResults.website?.data?.customerReviews?.length || 0,
-          extractionMethod: jobResults.website?.data?.dataQuality?.method || 'Unknown',
-          processingTime: jobResults.website?.processingTime,
+          status: dataSourceStatuses.website?.status || (jobResults.website?.success ? 'completed' : (jobResults.website ? 'failed' : 'not_started')),
+          dataReturned: dataSourceStatuses.website?.dataReturned ?? (jobResults.website?.success || false),
+          contentVolume: dataSourceStatuses.website?.contentVolume || calculateWebsiteContentVolume(jobResults.website),
+          extractionMethod: dataSourceStatuses.website?.extractionMethod || jobResults.website?.data?.dataQuality?.method || 'Unknown',
+          processingTime: dataSourceStatuses.website?.processingTime || jobResults.website?.processingTime,
           statusCode: jobResults.website?.statusCode || 200,
           errorMessage: jobResults.website?.error,
           metadata: jobResults.website?.data?.dataQuality,
@@ -143,7 +155,8 @@ export default function DebugPage() {
             name: `Competitor ${index + 1}`,
             url: jobResults[key]?.competitorUrl,
             status: jobResults[key]?.success ? 'completed' : (jobResults[key] ? 'failed' : 'not_started'),
-            reviewsFound: jobResults[key]?.reviewsFound || jobResults[key]?.data?.customerReviews?.length || 0,
+            dataReturned: jobResults[key]?.success || false,
+            contentVolume: calculateWebsiteContentVolume(jobResults[key]),
             extractionMethod: jobResults[key]?.data?.dataQuality?.method || 'Unknown',
             processingTime: jobResults[key]?.processingTime,
             statusCode: jobResults[key]?.statusCode || 200,
@@ -155,7 +168,8 @@ export default function DebugPage() {
           name: 'Amazon Reviews',
           url: cachedData.amazonUrl,
           status: dataSourceStatuses.amazon?.status || 'not_started',
-          reviewsFound: dataSourceStatuses.amazon?.reviewsCollected || 0,
+          dataReturned: dataSourceStatuses.amazon?.dataReturned,
+          contentVolume: dataSourceStatuses.amazon?.contentVolume,
           extractionMethod: dataSourceStatuses.amazon?.extractionMethod || 'Unknown',
           processingTime: dataSourceStatuses.amazon?.processingTime,
           statusCode: dataSourceStatuses.amazon?.statusCode,
@@ -164,7 +178,8 @@ export default function DebugPage() {
         redditScraper: {
           name: 'Reddit Scraper',
           status: dataSourceStatuses.reddit?.status || 'not_started',
-          reviewsFound: dataSourceStatuses.reddit?.reviewsCollected || 0,
+          dataReturned: dataSourceStatuses.reddit?.dataReturned,
+          contentVolume: dataSourceStatuses.reddit?.contentVolume,
           extractionMethod: dataSourceStatuses.reddit?.extractionMethod || 'Unknown',
           processingTime: dataSourceStatuses.reddit?.processingTime,
           statusCode: dataSourceStatuses.reddit?.statusCode,
@@ -173,7 +188,8 @@ export default function DebugPage() {
         youtubeComments: {
           name: 'YouTube Comments',
           status: dataSourceStatuses.youtube?.status || (jobResults.youtube_comments?.success ? 'completed' : 'not_started'),
-          reviewsFound: jobResults.youtube_comments?.totalComments || dataSourceStatuses.youtube?.reviewsCollected || 0,
+          commentsFound: dataSourceStatuses.youtube?.commentsFound,
+          videosProcessed: dataSourceStatuses.youtube?.videosProcessed,
           extractionMethod: jobResults.youtube_comments?.metadata?.extractionMethod || dataSourceStatuses.youtube?.extractionMethod || 'youtube_api_v3',
           processingTime: dataSourceStatuses.youtube?.processingTime,
           statusCode: dataSourceStatuses.youtube?.statusCode,
@@ -187,6 +203,8 @@ export default function DebugPage() {
         personaGenerator: {
           name: 'Persona Generator',
           status: dataSourceStatuses.persona?.status || 'not_started',
+          outputGenerated: dataSourceStatuses.persona?.outputGenerated,
+          personaLength: dataSourceStatuses.persona?.personaLength,
           processingTime: dataSourceStatuses.persona?.processingTime,
           errorMessage: dataSourceStatuses.persona?.errorMessage
         }
@@ -197,18 +215,53 @@ export default function DebugPage() {
 
   const formatMethod = (method: string): string => {
     const methodMap: { [key: string]: string } = {
-      'openai_extraction': 'OpenAI GPT-4o-mini',
+      'openai_extraction': 'OpenAI Analysis',
       'shopify_scraper': 'Shopify API',
-      'custom_amazon_scraper': 'Custom Amazon Scraper',
-      'custom_reddit_scraper': 'Custom Reddit Scraper',
+      'custom_amazon_scraper': 'API + AI Analysis',
+      'custom_reddit_scraper': 'API + AI Analysis',
       'selenium_fallback': 'Selenium fallback',
       'firecrawl': 'Firecrawl (Deprecated)',
       'basic_fetch': 'Basic HTTP (Deprecated)',
-      'amazon_api': 'Amazon API',
-      'reddit_api': 'Reddit API',
-      'youtube_api': 'YouTube API'
+      'amazon_api': 'API + AI Analysis',
+      'reddit_api': 'API + AI Analysis',
+      'youtube_api': 'YouTube API',
+      'youtube_api_v3': 'YouTube API',
+      'reddit_api_v1_plus_openai': 'API + AI Analysis'
     };
     return methodMap[method] || method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const calculateWebsiteContentVolume = (websiteData: any): string => {
+    if (!websiteData?.data) return 'No data';
+    
+    let totalWords = 0;
+    
+    // Count words in customer reviews
+    if (websiteData.data.customerReviews) {
+      totalWords += websiteData.data.customerReviews.reduce((acc: number, review: string) => 
+        acc + review.split(' ').length, 0);
+    }
+    
+    // Count words in page content  
+    if (websiteData.data.pageContent) {
+      totalWords += websiteData.data.pageContent.split(' ').length;
+    }
+    
+    // Count words in features
+    if (websiteData.data.features) {
+      totalWords += websiteData.data.features.reduce((acc: number, feature: string) => 
+        acc + feature.split(' ').length, 0);
+    }
+    
+    // Count words in value propositions
+    if (websiteData.data.valuePropositions) {
+      totalWords += websiteData.data.valuePropositions.reduce((acc: number, value: string) => 
+        acc + value.split(' ').length, 0);
+    }
+    
+    if (totalWords === 0) return 'No data';
+    if (totalWords < 1000) return `${totalWords} words`;
+    return `${(totalWords / 1000).toFixed(1)}k words`;
   };
 
   const getStatusIcon = (status: DataSourceStatus['status']) => {
@@ -336,7 +389,62 @@ export default function DebugPage() {
             <p className="font-medium text-white capitalize">{source.status.replace('_', ' ')}</p>
           </div>
           
-          {source.reviewsFound !== undefined && (
+          {/* AI-Powered Workers: Show Data Returned and Content Volume */}
+          {(source.name.includes('Website') || source.name.includes('Amazon') || source.name.includes('Reddit')) && source.dataReturned !== undefined && (
+            <>
+              <div>
+                <p className="text-gray-400">Data Returned</p>
+                <p className="font-medium text-white">
+                  {source.dataReturned ? 'Yes' : 'No'}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400">Content Volume</p>
+                <p className="font-medium text-white">
+                  {source.contentVolume || 'No data'}
+                </p>
+              </div>
+            </>
+          )}
+          
+          {/* YouTube Worker: Show Comments and Videos */}
+          {source.name.includes('YouTube') && (
+            <>
+              <div>
+                <p className="text-gray-400">Comments Found</p>
+                <p className="font-medium text-white">
+                  {source.commentsFound || '0 comments'}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400">Videos Processed</p>
+                <p className="font-medium text-white">
+                  {source.videosProcessed || '0 videos'}
+                </p>
+              </div>
+            </>
+          )}
+          
+          {/* Persona Generator: Show Output Generated and Length */}
+          {source.name.includes('Persona') && source.outputGenerated !== undefined && (
+            <>
+              <div>
+                <p className="text-gray-400">Output Generated</p>
+                <p className="font-medium text-white">
+                  {source.outputGenerated ? 'Yes' : 'No'}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-400">Persona Length</p>
+                <p className="font-medium text-white">
+                  {source.personaLength || '0 words'}
+                </p>
+              </div>
+            </>
+          )}
+          
+          {/* Legacy: Show Reviews for backward compatibility */}
+          {source.reviewsFound !== undefined && !source.dataReturned && !source.commentsFound && !source.outputGenerated && (
             <div>
               <p className="text-gray-400">Reviews</p>
               <p className="font-medium text-white">
@@ -349,6 +457,13 @@ export default function DebugPage() {
             <div>
               <p className="text-gray-400">Method</p>
               <p className="font-medium text-white">{formatMethod(source.extractionMethod)}</p>
+            </div>
+          )}
+          
+          {source.processingTime && (
+            <div>
+              <p className="text-gray-400">Processing Time</p>
+              <p className="font-medium text-white">{source.processingTime}</p>
             </div>
           )}
           

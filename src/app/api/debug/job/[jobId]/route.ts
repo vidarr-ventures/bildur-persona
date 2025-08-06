@@ -111,11 +111,14 @@ function analyzeDataSourceStatusFromDb(dbJobData: any, dataType: string) {
   
   const data = dbJobData[dataType];
   
-  return {
+  // Determine if this is an AI-powered worker or direct API worker
+  const isAIPowered = ['website', 'amazon_reviews', 'reddit'].includes(dataType);
+  const isPersona = dataType === 'persona_profile';
+  
+  const baseStatus = {
     status: data.error ? 'failed' : 'completed',
-    reviewsCollected: extractReviewCountFromDb(data, dataType),
     extractionMethod: extractMethodFromDb(data, dataType),
-    processingTime: data.metadata?.processingTime || Date.now(),
+    processingTime: formatProcessingTime(data.metadata?.processingTime || Date.now()),
     statusCode: 200,
     errorMessage: data.error || null,
     metadata: {
@@ -124,13 +127,38 @@ function analyzeDataSourceStatusFromDb(dbJobData: any, dataType: string) {
       analysis: data.analysis
     }
   };
+
+  if (isPersona) {
+    return {
+      ...baseStatus,
+      outputGenerated: !!data.persona || !!data.analysis,
+      personaLength: calculatePersonaLength(data),
+      extractionMethod: 'Sequential AI Analysis'
+    };
+  } else if (isAIPowered) {
+    return {
+      ...baseStatus,
+      dataReturned: !data.error && (!!data.analysis || !!data.websiteData),
+      contentVolume: calculateContentVolume(data, dataType),
+      extractionMethod: getAIMethod(dataType)
+    };
+  } else {
+    // YouTube and other direct API workers
+    return {
+      ...baseStatus,
+      commentsFound: extractCommentsCount(data, dataType),
+      videosProcessed: extractVideosCount(data, dataType),
+      extractionMethod: 'YouTube API'
+    };
+  }
 }
 
 function analyzeDataSourceStatus(jobResults: any, dataType: string) {
   if (!jobResults || !jobResults[dataType]) {
     return {
       status: 'not_started',
-      reviewsCollected: 0,
+      dataReturned: false,
+      contentVolume: 0,
       extractionMethod: 'Unknown',
       processingTime: null,
       statusCode: null,
@@ -140,13 +168,16 @@ function analyzeDataSourceStatus(jobResults: any, dataType: string) {
   
   const data = jobResults[dataType];
   
-  return {
+  // Determine if this is an AI-powered worker or direct API worker
+  const isAIPowered = ['website', 'amazon_reviews', 'reddit'].includes(dataType);
+  const isPersona = dataType === 'persona_profile';
+  
+  const baseStatus = {
     status: data.success === false ? 'failed' : 
             data.error ? 'failed' : 
             data.processing ? 'processing' : 'completed',
-    reviewsCollected: extractReviewCount(data),
     extractionMethod: extractMethod(data),
-    processingTime: data.processingTime || data.metadata?.processingTime,
+    processingTime: formatProcessingTime(data.processingTime || data.metadata?.processingTime),
     statusCode: data.statusCode || data.response?.status,
     errorMessage: data.error || data.errorMessage,
     metadata: {
@@ -155,6 +186,30 @@ function analyzeDataSourceStatus(jobResults: any, dataType: string) {
       analysis: data.analysis
     }
   };
+
+  if (isPersona) {
+    return {
+      ...baseStatus,
+      outputGenerated: !!data.persona || !!data.analysis,
+      personaLength: calculatePersonaLength(data),
+      extractionMethod: 'Sequential AI Analysis'
+    };
+  } else if (isAIPowered) {
+    return {
+      ...baseStatus,
+      dataReturned: !data.error && (!!data.analysis || !!data.websiteData),
+      contentVolume: calculateContentVolume(data, dataType),
+      extractionMethod: getAIMethod(dataType)
+    };
+  } else {
+    // YouTube and other direct API workers
+    return {
+      ...baseStatus,
+      commentsFound: extractCommentsCount(data, dataType),
+      videosProcessed: extractVideosCount(data, dataType),
+      extractionMethod: 'YouTube API'
+    };
+  }
 }
 
 function extractReviewCount(data: any): number {
@@ -270,4 +325,105 @@ function extractMethodFromDb(data: any, dataType: string): string {
   };
   
   return defaultMethods[dataType] || 'Unknown';
+}
+
+// New helper functions for AI-powered workflow metrics
+
+function formatProcessingTime(timestamp: number | null | undefined): string {
+  if (!timestamp) return 'Unknown';
+  
+  // If timestamp is very large, it's probably a unix timestamp, convert to processing time
+  if (timestamp > 1000000000000) {
+    // This is likely a timestamp, not processing time
+    return 'Unknown';
+  }
+  
+  // If it's a reasonable processing time in milliseconds
+  if (timestamp < 60000) {
+    return `${timestamp}ms`;
+  }
+  
+  // Convert to seconds if over 1 minute
+  return `${(timestamp / 1000).toFixed(1)}s`;
+}
+
+function calculateContentVolume(data: any, dataType: string): string {
+  let totalWords = 0;
+  
+  if (dataType === 'website') {
+    // Count words in website data
+    if (data.websiteData?.customerReviews) {
+      totalWords += data.websiteData.customerReviews.reduce((acc: number, review: any) => 
+        acc + (review.text?.split(' ').length || 0), 0);
+    }
+    if (data.websiteData?.pageContent) {
+      totalWords += data.websiteData.pageContent.split(' ').length;
+    }
+    if (data.analysis?.insights) {
+      totalWords += JSON.stringify(data.analysis.insights).split(' ').length;
+    }
+  } else if (dataType === 'amazon_reviews') {
+    // Count words in Amazon reviews
+    if (data.reviews && Array.isArray(data.reviews)) {
+      totalWords += data.reviews.reduce((acc: number, review: any) => 
+        acc + (review.text?.split(' ').length || 0) + (review.title?.split(' ').length || 0), 0);
+    }
+    if (data.analysis) {
+      totalWords += JSON.stringify(data.analysis).split(' ').length;
+    }
+  } else if (dataType === 'reddit') {
+    // Count words in Reddit posts and comments
+    if (data.posts && Array.isArray(data.posts)) {
+      totalWords += data.posts.reduce((acc: number, post: any) => {
+        let postWords = (post.title?.split(' ').length || 0) + (post.content?.split(' ').length || 0);
+        if (post.comments && Array.isArray(post.comments)) {
+          postWords += post.comments.reduce((commentAcc: number, comment: any) => 
+            commentAcc + (comment.text?.split(' ').length || 0), 0);
+        }
+        return acc + postWords;
+      }, 0);
+    }
+    if (data.analysis) {
+      totalWords += JSON.stringify(data.analysis).split(' ').length;
+    }
+  }
+  
+  if (totalWords === 0) return 'No data';
+  if (totalWords < 1000) return `${totalWords} words`;
+  return `${(totalWords / 1000).toFixed(1)}k words`;
+}
+
+function calculatePersonaLength(data: any): string {
+  if (!data.persona && !data.analysis) return '0 words';
+  
+  const personaText = data.persona || JSON.stringify(data.analysis);
+  const wordCount = personaText.split(' ').length;
+  
+  if (wordCount < 1000) return `${wordCount} words`;
+  return `${(wordCount / 1000).toFixed(1)}k words`;
+}
+
+function getAIMethod(dataType: string): string {
+  const methods: { [key: string]: string } = {
+    'website': 'OpenAI Analysis',
+    'amazon_reviews': 'API + AI Analysis', 
+    'reddit': 'API + AI Analysis'
+  };
+  return methods[dataType] || 'AI Analysis';
+}
+
+function extractCommentsCount(data: any, dataType: string): string {
+  if (dataType === 'youtube_comments') {
+    const totalComments = data.comments?.length || data.analysis?.totalComments || 0;
+    return `${totalComments} comments`;
+  }
+  return '0 comments';
+}
+
+function extractVideosCount(data: any, dataType: string): string {
+  if (dataType === 'youtube_comments') {
+    const videosCount = data.analysis?.topVideos?.length || data.metadata?.videosAnalyzed || 0;
+    return `${videosCount} videos`;
+  }
+  return '0 videos';
 }
