@@ -21,22 +21,25 @@ export async function redditScraperWorker({
     const analysis = {
       totalPosts: redditResult.posts?.length || 0,
       totalComments: redditResult.comments?.length || 0,
-      sentiment: redditResult.analysis?.sentiment || { positive: 0, negative: 0, neutral: 0 },
-      topics: redditResult.analysis?.topics || [],
-      painPoints: redditResult.analysis?.painPoints || [],
-      solutions: redditResult.analysis?.solutions || [],
-      insights: redditResult.analysis?.insights || []
+      sentiment: { positive: 0, negative: 0, neutral: 0 }, // Will be added by AI analysis later
+      topics: [], // Will be extracted by AI analysis
+      painPoints: [], // Will be extracted by AI analysis
+      solutions: [], // Will be extracted by AI analysis  
+      insights: [] // Will be extracted by AI analysis
     };
 
     const result = {
       posts: redditResult.posts || [],
+      comments: redditResult.comments || [],
       analysis: analysis,
       metadata: {
         timestamp: new Date().toISOString(),
         targetKeywords: targetKeywords,
         extractionMethod: 'reddit_api_v1_plus_openai',
         subredditsSearched: redditResult.metadata?.subreddits_searched || [],
-        searchQueries: redditResult.metadata?.queries_used || []
+        searchQueries: redditResult.metadata?.queries_used || [],
+        processingTime: redditResult.metadata?.processing_time || 0,
+        totalResults: redditResult.metadata?.total_results || 0
       }
     };
 
