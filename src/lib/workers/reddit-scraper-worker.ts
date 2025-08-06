@@ -16,15 +16,11 @@ export async function redditScraperWorker({
 
   try {
     // Use the existing custom Reddit scraper
-    const redditResult = await customRedditScraper.searchAndAnalyze(targetKeywords, {
-      maxPosts: 20,
-      includeComments: true,
-      maxCommentsPerPost: 10
-    });
+    const redditResult = await customRedditScraper.scrapeRedditDiscussions(targetKeywords, 20);
 
     const analysis = {
       totalPosts: redditResult.posts?.length || 0,
-      totalComments: redditResult.posts?.reduce((total, post) => total + (post.comments?.length || 0), 0) || 0,
+      totalComments: redditResult.comments?.length || 0,
       sentiment: redditResult.analysis?.sentiment || { positive: 0, negative: 0, neutral: 0 },
       topics: redditResult.analysis?.topics || [],
       painPoints: redditResult.analysis?.painPoints || [],
@@ -39,8 +35,8 @@ export async function redditScraperWorker({
         timestamp: new Date().toISOString(),
         targetKeywords: targetKeywords,
         extractionMethod: 'reddit_api_v1_plus_openai',
-        subredditsSearched: redditResult.metadata?.subreddits || [],
-        searchQueries: redditResult.metadata?.queries || []
+        subredditsSearched: redditResult.metadata?.subreddits_searched || [],
+        searchQueries: redditResult.metadata?.queries_used || []
       }
     };
 
