@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
           website_url: websiteUrl,
           target_keywords: targetKeywords,
           amazon_url: amazonUrl,
-          status: 'pending'
+          status: 'queued'
         });
 
         console.log('Free test job created with FIXED system:', job.id);

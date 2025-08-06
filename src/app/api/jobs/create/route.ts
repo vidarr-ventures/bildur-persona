@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       website_url: websiteUrl,
       target_keywords: targetKeywords,
       amazon_url: amazonUrl || null,
-      status: 'pending'
+      status: 'queued'
     });
 
     console.log('Job created successfully:', job.id);
