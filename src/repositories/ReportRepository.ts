@@ -30,7 +30,7 @@ export class ReportRepository implements IReportRepository {
         values: report.personaData.values,
         objections: report.personaData.objections,
         decisionFactors: report.personaData.decisionFactors,
-        quotes: report.quotes,
+        quotes: report.quotes as any,
         fullReport: report.fullReport,
         summary: report.summary,
         generatedAt: report.generatedAt,
