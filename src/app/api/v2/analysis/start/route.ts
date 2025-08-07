@@ -8,11 +8,13 @@ import { ReportRepository } from '../../../../../repositories/ReportRepository';
 import { WebScrapingService } from '../../../../../services/WebScrapingService';
 import { AIAnalysisService } from '../../../../../services/AIAnalysisService';
 import { AnalysisOrchestrator } from '../../../../../services/AnalysisOrchestrator';
+import { DebugAnalysisOrchestrator } from '../../../../../services/DebugAnalysisOrchestrator';
 
 // Request validation schema
 const startAnalysisSchema = z.object({
   targetUrl: z.string().url('Invalid URL format'),
   userEmail: z.string().email().optional(),
+  debugMode: z.boolean().optional(),
 });
 
 // Response types
@@ -33,6 +35,7 @@ interface ApiResponse<T = any> {
 
 let prisma: PrismaClient;
 let orchestrator: AnalysisOrchestrator;
+let debugOrchestrator: DebugAnalysisOrchestrator;
 
 // Initialize services
 function initializeServices() {
@@ -58,6 +61,13 @@ function initializeServices() {
       webScraper,
       aiService
     );
+    
+    debugOrchestrator = new DebugAnalysisOrchestrator(
+      analysisRepo,
+      reportRepo,
+      webScraper,
+      aiService
+    );
   }
 }
 
@@ -72,11 +82,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Initialize services
     initializeServices();
     
-    // Start analysis
-    const analysisId = await orchestrator.startAnalysis({
-      targetUrl: validatedData.targetUrl,
-      userEmail: validatedData.userEmail,
-    });
+    // Start analysis (debug or regular)
+    const analysisId = validatedData.debugMode
+      ? await debugOrchestrator.startDebugAnalysis({
+          targetUrl: validatedData.targetUrl,
+          userEmail: validatedData.userEmail,
+        })
+      : await orchestrator.startAnalysis({
+          targetUrl: validatedData.targetUrl,
+          userEmail: validatedData.userEmail,
+        });
     
     const response: ApiResponse = {
       success: true,

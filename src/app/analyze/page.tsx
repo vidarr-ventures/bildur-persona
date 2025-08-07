@@ -10,6 +10,7 @@ export default function AnalyzePage() {
   const router = useRouter();
   const [url, setUrl] = useState('');
   const [email, setEmail] = useState('');
+  const [debugMode, setDebugMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -50,6 +51,7 @@ export default function AnalyzePage() {
         body: JSON.stringify({
           targetUrl: normalizedUrl,
           userEmail: email || undefined,
+          debugMode: debugMode,
         }),
       });
 
@@ -59,8 +61,12 @@ export default function AnalyzePage() {
         throw new Error(data.error?.message || 'Failed to start analysis');
       }
 
-      // Redirect to report page
-      router.push(`/report/${data.data.analysisId}`);
+      // Redirect to debug or report page based on mode
+      if (debugMode) {
+        router.push(`/debug/${data.data.analysisId}`);
+      } else {
+        router.push(`/report/${data.data.analysisId}`);
+      }
     } catch (err) {
       console.error('Analysis error:', err);
       setError(err instanceof Error ? err.message : 'Failed to start analysis');
@@ -130,6 +136,31 @@ export default function AnalyzePage() {
                   <p className="text-sm text-n-4 mt-1">
                     We'll send you the report when it's ready
                   </p>
+                </div>
+
+                {/* Debug Mode Toggle */}
+                <div className="flex items-center justify-between p-4 bg-n-7 border border-n-6 rounded-lg">
+                  <div>
+                    <label htmlFor="debug" className="block text-sm font-medium text-n-2">
+                      Debug Mode
+                    </label>
+                    <p className="text-xs text-n-4 mt-1">
+                      Track processing steps and view detailed output
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDebugMode(!debugMode)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      debugMode ? 'bg-color-1' : 'bg-n-6'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        debugMode ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
 
                 {/* Error Alert */}

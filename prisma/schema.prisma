@@ -53,6 +53,10 @@ model AnalysisStep {
   output      Json?
   errorInfo   Json?
   
+  // Debug information
+  debugData   Json?     // Detailed debug information
+  dataSize    Int?      // Size of data processed
+  
   analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
   
   @@map("analysis_steps")
