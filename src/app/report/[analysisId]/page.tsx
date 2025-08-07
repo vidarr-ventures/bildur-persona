@@ -15,6 +15,9 @@ interface PersonaAnalysis {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   error_message?: string;
   created_at: string;
+  currentStep?: string;
+  completedSteps?: number;
+  totalSteps?: number;
 }
 
 export default function ReportPage() {
@@ -28,18 +31,67 @@ export default function ReportPage() {
 
   const fetchAnalysis = async () => {
     try {
-      const response = await fetch(`/api/analyze/${analysisId}`);
-      const data = await response.json();
+      // First get the analysis status
+      const statusResponse = await fetch(`/api/v2/analysis/${analysisId}`);
+      const statusData = await statusResponse.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch analysis');
+      if (!statusResponse.ok) {
+        throw new Error(statusData.error?.message || 'Failed to fetch analysis');
       }
 
-      setAnalysis(data);
+      const progress = statusData.data;
+      
+      // If completed, fetch the report
+      if (progress.status === 'COMPLETED') {
+        const reportResponse = await fetch(`/api/v2/analysis/${analysisId}/report`);
+        const reportData = await reportResponse.json();
+        
+        if (reportResponse.ok && reportData.success) {
+          const report = reportData.data;
+          setAnalysis({
+            analysis_id: report.analysisId,
+            user_url: 'N/A', // Not available in V2 response
+            structured_data: report.personaData,
+            raw_quotes: report.quotes,
+            persona_report: report.fullReport,
+            status: 'completed',
+            created_at: report.generatedAt,
+          });
+        } else {
+          // Show progress even if report not ready
+          setAnalysis({
+            analysis_id: analysisId,
+            user_url: 'N/A',
+            structured_data: {},
+            raw_quotes: [],
+            persona_report: undefined,
+            status: progress.status.toLowerCase(),
+            created_at: new Date().toISOString(),
+            currentStep: progress.currentStep,
+            completedSteps: progress.completedSteps,
+            totalSteps: progress.totalSteps,
+          });
+        }
+      } else {
+        // Show progress for processing/pending
+        setAnalysis({
+          analysis_id: analysisId,
+          user_url: 'N/A',
+          structured_data: {},
+          raw_quotes: [],
+          persona_report: undefined,
+          status: progress.status.toLowerCase(),
+          created_at: new Date().toISOString(),
+          currentStep: progress.currentStep,
+          completedSteps: progress.completedSteps,
+          totalSteps: progress.totalSteps,
+        });
+      }
+
       setError('');
 
       // Poll if still processing
-      if (data.status === 'pending' || data.status === 'processing') {
+      if (progress.status === 'PENDING' || progress.status === 'PROCESSING') {
         setTimeout(fetchAnalysis, 3000); // Poll every 3 seconds
       }
     } catch (err) {
@@ -167,11 +219,27 @@ export default function ReportPage() {
           {(analysis.status === 'pending' || analysis.status === 'processing') && (
             <div className="bg-n-7 border border-n-6 rounded-xl p-12 mb-8">
               <div className="text-center">
-                <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-color-1" />
-                <h2 className="h4 text-n-1 mb-2">Analyzing Website...</h2>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-color-1 mx-auto mb-4"></div>
+                <h2 className="h4 text-n-1 mb-2">
+                  {analysis.currentStep || 'Analyzing Website...'}
+                </h2>
                 <p className="body-2 text-n-2">
                   Our AI is analyzing the website content and generating your persona report.
                 </p>
+                {analysis.completedSteps !== undefined && analysis.totalSteps && (
+                  <div className="mt-4">
+                    <div className="flex justify-between caption text-n-4 mb-2">
+                      <span>Progress</span>
+                      <span>{analysis.completedSteps} of {analysis.totalSteps} steps</span>
+                    </div>
+                    <div className="w-full bg-n-6 rounded-full h-2">
+                      <div 
+                        className="bg-color-1 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${(analysis.completedSteps / analysis.totalSteps) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
                 <p className="caption text-n-4 mt-2">
                   This usually takes 1-2 minutes.
                 </p>

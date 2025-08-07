@@ -1,0 +1,182 @@
+// V2 Database Schema - Built from scratch
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Main analysis records
+model Analysis {
+  id          String   @id @default(cuid())
+  
+  // Input data
+  targetUrl   String
+  userEmail   String?
+  
+  // Processing status
+  status      AnalysisStatus @default(PENDING)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+  
+  // Relationships
+  steps       AnalysisStep[]
+  content     WebsiteContent[]
+  aiResponses AIResponse[]
+  reports     Report[]
+  events      ProcessingEvent[]
+  
+  @@map("analyses")
+}
+
+// Individual processing steps for detailed tracking
+model AnalysisStep {
+  id          String   @id @default(cuid())
+  analysisId  String
+  
+  stepName    String
+  stepOrder   Int
+  status      StepStatus @default(PENDING)
+  
+  startedAt   DateTime?
+  completedAt DateTime?
+  duration    Int?      // milliseconds
+  
+  input       Json?
+  output      Json?
+  errorInfo   Json?
+  
+  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  
+  @@map("analysis_steps")
+  @@unique([analysisId, stepName])
+  @@index([analysisId, stepOrder])
+}
+
+// Cached website content
+model WebsiteContent {
+  id          String   @id @default(cuid())
+  analysisId  String
+  
+  url         String
+  contentType ContentType
+  rawContent  String
+  cleanContent String?
+  metadata    Json?
+  
+  scrapedAt   DateTime @default(now())
+  
+  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  
+  @@map("website_content")
+  @@index([analysisId])
+}
+
+// Raw AI analysis responses
+model AIResponse {
+  id          String   @id @default(cuid())
+  analysisId  String
+  
+  requestType String   // demographics, pain_points, etc.
+  model       String   // gpt-4, gpt-4-turbo, etc.
+  prompt      String
+  response    Json
+  
+  tokensUsed  Int?
+  cost        Float?
+  duration    Int?     // milliseconds
+  
+  createdAt   DateTime @default(now())
+  
+  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  
+  @@map("ai_responses")
+  @@index([analysisId, requestType])
+}
+
+// Final formatted reports
+model Report {
+  id          String   @id @default(cuid())
+  analysisId  String
+  
+  version     Int      @default(1)
+  reportType  ReportType @default(FULL)
+  
+  // Structured data
+  demographics    Json?
+  painPoints      Json?
+  motivations     Json?
+  behaviors       Json?
+  channels        Json?
+  values          Json?
+  objections      Json?
+  decisionFactors Json?
+  quotes          Json?
+  
+  // Full report content
+  fullReport      String?
+  summary         String?
+  
+  // Metadata
+  generatedAt     DateTime @default(now())
+  
+  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  
+  @@map("reports")
+  @@unique([analysisId, version])
+  @@index([analysisId])
+}
+
+// Processing events for audit trail
+model ProcessingEvent {
+  id          String   @id @default(cuid())
+  analysisId  String
+  
+  eventType   String
+  eventData   Json?
+  
+  timestamp   DateTime @default(now())
+  
+  analysis    Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  
+  @@map("processing_events")
+  @@index([analysisId, timestamp])
+}
+
+// Enums
+enum AnalysisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum StepStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  SKIPPED
+  RETRYING
+}
+
+enum ContentType {
+  HTML
+  TEXT
+  JSON
+  MARKDOWN
+}
+
+enum ReportType {
+  FULL
+  SUMMARY
+  CUSTOM
+}

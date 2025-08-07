@@ -42,25 +42,25 @@ export default function AnalyzePage() {
       // Normalize URL
       const normalizedUrl = url.startsWith('http') ? url : `https://${url}`;
 
-      const response = await fetch('/api/analyze', {
+      const response = await fetch('/api/v2/analysis/start', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          url: normalizedUrl,
-          email: email || undefined,
+          targetUrl: normalizedUrl,
+          userEmail: email || undefined,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to start analysis');
+        throw new Error(data.error?.message || 'Failed to start analysis');
       }
 
       // Redirect to report page
-      router.push(`/report/${data.analysisId}`);
+      router.push(`/report/${data.data.analysisId}`);
     } catch (err) {
       console.error('Analysis error:', err);
       setError(err instanceof Error ? err.message : 'Failed to start analysis');
