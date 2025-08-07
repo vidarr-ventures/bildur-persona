@@ -2,9 +2,13 @@
   "name": "customer-persona-app",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "postinstall": "npx prisma generate",
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
@@ -35,6 +39,7 @@
     "stripe": "^18.4.0",
     "uuid": "^11.1.0",
     "zustand": "^5.0.5",
+    "zod": "^3.23.8",
     "@prisma/client": "^6.2.0"
   },
   "devDependencies": {
