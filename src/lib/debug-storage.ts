@@ -29,62 +29,65 @@ export class DebugStorage {
   }
   
   async initializeSteps(analysisId: string, stepNames: string[]): Promise<void> {
+    const stepsData: DebugStep[] = stepNames.map((name, index) => ({
+      analysisId,
+      stepName: name,
+      stepOrder: index + 1,
+      status: 'pending' as const,
+      startedAt: undefined,
+      completedAt: undefined,
+      duration: undefined,
+      input: undefined,
+      output: undefined,
+      errorInfo: undefined,
+      debugData: undefined
+    }));
+    
+    console.log(`[DebugStorage] Initializing steps for ${analysisId}:`, stepNames);
+    
     try {
-      const stepsData: DebugStep[] = stepNames.map((name, index) => ({
-        analysisId,
-        stepName: name,
-        stepOrder: index + 1,
-        status: 'pending' as const,
-        startedAt: undefined,
-        completedAt: undefined,
-        duration: undefined,
-        input: undefined,
-        output: undefined,
-        errorInfo: undefined,
-        debugData: undefined
-      }));
-      
       // Try to use KV/Redis if available, otherwise use in-memory
       if (typeof process !== 'undefined' && process.env.KV_REST_API_URL) {
+        console.log('[DebugStorage] Using KV storage for persistence');
         await this.setKV(`debug:${analysisId}`, JSON.stringify(stepsData));
+        console.log(`[DebugStorage] Successfully stored ${stepNames.length} steps in KV for ${analysisId}`);
       } else {
+        console.log('[DebugStorage] KV not available, using in-memory storage');
         this.storage.set(analysisId, stepsData);
       }
     } catch (error) {
-      console.warn('Could not initialize debug steps:', error);
+      console.error('[DebugStorage] Failed to initialize steps, using fallback:', error);
       // Fallback to in-memory
-      const stepsData: DebugStep[] = stepNames.map((name, index) => ({
-        analysisId,
-        stepName: name,
-        stepOrder: index + 1,
-        status: 'pending' as const,
-        startedAt: undefined,
-        completedAt: undefined,
-        duration: undefined,
-        input: undefined,
-        output: undefined,
-        errorInfo: undefined,
-        debugData: undefined
-      }));
       this.storage.set(analysisId, stepsData);
     }
   }
   
   async getSteps(analysisId: string): Promise<DebugStep[]> {
+    console.log(`[DebugStorage] Getting steps for ${analysisId}`);
+    
     try {
       // Try to get from KV/Redis first
       if (typeof process !== 'undefined' && process.env.KV_REST_API_URL) {
+        console.log('[DebugStorage] Attempting to retrieve from KV storage');
         const data = await this.getKV(`debug:${analysisId}`);
         if (data) {
-          return JSON.parse(data);
+          const steps = JSON.parse(data);
+          console.log(`[DebugStorage] Retrieved ${steps.length} steps from KV for ${analysisId}`);
+          return steps;
+        } else {
+          console.log(`[DebugStorage] No data found in KV for ${analysisId}`);
         }
       }
       
       // Fallback to in-memory
-      return this.storage.get(analysisId) || [];
+      const memorySteps = this.storage.get(analysisId) || [];
+      console.log(`[DebugStorage] Retrieved ${memorySteps.length} steps from memory for ${analysisId}`);
+      return memorySteps;
     } catch (error) {
-      console.warn('Could not retrieve debug steps:', error);
-      return this.storage.get(analysisId) || [];
+      console.error('[DebugStorage] Failed to retrieve debug steps:', error);
+      const fallbackSteps = this.storage.get(analysisId) || [];
+      console.log(`[DebugStorage] Using fallback memory: ${fallbackSteps.length} steps for ${analysisId}`);
+      return fallbackSteps;
     }
   }
   
