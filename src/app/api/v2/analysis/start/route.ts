@@ -1,191 +1,137 @@
-// V2 API - Built from scratch
-
+// V4 Simple Sequential API - Compatible with frontend
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
-import { AnalysisRepository } from '../../../../../repositories/AnalysisRepository';
-import { ReportRepository } from '../../../../../repositories/ReportRepository';
-import { WebScrapingService } from '../../../../../services/WebScrapingService';
-import { AIAnalysisService } from '../../../../../services/AIAnalysisService';
-import { AnalysisOrchestrator } from '../../../../../services/AnalysisOrchestrator';
-import { DebugAnalysisOrchestrator } from '../../../../../services/DebugAnalysisOrchestrator';
+import { scrapeWebsite, extractDataWithAI, generateFinalReport } from '@/lib/simple-processor';
+import { v4 as uuidv4 } from 'uuid';
 
-// Request validation schema
-const startAnalysisSchema = z.object({
-  targetUrl: z.string().url('Invalid URL format'),
-  userEmail: z.string().email().optional(),
-  debugMode: z.boolean().optional(),
-});
-
-// Response types
-interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: {
-    code: string;
-    message: string;
-    details?: any;
-  };
-  metadata: {
-    requestId: string;
-    timestamp: string;
-    version: string;
-  };
+// In-memory storage for demo (would use database in production)
+declare global {
+  var analysisStorage: Map<string, any>;
 }
 
-let prisma: PrismaClient;
-let orchestrator: AnalysisOrchestrator;
-let debugOrchestrator: DebugAnalysisOrchestrator;
-
-// Initialize services
-function initializeServices() {
-  if (!prisma) {
-    prisma = new PrismaClient();
+const getStorage = () => {
+  if (!global.analysisStorage) {
+    global.analysisStorage = new Map();
   }
-  
-  if (!orchestrator) {
-    const analysisRepo = new AnalysisRepository(prisma);
-    const reportRepo = new ReportRepository(prisma);
-    const webScraper = new WebScrapingService();
-    
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    if (!openaiApiKey) {
-      throw new Error('OPENAI_API_KEY is not configured');
-    }
-    
-    const aiService = new AIAnalysisService(openaiApiKey);
-    
-    orchestrator = new AnalysisOrchestrator(
-      analysisRepo,
-      reportRepo,
-      webScraper,
-      aiService
-    );
-    
-    debugOrchestrator = new DebugAnalysisOrchestrator(
-      analysisRepo,
-      reportRepo,
-      webScraper,
-      aiService
-    );
-  }
-}
+  return global.analysisStorage;
+};
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  const requestId = generateRequestId();
-  
+export async function POST(request: NextRequest) {
   try {
-    // Parse and validate request
-    const body = await request.json();
-    const validatedData = startAnalysisSchema.parse(body);
+    const { targetUrl, userEmail, debugMode } = await request.json();
     
-    // Initialize services
-    initializeServices();
+    // Generate analysis ID
+    const analysisId = uuidv4();
     
-    // Process analysis synchronously (direct approach)
-    console.log('[API] Starting synchronous analysis processing...');
+    console.log(`[V4] Starting analysis ${analysisId} for ${targetUrl}`);
     
-    const analysisResult = validatedData.debugMode
-      ? await debugOrchestrator.processAnalysisSync({
-          targetUrl: validatedData.targetUrl,
-          userEmail: validatedData.userEmail,
-        })
-      : await orchestrator.processAnalysisSync({
-          targetUrl: validatedData.targetUrl,
-          userEmail: validatedData.userEmail,
-        });
-    
-    console.log(`[API] Analysis completed: ${analysisResult.analysisId}, status: ${analysisResult.status}`);
-    
-    const response: ApiResponse = {
-      success: true,
-      data: {
-        analysisId: analysisResult.analysisId,
-        status: analysisResult.status,
-        message: analysisResult.status === 'COMPLETED' 
-          ? 'Analysis completed successfully' 
-          : 'Analysis completed with issues',
-        processingTime: analysisResult.duration ? `${Math.round(analysisResult.duration / 1000)}s` : undefined,
-        reportUrl: analysisResult.status === 'COMPLETED' 
-          ? `/api/v2/analysis/${analysisResult.analysisId}/report` 
-          : undefined
-      },
-      metadata: {
-        requestId,
-        timestamp: new Date().toISOString(),
-        version: '2.0',
-      },
-    };
-    
-    return NextResponse.json(response, { status: analysisResult.status === 'COMPLETED' ? 200 : 206 });
-    
-  } catch (error) {
-    console.error('Analysis start error:', error);
-    
-    let errorCode = 'INTERNAL_ERROR';
-    let errorMessage = 'Internal server error';
-    let statusCode = 500;
-    
-    if (error instanceof z.ZodError) {
-      errorCode = 'VALIDATION_ERROR';
-      errorMessage = 'Invalid request data';
-      statusCode = 400;
-    } else if (error instanceof Error) {
-      errorMessage = error.message;
+    // Initialize analysis record
+    const storage = getStorage();
+    storage.set(analysisId, {
+      id: analysisId,
+      targetUrl,
+      userEmail,
+      debugMode,
+      status: 'PROCESSING',
+      startedAt: new Date().toISOString(),
+      steps: [],
+      result: null,
+    });
+
+    try {
+      // Step 1: Scrape website
+      console.log('[V4] Step 1: Scraping website...');
+      const analysis = storage.get(analysisId);
+      analysis.steps.push({
+        name: 'scrape_website',
+        status: 'in_progress',
+        startedAt: new Date().toISOString(),
+      });
       
-      if (error.message.includes('URL')) {
-        errorCode = 'INVALID_URL';
-        statusCode = 400;
-      } else if (error.message.includes('OPENAI_API_KEY')) {
-        errorCode = 'CONFIGURATION_ERROR';
-        statusCode = 503;
-      }
+      const scrapedContent = await scrapeWebsite(targetUrl);
+      console.log(`[V4] Scraped ${scrapedContent.length} characters`);
+      
+      analysis.steps[0].status = 'completed';
+      analysis.steps[0].completedAt = new Date().toISOString();
+      analysis.steps[0].output = { contentLength: scrapedContent.length };
+
+      // Step 2: Extract data with AI
+      console.log('[V4] Step 2: Extracting data with user\'s 1569-token prompt...');
+      analysis.steps.push({
+        name: 'extract_data',
+        status: 'in_progress',
+        startedAt: new Date().toISOString(),
+      });
+      
+      const extractedData = await extractDataWithAI(scrapedContent);
+      console.log(`[V4] Extracted ${extractedData.customer_pain_points?.length || 0} pain points`);
+      
+      analysis.steps[1].status = 'completed';
+      analysis.steps[1].completedAt = new Date().toISOString();
+      analysis.steps[1].output = {
+        painPointsCount: extractedData.customer_pain_points?.length || 0,
+        quotesCount: extractedData.raw_customer_quotes?.length || 0,
+      };
+
+      // Step 3: Generate final report
+      console.log('[V4] Step 3: Generating final report...');
+      analysis.steps.push({
+        name: 'generate_report',
+        status: 'in_progress',
+        startedAt: new Date().toISOString(),
+      });
+      
+      const finalReport = await generateFinalReport([{
+        url: targetUrl,
+        data: extractedData,
+        isUserSite: true,
+      }]);
+      
+      analysis.steps[2].status = 'completed';
+      analysis.steps[2].completedAt = new Date().toISOString();
+      analysis.steps[2].output = { reportGenerated: true };
+
+      // Complete analysis
+      analysis.status = 'COMPLETED';
+      analysis.completedAt = new Date().toISOString();
+      analysis.result = {
+        extractedData,
+        finalReport: finalReport.final_report,
+        summary: finalReport.final_report.substring(0, 500) + '...',
+      };
+      
+      storage.set(analysisId, analysis);
+      console.log(`[V4] Analysis ${analysisId} completed successfully`);
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          analysisId,
+          status: 'COMPLETED',
+        },
+      });
+
+    } catch (processingError) {
+      console.error('[V4] Processing error:', processingError);
+      
+      const analysis = storage.get(analysisId);
+      analysis.status = 'FAILED';
+      analysis.completedAt = new Date().toISOString();
+      analysis.error = processingError instanceof Error ? processingError.message : 'Processing failed';
+      storage.set(analysisId, analysis);
+
+      throw processingError;
     }
-    
-    const response: ApiResponse = {
-      success: false,
-      error: {
-        code: errorCode,
-        message: errorMessage,
-        details: error instanceof z.ZodError ? error.errors : undefined,
+
+  } catch (error) {
+    console.error('[V4] API error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Analysis failed',
+        },
       },
-      metadata: {
-        requestId,
-        timestamp: new Date().toISOString(),
-        version: '2.0',
-      },
-    };
-    
-    return NextResponse.json(response, { status: statusCode });
+      { status: 500 }
+    );
   }
-}
-
-export async function GET(): Promise<NextResponse> {
-  const response: ApiResponse = {
-    success: true,
-    data: {
-      endpoint: 'Start Analysis',
-      method: 'POST',
-      description: 'Initialize a new customer persona analysis',
-      parameters: {
-        targetUrl: 'string (required) - Website URL to analyze',
-        userEmail: 'string (optional) - Email for completion notification',
-      },
-      example: {
-        targetUrl: 'https://example.com',
-        userEmail: 'user@example.com',
-      },
-    },
-    metadata: {
-      requestId: generateRequestId(),
-      timestamp: new Date().toISOString(),
-      version: '2.0',
-    },
-  };
-  
-  return NextResponse.json(response);
-}
-
-function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
