@@ -36,13 +36,50 @@ export class AnalysisOrchestrator {
     const analysis = Analysis.create(request);
     await this.analysisRepo.create(analysis);
     
-    // Start processing asynchronously (don't await)
+    // Start processing asynchronously (don't await) - legacy method
     this.processAnalysisAsync(analysis.id).catch(error => {
       console.error(`Analysis ${analysis.id} failed:`, error);
       this.handleAnalysisError(analysis.id, error);
     });
     
     return analysis.id;
+  }
+
+  async processAnalysisSync(request: CreateAnalysisRequest): Promise<{
+    analysisId: string;
+    status: string;
+    duration?: number;
+  }> {
+    const startTime = Date.now();
+    console.log('[AnalysisOrchestrator] Starting synchronous processing for:', request.targetUrl);
+    
+    // Create new analysis record
+    const analysis = Analysis.create(request);
+    await this.analysisRepo.create(analysis);
+    
+    try {
+      // Process synchronously
+      await this.processAnalysisAsync(analysis.id);
+      
+      const duration = Date.now() - startTime;
+      console.log(`[AnalysisOrchestrator] Analysis ${analysis.id} completed in ${duration}ms`);
+      
+      return {
+        analysisId: analysis.id,
+        status: 'COMPLETED',
+        duration
+      };
+    } catch (error) {
+      console.error(`[AnalysisOrchestrator] Analysis ${analysis.id} failed:`, error);
+      await this.handleAnalysisError(analysis.id, error);
+      
+      const duration = Date.now() - startTime;
+      return {
+        analysisId: analysis.id,
+        status: 'FAILED',
+        duration
+      };
+    }
   }
 
   async getAnalysisProgress(analysisId: string): Promise<AnalysisProgress> {

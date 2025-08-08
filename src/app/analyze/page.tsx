@@ -61,7 +61,10 @@ export default function AnalyzePage() {
         throw new Error(data.error?.message || 'Failed to start analysis');
       }
 
+      console.log('Analysis completed:', data);
+      
       // Redirect to debug or report page based on mode
+      // Analysis is now complete, so we can redirect immediately
       if (debugMode) {
         router.push(`/debug/${data.data.analysisId}`);
       } else {
@@ -179,7 +182,7 @@ export default function AnalyzePage() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Analyzing Website...
+                      Processing Analysis... (2-3 minutes)
                     </>
                   ) : (
                     <>

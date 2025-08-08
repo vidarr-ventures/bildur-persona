@@ -69,13 +69,53 @@ export class DebugAnalysisOrchestrator {
     // Initialize all steps in database
     await this.initializeSteps(analysis.id);
     
-    // Start processing asynchronously
+    // Start processing asynchronously (legacy method)
     this.processAnalysisWithDebug(analysis.id).catch(error => {
       console.error(`Debug analysis ${analysis.id} failed:`, error);
       this.handleAnalysisError(analysis.id, error);
     });
     
     return analysis.id;
+  }
+
+  async processAnalysisSync(request: CreateAnalysisRequest): Promise<{
+    analysisId: string;
+    status: string;
+    duration?: number;
+  }> {
+    const startTime = Date.now();
+    console.log('[DebugOrchestrator] Starting synchronous processing for:', request.targetUrl);
+    
+    // Create new analysis record
+    const analysis = Analysis.create(request);
+    await this.analysisRepo.create(analysis);
+    
+    // Initialize all steps in database
+    await this.initializeSteps(analysis.id);
+    
+    try {
+      // Process synchronously with debug tracking
+      await this.processAnalysisWithDebug(analysis.id);
+      
+      const duration = Date.now() - startTime;
+      console.log(`[DebugOrchestrator] Analysis ${analysis.id} completed in ${duration}ms`);
+      
+      return {
+        analysisId: analysis.id,
+        status: 'COMPLETED',
+        duration
+      };
+    } catch (error) {
+      console.error(`[DebugOrchestrator] Analysis ${analysis.id} failed:`, error);
+      await this.handleAnalysisError(analysis.id, error);
+      
+      const duration = Date.now() - startTime;
+      return {
+        analysisId: analysis.id,
+        status: 'FAILED',
+        duration
+      };
+    }
   }
 
   async getDebugData(analysisId: string): Promise<DebugAnalysisResult> {

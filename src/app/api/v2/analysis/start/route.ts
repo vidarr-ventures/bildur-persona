@@ -82,24 +82,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Initialize services
     initializeServices();
     
-    // Start analysis (debug or regular)
-    const analysisId = validatedData.debugMode
-      ? await debugOrchestrator.startDebugAnalysis({
+    // Process analysis synchronously (direct approach)
+    console.log('[API] Starting synchronous analysis processing...');
+    
+    const analysisResult = validatedData.debugMode
+      ? await debugOrchestrator.processAnalysisSync({
           targetUrl: validatedData.targetUrl,
           userEmail: validatedData.userEmail,
         })
-      : await orchestrator.startAnalysis({
+      : await orchestrator.processAnalysisSync({
           targetUrl: validatedData.targetUrl,
           userEmail: validatedData.userEmail,
         });
     
+    console.log(`[API] Analysis completed: ${analysisResult.analysisId}, status: ${analysisResult.status}`);
+    
     const response: ApiResponse = {
       success: true,
       data: {
-        analysisId,
-        status: 'PENDING',
-        message: 'Analysis started successfully',
-        estimatedTime: '2-3 minutes',
+        analysisId: analysisResult.analysisId,
+        status: analysisResult.status,
+        message: analysisResult.status === 'COMPLETED' 
+          ? 'Analysis completed successfully' 
+          : 'Analysis completed with issues',
+        processingTime: analysisResult.duration ? `${Math.round(analysisResult.duration / 1000)}s` : undefined,
+        reportUrl: analysisResult.status === 'COMPLETED' 
+          ? `/api/v2/analysis/${analysisResult.analysisId}/report` 
+          : undefined
       },
       metadata: {
         requestId,
@@ -108,7 +117,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
     };
     
-    return NextResponse.json(response, { status: 201 });
+    return NextResponse.json(response, { status: analysisResult.status === 'COMPLETED' ? 200 : 206 });
     
   } catch (error) {
     console.error('Analysis start error:', error);
