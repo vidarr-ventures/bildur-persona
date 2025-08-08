@@ -7,6 +7,7 @@ import { IReportRepository } from '../repositories/ReportRepository';
 import { WebScrapingService, ScrapedContent } from './WebScrapingService';
 import { AIAnalysisService } from './AIAnalysisService';
 import { PrismaClient } from '@prisma/client';
+import { DebugStorage, DebugStep } from '../lib/debug-storage';
 
 export interface ProcessingStep {
   stepName: string;
@@ -39,7 +40,7 @@ export interface DebugAnalysisResult {
 
 export class DebugAnalysisOrchestrator {
   private readonly prisma: PrismaClient;
-  private readonly debugStorage = new Map<string, ProcessingStep[]>();
+  private readonly debugStorage: DebugStorage;
   private readonly steps = [
     'URL_VALIDATION',
     'WEBSITE_SCRAPING',
@@ -57,6 +58,7 @@ export class DebugAnalysisOrchestrator {
     private readonly aiService: AIAnalysisService
   ) {
     this.prisma = new PrismaClient();
+    this.debugStorage = DebugStorage.getInstance();
   }
 
   async startDebugAnalysis(request: CreateAnalysisRequest): Promise<string> {
@@ -82,8 +84,9 @@ export class DebugAnalysisOrchestrator {
       throw new Error('Analysis not found');
     }
 
-    // Get steps from in-memory storage
-    const steps = this.debugStorage.get(analysisId) || [];
+    // Get steps from database storage
+    const debugSteps = await this.debugStorage.getSteps(analysisId);
+    const steps = debugSteps.map(this.mapDebugStepToProcessingStep);
 
     // Get report if completed
     let report: Report | undefined;
@@ -128,20 +131,7 @@ export class DebugAnalysisOrchestrator {
   }
 
   private async initializeSteps(analysisId: string): Promise<void> {
-    const steps: ProcessingStep[] = this.steps.map((stepName, index) => ({
-      stepName,
-      stepOrder: index + 1,
-      status: 'pending' as const,
-      startedAt: undefined,
-      completedAt: undefined,
-      duration: undefined,
-      input: undefined,
-      output: undefined,
-      errorInfo: undefined,
-      debugData: undefined
-    }));
-    
-    this.debugStorage.set(analysisId, steps);
+    await this.debugStorage.initializeSteps(analysisId, this.steps);
   }
 
   private async processAnalysisWithDebug(analysisId: string): Promise<void> {
@@ -366,31 +356,31 @@ export class DebugAnalysisOrchestrator {
   ): Promise<void> {
     const startTime = Date.now();
     
-    // Update step to in_progress in memory
-    this.updateStepInMemory(analysisId, stepName, {
+    // Update step to in_progress in database
+    await this.debugStorage.updateStep(analysisId, stepName, {
       status: 'in_progress',
       startedAt: new Date()
-    });
+    } as any);
 
     try {
       const result = await execution();
       const duration = Date.now() - startTime;
       
-      // Update step with results in memory
-      this.updateStepInMemory(analysisId, stepName, {
+      // Update step with results in database
+      await this.debugStorage.updateStep(analysisId, stepName, {
         status: 'completed',
         completedAt: new Date(),
         duration,
         input: result.input || {},
         output: result.output || {},
         debugData: result.debugData || {}
-      });
+      } as any);
       
     } catch (error) {
       const duration = Date.now() - startTime;
       
-      // Update step with error in memory
-      this.updateStepInMemory(analysisId, stepName, {
+      // Update step with error in database
+      await this.debugStorage.updateStep(analysisId, stepName, {
         status: 'failed',
         completedAt: new Date(),
         duration,
@@ -399,23 +389,9 @@ export class DebugAnalysisOrchestrator {
           stack: error instanceof Error ? error.stack : undefined,
           timestamp: new Date().toISOString()
         }
-      });
+      } as any);
       
       throw error;
-    }
-  }
-
-  private updateStepInMemory(
-    analysisId: string, 
-    stepName: string, 
-    updates: Partial<ProcessingStep>
-  ): void {
-    const steps = this.debugStorage.get(analysisId) || [];
-    const stepIndex = steps.findIndex(step => step.stepName === stepName);
-    
-    if (stepIndex >= 0) {
-      steps[stepIndex] = { ...steps[stepIndex], ...updates };
-      this.debugStorage.set(analysisId, steps);
     }
   }
 
@@ -426,17 +402,33 @@ export class DebugAnalysisOrchestrator {
         updatedAt: new Date()
       });
       
-      // Mark remaining steps as skipped in memory
-      const steps = this.debugStorage.get(analysisId) || [];
-      steps.forEach(step => {
+      // Mark remaining steps as skipped in database
+      const steps = await this.debugStorage.getSteps(analysisId);
+      for (const step of steps) {
         if (step.status === 'pending') {
-          step.status = 'skipped';
+          await this.debugStorage.updateStep(analysisId, step.stepName, {
+            status: 'skipped'
+          } as any);
         }
-      });
-      this.debugStorage.set(analysisId, steps);
+      }
     } catch (updateError) {
       console.error('Failed to update analysis error status:', updateError);
     }
+  }
+
+  private mapDebugStepToProcessingStep(debugStep: DebugStep): ProcessingStep {
+    return {
+      stepName: debugStep.stepName,
+      stepOrder: debugStep.stepOrder,
+      status: debugStep.status,
+      startedAt: debugStep.startedAt,
+      completedAt: debugStep.completedAt,
+      duration: debugStep.duration,
+      input: debugStep.input,
+      output: debugStep.output,
+      errorInfo: debugStep.errorInfo,
+      debugData: debugStep.debugData
+    };
   }
 
 }
