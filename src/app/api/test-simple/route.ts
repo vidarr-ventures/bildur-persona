@@ -9,12 +9,12 @@ export async function POST(request: NextRequest) {
     
     // Step 1: Scrape website
     console.log('[V4 TEST] Step 1: Scraping website...');
-    const scrapedContent = await scrapeWebsite(targetUrl);
-    console.log(`[V4 TEST] Scraped ${scrapedContent.length} characters from ${targetUrl}`);
+    const scrapeResult = await scrapeWebsite(targetUrl);
+    console.log(`[V4 TEST] Scraped ${scrapeResult.content.length} characters from ${targetUrl}`);
 
     // Step 2: Extract data with AI (using user's 1569-token prompt)
     console.log('[V4 TEST] Step 2: Extracting data with AI using user\'s 1569-token prompt...');
-    const extractedData = await extractDataWithAI(scrapedContent);
+    const extractedData = await extractDataWithAI(scrapeResult.content, []);
     console.log(`[V4 TEST] Extracted ${extractedData.customer_pain_points?.length || 0} pain points and ${extractedData.raw_customer_quotes?.length || 0} quotes`);
 
     // Step 3: Generate final report
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        scrapedContentLength: scrapedContent.length,
+        scrapedContentLength: scrapeResult.content.length,
         extractedData: {
           painPointsCount: extractedData.customer_pain_points?.length || 0,
           quotesCount: extractedData.raw_customer_quotes?.length || 0,

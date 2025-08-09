@@ -33,10 +33,10 @@ export async function POST(request: NextRequest) {
         console.log(`Processing: ${currentUrl}`);
         
         // 1. Scrape website content
-        const content = await scrapeWebsite(currentUrl);
+        const scrapeResult = await scrapeWebsite(currentUrl, []);
         
         // 2. Extract data using your prompt
-        const data = await extractDataWithAI(content);
+        const data = await extractDataWithAI(scrapeResult.content, []);
         
         // 3. Store extracted data
         extractedData.push({

@@ -17,7 +17,7 @@ const getStorage = () => {
 
 export async function POST(request: NextRequest) {
   try {
-    const { targetUrl, userEmail, debugMode } = await request.json();
+    const { targetUrl, competitorUrls = [], keywordPhrases = [], userEmail, debugMode } = await request.json();
     
     // Generate analysis ID
     const analysisId = uuidv4();
@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
     storage.set(analysisId, {
       id: analysisId,
       targetUrl,
+      competitorUrls,
+      keywordPhrases,
       userEmail,
       debugMode,
       status: 'PROCESSING',
@@ -47,12 +49,18 @@ export async function POST(request: NextRequest) {
         startedAt: new Date().toISOString(),
       });
       
-      const scrapedContent = await scrapeWebsite(targetUrl);
-      console.log(`[V4] Scraped ${scrapedContent.length} characters`);
+      const scrapeResult = await scrapeWebsite(targetUrl, keywordPhrases);
+      console.log(`[V4] Scraped ${scrapeResult.content.length} characters from ${scrapeResult.metadata.totalPages} pages`);
       
       analysis.steps[0].status = 'completed';
       analysis.steps[0].completedAt = new Date().toISOString();
-      analysis.steps[0].output = { contentLength: scrapedContent.length };
+      analysis.steps[0].output = { 
+        contentLength: scrapeResult.content.length,
+        totalPages: scrapeResult.metadata.totalPages,
+        blogPages: scrapeResult.metadata.blogPages,
+        faqPages: scrapeResult.metadata.faqPages,
+        reviewPages: scrapeResult.metadata.reviewPages,
+      };
 
       // Step 2: Extract data with AI
       console.log('[V4] Step 2: Extracting data with user\'s 1569-token prompt...');
@@ -62,33 +70,81 @@ export async function POST(request: NextRequest) {
         startedAt: new Date().toISOString(),
       });
       
-      const extractedData = await extractDataWithAI(scrapedContent);
-      console.log(`[V4] Extracted ${extractedData.customer_pain_points?.length || 0} pain points`);
+      const extractedData = await extractDataWithAI(scrapeResult.content, keywordPhrases);
+      console.log(`[V4] Extracted ${extractedData.customer_pain_points?.length || 0} pain points and ${extractedData.raw_customer_quotes?.length || 0} quotes`);
       
       analysis.steps[1].status = 'completed';
       analysis.steps[1].completedAt = new Date().toISOString();
       analysis.steps[1].output = {
         painPointsCount: extractedData.customer_pain_points?.length || 0,
         quotesCount: extractedData.raw_customer_quotes?.length || 0,
+        faqCount: extractedData.faq_count || 0,
+        reviewsFound: extractedData.reviews_found || 0,
       };
 
-      // Step 3: Generate final report
-      console.log('[V4] Step 3: Generating final report...');
+      // Step 3: Process competitor URLs if provided
+      const allSiteData = [{
+        url: targetUrl,
+        data: extractedData,
+        isUserSite: true,
+      }];
+
+      if (competitorUrls && competitorUrls.length > 0) {
+        console.log(`[V4] Step 3: Processing ${competitorUrls.length} competitor URLs...`);
+        
+        for (let i = 0; i < competitorUrls.length; i++) {
+          const compUrl = competitorUrls[i];
+          analysis.steps.push({
+            name: `scrape_competitor_${i + 1}`,
+            status: 'in_progress',
+            startedAt: new Date().toISOString(),
+          });
+          
+          try {
+            console.log(`[V4] Scraping competitor: ${compUrl}`);
+            const compScrapeResult = await scrapeWebsite(compUrl, keywordPhrases);
+            const compData = await extractDataWithAI(compScrapeResult.content, keywordPhrases);
+            
+            analysis.steps[analysis.steps.length - 1].status = 'completed';
+            analysis.steps[analysis.steps.length - 1].completedAt = new Date().toISOString();
+            analysis.steps[analysis.steps.length - 1].output = {
+              contentLength: compScrapeResult.content.length,
+              totalPages: compScrapeResult.metadata.totalPages,
+              blogPages: compScrapeResult.metadata.blogPages,
+              faqPages: compScrapeResult.metadata.faqPages,
+              reviewPages: compScrapeResult.metadata.reviewPages,
+              painPointsCount: compData.customer_pain_points?.length || 0,
+              quotesCount: compData.raw_customer_quotes?.length || 0,
+              faqCount: compData.faq_count || 0,
+              reviewsFound: compData.reviews_found || 0,
+            };
+            
+            allSiteData.push({
+              url: compUrl,
+              data: compData,
+              isUserSite: false,
+            });
+          } catch (error) {
+            console.error(`[V4] Failed to process competitor ${compUrl}:`, error);
+            analysis.steps[analysis.steps.length - 1].status = 'failed';
+            analysis.steps[analysis.steps.length - 1].completedAt = new Date().toISOString();
+          }
+        }
+      }
+
+      // Step 4: Generate final report with all data
+      console.log('[V4] Step 4: Generating final report with all data...');
       analysis.steps.push({
         name: 'generate_report',
         status: 'in_progress',
         startedAt: new Date().toISOString(),
       });
       
-      const finalReport = await generateFinalReport([{
-        url: targetUrl,
-        data: extractedData,
-        isUserSite: true,
-      }]);
+      const finalReport = await generateFinalReport(allSiteData);
       
-      analysis.steps[2].status = 'completed';
-      analysis.steps[2].completedAt = new Date().toISOString();
-      analysis.steps[2].output = { reportGenerated: true };
+      analysis.steps[analysis.steps.length - 1].status = 'completed';
+      analysis.steps[analysis.steps.length - 1].completedAt = new Date().toISOString();
+      analysis.steps[analysis.steps.length - 1].output = { reportGenerated: true };
 
       // Complete analysis
       analysis.status = 'COMPLETED';

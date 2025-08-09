@@ -202,7 +202,7 @@ export default function AnalyzePage() {
                 </div>
                 <h3 className="h6 text-n-1">AI-Powered Analysis</h3>
                 <p className="caption text-n-3 mt-1">
-                  Advanced GPT-4 analysis of website content
+                  Advanced AI analysis optimized for accuracy & speed
                 </p>
               </div>
               <div className="text-center">
