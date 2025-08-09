@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
           samplePainPoints: extractedData.customer_pain_points?.slice(0, 2),
           sampleQuotes: extractedData.raw_customer_quotes?.slice(0, 2),
         },
+        finalReport: finalReport.final_report, // Full report for debugging
         finalReportPreview: finalReport.final_report.substring(0, 500) + '...',
         status: 'SUCCESS'
       },

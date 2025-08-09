@@ -32,7 +32,7 @@ export async function scrapeWebsite(url: string, keywordPhrases: string[] = []):
   try {
     const baseUrl = new URL(url).origin;
     let allContent = '';
-    const maxContentLength = 60000; // Allow comprehensive site crawling
+    const maxContentLength = 100000; // Allow comprehensive site crawling with increased content
     const scrapedUrls = new Set<string>();
     
     // Track page types
