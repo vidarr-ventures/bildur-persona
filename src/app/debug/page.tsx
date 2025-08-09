@@ -20,7 +20,7 @@ export default function DebugPage() {
       const data = await response.json();
       setResult(data);
     } catch (error) {
-      setResult({ success: false, error: { message: error.toString() } });
+      setResult({ success: false, error: { message: error instanceof Error ? error.message : String(error) } });
     }
     setLoading(false);
   };
