@@ -123,18 +123,31 @@ export default function DebugPage() {
                   </div>
                 </div>
 
+                {/* Debug Info */}
+                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                  <h2 className="text-xl font-semibold mb-4">Debug Information</h2>
+                  <div className="space-y-2 text-sm font-mono">
+                    <div>Has result.data: {result.data ? 'YES' : 'NO'}</div>
+                    <div>Has finalReport key: {'finalReport' in (result.data || {}) ? 'YES' : 'NO'}</div>
+                    <div>finalReport type: {typeof result.data?.finalReport}</div>
+                    <div>finalReport length: {result.data?.finalReport?.length || 0}</div>
+                    <div>Available keys: {JSON.stringify(Object.keys(result.data || {}))}</div>
+                  </div>
+                </div>
+
                 {/* Full Final Report */}
                 <div className="bg-white rounded-lg shadow-lg p-6">
                   <h2 className="text-xl font-semibold mb-4">Complete Persona Report</h2>
                   <div className="relative">
                     <textarea
                       readOnly
-                      value={result.data.finalReport || 'No report generated'}
+                      value={result.data?.finalReport || 'No report generated'}
                       className="w-full h-96 p-4 border border-gray-300 rounded-lg font-mono text-sm leading-relaxed resize-y focus:ring-2 focus:ring-blue-500"
                       style={{ minHeight: '600px' }}
+                      placeholder="Report will appear here after processing..."
                     />
                     <button
-                      onClick={() => navigator.clipboard.writeText(result.data.finalReport)}
+                      onClick={() => navigator.clipboard.writeText(result.data?.finalReport || '')}
                       className="absolute top-2 right-2 px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700"
                     >
                       Copy
