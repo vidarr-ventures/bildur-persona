@@ -2,10 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { scrapeWebsite, extractDataWithAI, generateFinalReport } from '@/lib/simple-processor';
 
 export async function POST(request: NextRequest) {
+  console.log('[V4 TEST] API endpoint called');
   try {
-    const { targetUrl } = await request.json();
+    const body = await request.json();
+    console.log('[V4 TEST] Request body:', body);
+    const { targetUrl } = body;
     
-    console.log('[V4 TEST] Starting simple sequential test...');
+    if (!targetUrl) {
+      console.log('[V4 TEST] No targetUrl provided');
+      return NextResponse.json(
+        { success: false, error: { message: 'targetUrl is required' } },
+        { status: 400 }
+      );
+    }
+    
+    console.log('[V4 TEST] Starting simple sequential test for:', targetUrl);
     
     // Step 1: Scrape website
     console.log('[V4 TEST] Step 1: Scraping website...');

@@ -24,8 +24,28 @@ export default function APIDebugPage() {
         body: JSON.stringify({ targetUrl: url }),
       });
       
-      const data = await res.json();
-      console.log('API Response:', data);
+      console.log('Response status:', res.status);
+      console.log('Response headers:', Object.fromEntries(res.headers.entries()));
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.log('Error response:', errorText);
+        throw new Error(`HTTP ${res.status}: ${errorText.substring(0, 100)}`);
+      }
+      
+      const responseText = await res.text();
+      console.log('Raw response:', responseText.substring(0, 200));
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON Parse Error:', parseError);
+        console.error('Response text:', responseText);
+        throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}`);
+      }
+      
+      console.log('Parsed data:', data);
       
       setResponse(data);
       
@@ -91,8 +111,11 @@ export default function APIDebugPage() {
         {/* Error Display */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <h2 className="text-red-800 font-semibold mb-2">Error</h2>
-            <p className="text-red-600">{error}</p>
+            <h2 className="text-red-800 font-semibold mb-2">Error Details</h2>
+            <p className="text-red-600 font-mono text-sm whitespace-pre-wrap">{error}</p>
+            <div className="mt-2 text-xs text-red-500">
+              Check browser console (F12) for more details
+            </div>
           </div>
         )}
 
