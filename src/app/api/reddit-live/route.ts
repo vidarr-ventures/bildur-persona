@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const generateRedditContent = (keyword: string, index: number) => {
       const subreddits = ['smallbusiness', 'Entrepreneur', 'reviews', 'software', 'CustomerService'];
       const contentTypes = ['post', 'comment'];
-      const templates = {
+      const templates: Record<string, string[]> = {
         'customer service problems': [
           'Has anyone else had terrible experiences with customer service lately?',
           'Just spent 3 hours on hold with support. This is ridiculous.',
