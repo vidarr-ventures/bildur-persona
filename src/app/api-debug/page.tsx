@@ -7,6 +7,8 @@ export default function APIDebugPage() {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string>('');
+  const [scrapingMethod, setScrapingMethod] = useState<'simple' | 'firecrawl'>('firecrawl');
+  const [keywords, setKeywords] = useState('customer service, pricing, user experience');
 
   const testAPI = async () => {
     setLoading(true);
@@ -15,13 +17,20 @@ export default function APIDebugPage() {
     
     try {
       console.log('Testing API with URL:', url);
+      console.log('Scraping method:', scrapingMethod);
       
-      const res = await fetch('/api/test-simple', {
+      const endpoint = scrapingMethod === 'firecrawl' ? '/api/test-firecrawl' : '/api/test-simple';
+      const keywordArray = keywords.split(',').map(k => k.trim()).filter(k => k.length > 0);
+      
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ targetUrl: url }),
+        body: JSON.stringify({ 
+          targetUrl: url,
+          keywords: keywordArray
+        }),
       });
       
       console.log('Response status:', res.status);
@@ -72,29 +81,82 @@ export default function APIDebugPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">API Debug Console</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Enhanced API Debug Console</h1>
         
         {/* Input Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex gap-4">
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="Enter URL to analyze"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
+          <div className="space-y-4">
+            {/* Scraping Method Selection */}
+            <div className="flex items-center space-x-6 p-4 bg-gray-50 rounded-lg">
+              <span className="font-medium text-gray-700">Scraping Method:</span>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="scrapingMethod"
+                  checked={scrapingMethod === 'firecrawl'}
+                  onChange={() => setScrapingMethod('firecrawl')}
+                  className="mr-2"
+                  disabled={loading}
+                />
+                <span className="font-medium text-purple-600">🔥 Firecrawl Enhanced</span>
+                <span className="ml-2 text-sm text-gray-600">(AI-powered, multi-page)</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="scrapingMethod"
+                  checked={scrapingMethod === 'simple'}
+                  onChange={() => setScrapingMethod('simple')}
+                  className="mr-2"
+                  disabled={loading}
+                />
+                <span className="font-medium text-blue-600">⚡ Simple Scraping</span>
+                <span className="ml-2 text-sm text-gray-600">(Basic, single-page)</span>
+              </label>
+            </div>
+
+            {/* URL Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Target URL
+              </label>
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="Enter URL to analyze"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 bg-white"
+                disabled={loading}
+              />
+            </div>
+
+            {/* Keywords Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Keywords (comma-separated)
+              </label>
+              <input
+                type="text"
+                value={keywords}
+                onChange={(e) => setKeywords(e.target.value)}
+                placeholder="e.g., customer service, pricing, user experience"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900 bg-white"
+                disabled={loading}
+              />
+            </div>
+
             <button
               onClick={testAPI}
               disabled={loading || !url}
               className={`px-6 py-2 rounded-lg font-medium text-white transition-colors ${
                 loading || !url
                   ? 'bg-gray-400 cursor-not-allowed'
+                  : scrapingMethod === 'firecrawl'
+                  ? 'bg-purple-600 hover:bg-purple-700 cursor-pointer'
                   : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
               }`}
             >
-              {loading ? 'Processing...' : 'Test API'}
+              {loading ? 'Processing...' : scrapingMethod === 'firecrawl' ? 'Test Enhanced Scraping' : 'Test Simple Scraping'}
             </button>
           </div>
           
