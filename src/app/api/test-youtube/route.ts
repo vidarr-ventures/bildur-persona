@@ -36,6 +36,86 @@ export async function POST(request: NextRequest) {
     console.log(`[YOUTUBE TEST] Keywords: ${keywords.join(', ')}`);
     console.log(`[YOUTUBE TEST] Target limit: ${totalLimit}`);
 
+    // Generate dynamic mock responses based on actual keywords
+    const generateMockComments = (keyword: string, index: number) => {
+      const templates = [
+        {
+          template: `I've been struggling with ${keyword}. This solution really helped my business!`,
+          emotion: "relief",
+          intensity: 0.75,
+          trigger: "achievement"
+        },
+        {
+          template: `As someone dealing with ${keyword}, I desperately need something that actually works.`,
+          emotion: "desperation",
+          intensity: 0.85,
+          trigger: "autonomy"
+        },
+        {
+          template: `Finally found an answer to my ${keyword}! This is absolutely amazing.`,
+          emotion: "excitement",
+          intensity: 0.90,
+          trigger: "success"
+        },
+        {
+          template: `Still frustrated with ${keyword}, but this gives me hope.`,
+          emotion: "frustration",
+          intensity: 0.65,
+          trigger: "security"
+        },
+        {
+          template: `My team has been battling ${keyword} for months. This could be the solution.`,
+          emotion: "anxiety",
+          intensity: 0.70,
+          trigger: "belonging"
+        }
+      ];
+      
+      const template = templates[index % templates.length];
+      const commentId = `mock_${keyword.replace(/\s+/g, '_')}_${index}`;
+      
+      return {
+        comment: {
+          comment_id: commentId,
+          text: template.template,
+          commenter: `User${Math.floor(Math.random() * 9000) + 1000}`,
+          date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
+          video_title: `Solutions for ${keyword}`,
+          video_url: `https://www.youtube.com/watch?v=${commentId}`,
+          keyword_phrase: keyword,
+          relevance_score: 0.65 + Math.random() * 0.35,
+          likes: Math.floor(Math.random() * 50) + 5,
+          replies: Math.floor(Math.random() * 15),
+          source_url: `https://www.youtube.com/watch?v=${commentId}&lc=${commentId}`
+        },
+        quote: {
+          quote_text: template.template,
+          emotion_type: template.emotion,
+          emotional_intensity: template.intensity,
+          context: `YouTube comment on 'Solutions for ${keyword}'`,
+          commenter: `User${Math.floor(Math.random() * 9000) + 1000}`,
+          engagement_score: Math.random() * 0.5,
+          marketing_potential: template.intensity > 0.8 ? "high" : template.intensity > 0.6 ? "medium" : "low",
+          psychological_trigger: template.trigger,
+          source_video: `https://www.youtube.com/watch?v=${commentId}`,
+          keyword_context: keyword
+        }
+      };
+    };
+
+    // Generate comments and quotes for each keyword
+    const allMockData = keywords.flatMap((keyword, keywordIndex) => 
+      Array.from({ length: Math.min(5, Math.ceil(totalLimit / keywords.length)) }, (_, i) => 
+        generateMockComments(keyword, keywordIndex * 5 + i)
+      )
+    );
+
+    const mockComments = allMockData.map(d => d.comment).slice(0, totalLimit);
+    const mockQuotes = allMockData
+      .map(d => d.quote)
+      .sort((a, b) => b.emotional_intensity - a.emotional_intensity)
+      .slice(0, Math.min(10, Math.ceil(totalLimit / 2)));
+
     // For now, let's create a mock response that shows the API key is available
     // and simulates what the YouTube scraper would return
     const mockResult = {
@@ -43,70 +123,21 @@ export async function POST(request: NextRequest) {
       data: {
         source: "youtube_comments",
         scrape_date: new Date().toISOString(),
-        total_comments: 15,
+        total_comments: mockComments.length,
         keywords_searched: keywords,
-        comments: [
-          {
-            comment_id: "mock_comment_1",
-            text: "I've been struggling with customer service issues for my small business. This solution looks promising!",
-            commenter: "SmallBizOwner2024",
-            date: "2025-01-10T10:00:00Z",
-            video_title: "Top Customer Service Solutions",
-            video_url: "https://www.youtube.com/watch?v=mock1",
-            keyword_phrase: keywords[0],
-            relevance_score: 0.75,
-            likes: 12,
-            replies: 3,
-            source_url: "https://www.youtube.com/watch?v=mock1&lc=mock_comment_1"
-          },
-          {
-            comment_id: "mock_comment_2", 
-            text: "As a frustrated software user, I desperately need something that actually works for my business needs.",
-            commenter: "FrustratedUser",
-            date: "2025-01-09T15:30:00Z",
-            video_title: "Software Review: Tools That Work",
-            video_url: "https://www.youtube.com/watch?v=mock2",
-            keyword_phrase: keywords[1] || keywords[0],
-            relevance_score: 0.82,
-            likes: 28,
-            replies: 8,
-            source_url: "https://www.youtube.com/watch?v=mock2&lc=mock_comment_2"
-          }
-        ],
-        emotional_quotes: [
-          {
-            quote_text: "I desperately need something that actually works for my business needs.",
-            emotion_type: "desperation",
-            emotional_intensity: 0.85,
-            context: "YouTube comment on 'Software Review: Tools That Work'",
-            commenter: "FrustratedUser",
-            engagement_score: 0.36,
-            marketing_potential: "high",
-            psychological_trigger: "autonomy",
-            source_video: "https://www.youtube.com/watch?v=mock2",
-            keyword_context: keywords[1] || keywords[0]
-          },
-          {
-            quote_text: "This solution looks promising for my small business!",
-            emotion_type: "excitement", 
-            emotional_intensity: 0.65,
-            context: "YouTube comment on 'Top Customer Service Solutions'",
-            commenter: "SmallBizOwner2024",
-            engagement_score: 0.15,
-            marketing_potential: "medium",
-            psychological_trigger: "achievement",
-            source_video: "https://www.youtube.com/watch?v=mock1",
-            keyword_context: keywords[0]
-          }
-        ],
+        comments: mockComments.slice(0, 5), // Show first 5 for preview
+        emotional_quotes: mockQuotes,
         data_quality: {
-          api_quota_used: 315, // Realistic quota usage for 15 comments
-          videos_analyzed: 6,
+          api_quota_used: keywords.length * 100 + mockComments.length, // Dynamic based on actual search
+          videos_analyzed: keywords.length * 3,
           comment_filter_ratio: 0.75,
-          comments_per_keyword: keywords.reduce((acc, kw, i) => ({ ...acc, [kw]: i < 2 ? 7 + i : 1 }), {}),
-          emotional_quotes_extracted: 2,
-          high_potential_quotes: 1,
-          scraping_duration_seconds: 45.2
+          comments_per_keyword: keywords.reduce((acc, kw) => ({ 
+            ...acc, 
+            [kw]: mockComments.filter(c => c.keyword_phrase === kw).length 
+          }), {}),
+          emotional_quotes_extracted: mockQuotes.length,
+          high_potential_quotes: mockQuotes.filter(q => q.marketing_potential === 'high').length,
+          scraping_duration_seconds: 15 + keywords.length * 10
         }
       },
       message: "Mock response - YouTube API key is configured and available",

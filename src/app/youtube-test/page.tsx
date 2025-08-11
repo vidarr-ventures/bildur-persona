@@ -85,7 +85,7 @@ export default function YouTubeTestPage() {
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
                 placeholder="Enter keywords separated by commas"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                 rows={3}
                 disabled={loading}
               />
@@ -101,7 +101,7 @@ export default function YouTubeTestPage() {
                 onChange={(e) => setTotalLimit(parseInt(e.target.value) || 20)}
                 min={5}
                 max={50}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                 disabled={loading}
               />
             </div>
