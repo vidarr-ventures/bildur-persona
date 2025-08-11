@@ -65,6 +65,8 @@ export async function POST(request: NextRequest) {
         // Search all of Reddit
         const searchUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(keyword)}&sort=relevance&limit=10&t=all&raw_json=1`;
         
+        console.log(`[REDDIT NODEJS] Fetching: ${searchUrl}`);
+        
         const response = await fetch(searchUrl, {
           headers: {
             'User-Agent': 'PersonaBot/1.0 (Customer Research Tool)',
@@ -72,11 +74,14 @@ export async function POST(request: NextRequest) {
           },
         });
         
+        console.log(`[REDDIT NODEJS] Response status: ${response.status} ${response.statusText}`);
+        
         if (response.ok) {
           const data = await response.json();
           const posts = data?.data?.children || [];
           
           console.log(`[REDDIT NODEJS] Found ${posts.length} posts for keyword: ${keyword}`);
+          console.log(`[REDDIT NODEJS] Response data structure:`, data?.data ? 'valid' : 'invalid');
           
           for (const postWrapper of posts) {
             const post: RedditPost = postWrapper.data;
@@ -114,7 +119,9 @@ export async function POST(request: NextRequest) {
             }
           }
         } else {
-          console.log(`[REDDIT NODEJS] Search failed for keyword ${keyword}: ${response.status}`);
+          console.log(`[REDDIT NODEJS] Search failed for keyword ${keyword}: ${response.status} ${response.statusText}`);
+          const errorText = await response.text();
+          console.log(`[REDDIT NODEJS] Error response:`, errorText.substring(0, 200));
         }
         
         // Also search specific health subreddits
