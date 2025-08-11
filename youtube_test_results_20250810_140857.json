@@ -1,0 +1,77 @@
+{
+  "source": "youtube_comments",
+  "scrape_date": "2025-08-10T14:08:57.726758",
+  "total_comments": 2,
+  "keywords_searched": [
+    "customer service problems",
+    "frustrated with software",
+    "small business challenges"
+  ],
+  "comments": [
+    {
+      "comment_id": "comment_1",
+      "text": "I've been struggling with customer service issues for my small business. This looks helpful!",
+      "commenter": "SmallBizOwner2023",
+      "date": "2025-01-09T10:00:00Z",
+      "video_title": "Top Customer Service Solutions for Small Businesses",
+      "video_url": "https://www.youtube.com/watch?v=example1",
+      "keyword_phrase": "small business challenges",
+      "relevance_score": 0.25220910200396224,
+      "likes": 5,
+      "replies": 2,
+      "source_url": "https://www.youtube.com/watch?v=example1&lc=comment_1"
+    },
+    {
+      "comment_id": "comment_2",
+      "text": "As a frustrated software user, I need something that actually works for my business needs.",
+      "commenter": "TechStruggler",
+      "date": "2025-01-08T15:30:00Z",
+      "video_title": "Software Review: Business Tools That Actually Work",
+      "video_url": "https://www.youtube.com/watch?v=example2",
+      "keyword_phrase": "small business challenges",
+      "relevance_score": 0.29504580618765436,
+      "likes": 12,
+      "replies": 8,
+      "source_url": "https://www.youtube.com/watch?v=example2&lc=comment_2"
+    }
+  ],
+  "emotional_quotes": [
+    {
+      "quote_text": "I've been struggling with customer service issues for my small business. This looks helpful!",
+      "emotion_type": "desperation",
+      "emotional_intensity": 0.44000000000000006,
+      "context": "YouTube comment on 'Top Customer Service Solutions for Small Businesses'",
+      "commenter": "SmallBizOwner2023",
+      "engagement_score": 0.09,
+      "marketing_potential": "medium",
+      "psychological_trigger": "none",
+      "source_video": "https://www.youtube.com/watch?v=example1",
+      "keyword_context": "small business challenges"
+    },
+    {
+      "quote_text": "As a frustrated software user, I need something that actually works for my business needs.",
+      "emotion_type": "desperation",
+      "emotional_intensity": 0.22000000000000003,
+      "context": "YouTube comment on 'Software Review: Business Tools That Actually Work'",
+      "commenter": "TechStruggler",
+      "engagement_score": 0.28,
+      "marketing_potential": "medium",
+      "psychological_trigger": "none",
+      "source_video": "https://www.youtube.com/watch?v=example2",
+      "keyword_context": "small business challenges"
+    }
+  ],
+  "data_quality": {
+    "api_quota_used": 0,
+    "videos_analyzed": 2,
+    "comment_filter_ratio": 0.85,
+    "comments_per_keyword": {
+      "customer service problems": 0,
+      "frustrated with software": 0,
+      "small business challenges": 2
+    },
+    "emotional_quotes_extracted": 2,
+    "high_potential_quotes": 0,
+    "scraping_duration_seconds": 45.2
+  }
+}
