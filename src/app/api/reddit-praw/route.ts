@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { writeFileSync, unlinkSync } from 'fs';
 import path from 'path';
 
 const execAsync = promisify(exec);
@@ -44,22 +45,27 @@ export async function POST(request: NextRequest) {
         totalLimit: totalLimit
       });
       
-      // Path to Python script
+      // Path to Python script and temporary input file
       const scriptPath = path.join(process.cwd(), 'reddit_praw_scraper.py');
+      const tempInputPath = path.join(process.cwd(), `temp_input_${Date.now()}.json`);
       
-      // Execute Python script with environment variables
-      const { stdout, stderr } = await execAsync(
-        `echo '${input.replace(/'/g, "'\\''")}' | python3 ${scriptPath}`,
-        {
-          env: {
-            ...process.env,
-            REDDIT_CLIENT_ID: process.env.REDDIT_CLIENT_ID,
-            REDDIT_CLIENT_SECRET: process.env.REDDIT_CLIENT_SECRET,
-            PYTHONIOENCODING: 'utf-8'
-          },
-          maxBuffer: 1024 * 1024 * 10 // 10MB buffer
-        }
-      );
+      // Write input to temporary file
+      writeFileSync(tempInputPath, input);
+      
+      try {
+        // Execute Python script with environment variables
+        const { stdout, stderr } = await execAsync(
+          `python3 ${scriptPath} < ${tempInputPath}`,
+          {
+            env: {
+              ...process.env,
+              REDDIT_CLIENT_ID: process.env.REDDIT_CLIENT_ID,
+              REDDIT_CLIENT_SECRET: process.env.REDDIT_CLIENT_SECRET,
+              PYTHONIOENCODING: 'utf-8'
+            },
+            maxBuffer: 1024 * 1024 * 10 // 10MB buffer
+          }
+        );
       
       if (stderr) {
         console.log('[REDDIT PRAW] Python stderr output:', stderr);
@@ -90,6 +96,15 @@ export async function POST(request: NextRequest) {
         data: results,
         message: "Reddit data fetched successfully using official Reddit API (PRAW)"
       });
+      
+      } finally {
+        // Cleanup temporary file
+        try {
+          unlinkSync(tempInputPath);
+        } catch (cleanupError) {
+          console.log('[REDDIT PRAW] Failed to cleanup temp file:', cleanupError);
+        }
+      }
       
     } catch (pythonError) {
       console.error('[REDDIT PRAW] Error executing Python script:', pythonError);
