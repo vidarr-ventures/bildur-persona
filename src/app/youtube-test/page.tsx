@@ -9,6 +9,7 @@ export default function YouTubeTestPage() {
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string>('');
   const [useLiveAPI, setUseLiveAPI] = useState(true); // Default to live API
+  const [platform, setPlatform] = useState<'youtube' | 'reddit' | 'both'>('youtube');
 
   const testYouTubeAPI = async () => {
     setLoading(true);
@@ -21,7 +22,13 @@ export default function YouTubeTestPage() {
       // Convert keywords string to array
       const keywordArray = keywords.split(',').map(k => k.trim()).filter(k => k.length > 0);
       
-      const endpoint = useLiveAPI ? '/api/youtube-live' : '/api/test-youtube';
+      let endpoint = '/api/test-youtube'; // default mock
+      if (useLiveAPI) {
+        endpoint = platform === 'youtube' ? '/api/youtube-live' : 
+                  platform === 'reddit' ? '/api/reddit-live' : 
+                  '/api/youtube-live'; // default to youtube for "both"
+      }
+      
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -74,11 +81,54 @@ export default function YouTubeTestPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">YouTube Comment Scraper Test</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Social Media Scraper Test</h1>
         
         {/* Input Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="space-y-4">
+            {/* Platform Selection */}
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-medium text-gray-700 mb-3">Platform Selection</h3>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="platform"
+                    checked={platform === 'youtube'}
+                    onChange={() => setPlatform('youtube')}
+                    className="mr-2"
+                    disabled={loading}
+                  />
+                  <span className="font-medium text-red-600">🎬 YouTube</span>
+                  <span className="ml-2 text-sm text-gray-600">(Comments & emotional quotes)</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="platform"
+                    checked={platform === 'reddit'}
+                    onChange={() => setPlatform('reddit')}
+                    className="mr-2"
+                    disabled={loading}
+                  />
+                  <span className="font-medium text-orange-600">🔴 Reddit</span>
+                  <span className="ml-2 text-sm text-gray-600">(Posts & discussions)</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="platform"
+                    checked={platform === 'both'}
+                    onChange={() => setPlatform('both')}
+                    className="mr-2"
+                    disabled={loading}
+                  />
+                  <span className="font-medium text-purple-600">🔗 Both</span>
+                  <span className="ml-2 text-sm text-gray-600">(Combined social insights)</span>
+                </label>
+              </div>
+            </div>
+
             {/* API Mode Toggle */}
             <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
               <label className="flex items-center">
@@ -90,8 +140,8 @@ export default function YouTubeTestPage() {
                   className="mr-2"
                   disabled={loading}
                 />
-                <span className="font-medium text-green-700">Live YouTube API</span>
-                <span className="ml-2 text-sm text-gray-600">(Real comments, uses API quota)</span>
+                <span className="font-medium text-green-700">Live API</span>
+                <span className="ml-2 text-sm text-gray-600">(Real data, uses API quota)</span>
               </label>
               <label className="flex items-center">
                 <input
@@ -147,7 +197,8 @@ export default function YouTubeTestPage() {
                   : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
               }`}
             >
-              {loading ? 'Scraping YouTube Comments...' : useLiveAPI ? 'Test Live YouTube API' : 'Test Mock Data'}
+              {loading ? `Scraping ${platform === 'both' ? 'Social Media' : platform === 'youtube' ? 'YouTube' : 'Reddit'}...` : 
+               useLiveAPI ? `Test Live ${platform === 'both' ? 'Social APIs' : platform === 'youtube' ? 'YouTube API' : 'Reddit API'}` : 'Test Mock Data'}
             </button>
           </div>
           
@@ -221,10 +272,10 @@ export default function YouTubeTestPage() {
               </div>
             )}
 
-            {/* Sample Comments */}
+            {/* Sample Content - YouTube Comments */}
             {response.data?.comments && response.data.comments.length > 0 && (
               <div className="bg-white rounded-lg shadow p-6 mb-6">
-                <h2 className="text-xl font-semibold mb-4">Sample Comments (First 5)</h2>
+                <h2 className="text-xl font-semibold mb-4">🎬 YouTube Comments (First 5)</h2>
                 <div className="space-y-4">
                   {response.data.comments.map((comment: any, index: number) => (
                     <div key={comment.comment_id} className="border border-gray-200 rounded p-4">
@@ -241,6 +292,49 @@ export default function YouTubeTestPage() {
                         <span className="font-semibold">Keyword:</span> {comment.keyword_phrase}
                         <span className="mx-2">•</span>
                         <span className="font-semibold">Relevance:</span> {(comment.relevance_score * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sample Content - Reddit Posts/Comments */}
+            {response.data?.content && response.data.content.length > 0 && (
+              <div className="bg-white rounded-lg shadow p-6 mb-6">
+                <h2 className="text-xl font-semibold mb-4">🔴 Reddit Discussions (First 5)</h2>
+                <div className="space-y-4">
+                  {response.data.content.slice(0, 5).map((item: any, index: number) => (
+                    <div key={item.content_id} className="border border-gray-200 rounded p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            item.content_type === 'post' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {item.content_type}
+                          </span>
+                          <span className="font-semibold text-orange-600">
+                            r/{item.subreddit}
+                          </span>
+                        </div>
+                        <span className="text-sm text-gray-500">
+                          {item.score} points
+                          {item.num_comments > 0 && ` • ${item.num_comments} comments`}
+                        </span>
+                      </div>
+                      
+                      {item.title && (
+                        <h3 className="font-medium text-gray-900 mb-2">{item.title}</h3>
+                      )}
+                      
+                      <p className="text-gray-800 mb-2">{item.text}</p>
+                      
+                      <div className="text-xs text-gray-500">
+                        <span className="font-semibold">User:</span> {item.username}
+                        <span className="mx-2">•</span>
+                        <span className="font-semibold">Keyword:</span> {item.keyword_phrase}
+                        <span className="mx-2">•</span>
+                        <span className="font-semibold">Relevance:</span> {(item.relevance_score * 100).toFixed(1)}%
                       </div>
                     </div>
                   ))}
