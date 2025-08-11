@@ -17,7 +17,7 @@ export default function RedditTestPage() {
     try {
       console.log('Testing Reddit API with keywords:', keywords);
       
-      const res = await fetch('/api/reddit-praw', {
+      const res = await fetch('/api/reddit-nodejs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ export default function RedditTestPage() {
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Reddit Discussion Scraper</h1>
-            <p className="text-gray-600 mt-1">Official Reddit API (PRAW) - Real Reddit data, reliable and free</p>
+            <p className="text-gray-600 mt-1">Node.js JSON API - Real Reddit data, no credentials required</p>
           </div>
         </div>
         
