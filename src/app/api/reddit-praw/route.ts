@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       
       // Execute Python script with environment variables
       const { stdout, stderr } = await execAsync(
-        `python3 ${scriptPath}`,
+        `echo '${input.replace(/'/g, "'\\''")}' | python3 ${scriptPath}`,
         {
           env: {
             ...process.env,
@@ -57,7 +57,6 @@ export async function POST(request: NextRequest) {
             REDDIT_CLIENT_SECRET: process.env.REDDIT_CLIENT_SECRET,
             PYTHONIOENCODING: 'utf-8'
           },
-          input: input,
           maxBuffer: 1024 * 1024 * 10 // 10MB buffer
         }
       );
