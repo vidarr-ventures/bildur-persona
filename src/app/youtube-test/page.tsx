@@ -8,6 +8,7 @@ export default function YouTubeTestPage() {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string>('');
+  const [useLiveAPI, setUseLiveAPI] = useState(true); // Default to live API
 
   const testYouTubeAPI = async () => {
     setLoading(true);
@@ -20,7 +21,8 @@ export default function YouTubeTestPage() {
       // Convert keywords string to array
       const keywordArray = keywords.split(',').map(k => k.trim()).filter(k => k.length > 0);
       
-      const res = await fetch('/api/test-youtube', {
+      const endpoint = useLiveAPI ? '/api/youtube-live' : '/api/test-youtube';
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,6 +79,34 @@ export default function YouTubeTestPage() {
         {/* Input Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="space-y-4">
+            {/* API Mode Toggle */}
+            <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="apiMode"
+                  checked={useLiveAPI}
+                  onChange={() => setUseLiveAPI(true)}
+                  className="mr-2"
+                  disabled={loading}
+                />
+                <span className="font-medium text-green-700">Live YouTube API</span>
+                <span className="ml-2 text-sm text-gray-600">(Real comments, uses API quota)</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="apiMode"
+                  checked={!useLiveAPI}
+                  onChange={() => setUseLiveAPI(false)}
+                  className="mr-2"
+                  disabled={loading}
+                />
+                <span className="font-medium text-blue-700">Mock Data</span>
+                <span className="ml-2 text-sm text-gray-600">(Simulated for testing)</span>
+              </label>
+            </div>
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Keywords (comma-separated)
@@ -112,10 +142,12 @@ export default function YouTubeTestPage() {
               className={`px-6 py-2 rounded-lg font-medium text-white transition-colors ${
                 loading || !keywords.trim()
                   ? 'bg-gray-400 cursor-not-allowed'
+                  : useLiveAPI
+                  ? 'bg-green-600 hover:bg-green-700 cursor-pointer'
                   : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
               }`}
             >
-              {loading ? 'Scraping YouTube Comments...' : 'Test YouTube API'}
+              {loading ? 'Scraping YouTube Comments...' : useLiveAPI ? 'Test Live YouTube API' : 'Test Mock Data'}
             </button>
           </div>
           
@@ -126,7 +158,10 @@ export default function YouTubeTestPage() {
                 <span>Scraping YouTube comments... This may take 30-60 seconds.</span>
               </div>
               <div className="text-sm text-gray-500 mt-2">
-                Note: This uses the real YouTube Data API v3 and will consume API quota.
+                {useLiveAPI 
+                  ? 'Note: This uses the real YouTube Data API v3 and will consume API quota.'
+                  : 'Note: Using simulated data for testing purposes.'
+                }
               </div>
             </div>
           )}
