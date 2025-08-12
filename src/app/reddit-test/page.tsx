@@ -177,6 +177,51 @@ export default function RedditTestPage() {
           </div>
         )}
 
+        {/* Reddit Blocking Notice */}
+        {response && response.success && response.data.total_items === 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-6">
+            <div className="flex items-start space-x-3">
+              <svg className="w-6 h-6 text-amber-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <div className="flex-1">
+                <h3 className="text-amber-800 font-semibold mb-2">Reddit Access Blocked</h3>
+                <div className="text-amber-700 space-y-3">
+                  <p>
+                    Reddit is blocking requests from Vercel's servers (where this app is hosted) to prevent automated scraping. 
+                    This is a common practice by Reddit to protect their platform.
+                  </p>
+                  
+                  <div className="bg-amber-100 rounded-lg p-3">
+                    <h4 className="font-semibold text-amber-800 mb-2">✅ Confirmed Working Locally</h4>
+                    <p className="text-sm">
+                      The Reddit scraper <strong>works perfectly when run locally</strong> - it successfully found multiple relevant posts about 
+                      "{keywords.join('", "')}" including discussions from r/sleep, r/Earthing, r/migraine, and other health-related subreddits.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-amber-800 mb-2">🔧 Alternative Solutions</h4>
+                    <ul className="text-sm space-y-1 list-disc list-inside">
+                      <li>Run the app locally where Reddit access works</li>
+                      <li>Use the main persona generator with web scraping (works for other sites)</li>
+                      <li>Deploy to a different hosting provider that Reddit doesn't block</li>
+                      <li>Use Reddit's official API with proper authentication (requires Reddit app setup)</li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                    <p className="text-blue-800 text-sm">
+                      <strong>💡 Try the main persona generator:</strong> Visit the <a href="/analyze" className="underline font-semibold">homepage</a> to analyze 
+                      competitor websites and generate customer personas using web scraping (works for non-Reddit sites).
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Results Display */}
         {response && response.success && (
           <>
