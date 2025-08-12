@@ -88,18 +88,22 @@ export async function POST(request: NextRequest) {
           
           console.log(`[REDDIT PROXY] Fetching via ${approach.name}: ${fetchUrl}`);
           
-          const response = await fetch(fetchUrl, {
-            method: 'GET',
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              'Accept': 'application/json, text/plain, */*',
-              'Accept-Language': 'en-US,en;q=0.9',
-              'Referer': 'https://www.reddit.com/',
-              'Origin': 'https://www.reddit.com',
-              'X-Requested-With': 'XMLHttpRequest'
-            },
-            timeout: 10000
-          });
+          const response = await Promise.race([
+            fetch(fetchUrl, {
+              method: 'GET',
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://www.reddit.com/',
+                'Origin': 'https://www.reddit.com',
+                'X-Requested-With': 'XMLHttpRequest'
+              }
+            }),
+            new Promise<Response>((_, reject) => 
+              setTimeout(() => reject(new Error('Request timeout')), 10000)
+            )
+          ]);
           
           console.log(`[REDDIT PROXY] Response status from ${approach.name}: ${response.status}`);
           
