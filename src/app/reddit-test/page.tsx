@@ -17,7 +17,7 @@ export default function RedditTestPage() {
     try {
       console.log('Testing Reddit API with keywords:', keywords);
       
-      const res = await fetch('/api/reddit-external-proxy', {
+      const res = await fetch('/api/reddit-real-proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ export default function RedditTestPage() {
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Reddit Discussion Scraper</h1>
-            <p className="text-gray-600 mt-1">External Proxy Solution - Demonstrates Reddit data access capability</p>
+            <p className="text-gray-600 mt-1">Real Proxy Services - Attempting to access actual Reddit data</p>
           </div>
         </div>
         
