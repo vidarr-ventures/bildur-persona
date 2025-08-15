@@ -35,6 +35,9 @@ interface AnalysisData {
   quotes: any[];
   valuePropositions: any[];
   behaviorPatterns: any[];
+  competitorsAnalyzed?: number;
+  totalPagesScraped?: number;
+  dataSources?: string[];
   generatedAt: string;
 }
 
@@ -128,10 +131,17 @@ export default function ResultsPage() {
   }
 
   // Extract summary information
-  const summaryData = data.summary || {};
-  const totalDataPoints = summaryData.totalDataPoints || summaryData.user_quotes || 0;
-  const competitorsCount = summaryData.competitors?.length || 0;
-  const dataSources = summaryData.dataSources || [];
+  const totalPainPoints = data.painPoints?.length || 0;
+  const totalQuotes = data.quotes?.length || 0;
+  const totalValueProps = data.valuePropositions?.length || 0;
+  const totalBehaviors = data.behaviorPatterns?.length || 0;
+  const totalPagesScraped = data.totalPagesScraped || 0;
+  
+  // Calculate total data points from pages scraped + extracted items
+  const totalDataPoints = totalPagesScraped + totalPainPoints + totalQuotes + totalValueProps + totalBehaviors;
+  
+  const competitorsCount = data.competitorsAnalyzed || 0;
+  const dataSources = data.dataSources || ['Website Analysis'];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">

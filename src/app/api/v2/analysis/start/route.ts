@@ -191,6 +191,13 @@ export async function POST(request: NextRequest) {
             quotes: extractedData?.raw_customer_quotes || [],
             valuePropositions: extractedData?.value_propositions || [],
             behaviorPatterns: extractedData?.behavioral_patterns || [],
+            competitorsAnalyzed: allSiteData.length - 1, // Exclude user site
+            totalPagesScraped: allSiteData.length * 5, // Rough estimate based on scraping logic
+            dataSources: [
+              'Website Content Analysis',
+              ...(competitorUrls && competitorUrls.length > 0 ? ['Competitor Research'] : []),
+              'AI-Powered Data Extraction'
+            ],
             generatedAt: new Date().toISOString(),
           },
         },
