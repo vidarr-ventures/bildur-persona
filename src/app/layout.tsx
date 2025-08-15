@@ -17,6 +17,12 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "Bildur - AI-Powered Customer Persona Analyzer",
   description: "Generate detailed customer personas using AI analysis of reviews, social media, and website content.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+  },
 };
 
 export default function RootLayout({
