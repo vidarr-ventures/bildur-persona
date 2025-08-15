@@ -186,7 +186,7 @@ export default function PersonaAnalyzer() {
                     placeholder="example.com or https://example.com"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    className="pl-10 bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 h-12 transition-all duration-200"
+                    className="pl-10 bg-white/5 border-white/20 text-white placeholder:text-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 h-12 transition-all duration-200"
                     disabled={isLoading}
                     required
                   />
@@ -210,7 +210,7 @@ export default function PersonaAnalyzer() {
                         newPhrases[index] = e.target.value;
                         setKeywordPhrases(newPhrases);
                       }}
-                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 h-12 transition-all duration-200"
+                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 h-12 transition-all duration-200"
                       disabled={isLoading}
                       required={index === 0}
                     />
@@ -230,7 +230,7 @@ export default function PersonaAnalyzer() {
                         placeholder={`Competitor ${i + 1} URL`}
                         value={compUrl}
                         onChange={(e) => updateCompetitorUrl(i, e.target.value)}
-                        className="pl-10 pr-12 bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 h-12 transition-all duration-200"
+                        className="pl-10 pr-12 bg-white/5 border-white/20 text-white placeholder:text-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 h-12 transition-all duration-200"
                         disabled={isLoading}
                       />
                       {competitorUrls.length > 1 && (
