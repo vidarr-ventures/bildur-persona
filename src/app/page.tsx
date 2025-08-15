@@ -77,6 +77,7 @@ export default function PersonaAnalyzer() {
     try {
       // Normalize URLs
       const normalizedUrl = url.startsWith('http') ? url : `https://${url}`;
+      const validCompetitors = competitorUrls.filter(u => u.trim() !== '');
       const normalizedCompetitors = validCompetitors.map(u => 
         u.startsWith('http') ? u : `https://${u}`
       );
