@@ -103,25 +103,14 @@ export default function PersonaAnalyzer() {
 
       console.log('Analysis started:', data);
       
-      // Check if we have results immediately (synchronous processing)
-      if (data.data.status === 'COMPLETED' && data.data.results) {
-        // Store results in sessionStorage for the results page
+      // ALWAYS skip processing page since our API completes synchronously
+      // Store results in sessionStorage for the results page
+      if (data.data.results) {
         sessionStorage.setItem(`analysis-${data.data.analysisId}`, JSON.stringify(data.data.results));
-        // Redirect directly to results
-        router.push(`/results/${data.data.analysisId}`);
-      } else if (data.data.status === 'COMPLETED') {
-        // Completed but no results inline - need to fetch
-        // Still store the ID so results page can fetch
-        sessionStorage.setItem(`analysis-id-${data.data.analysisId}`, 'true');
-        router.push(`/results/${data.data.analysisId}`);
-      } else {
-        // Redirect to processing page for async processing
-        if (debugMode) {
-          router.push(`/debug/${data.data.analysisId}`);
-        } else {
-          router.push(`/processing/${data.data.analysisId}`);
-        }
       }
+      
+      // Always go directly to results since processing is complete
+      router.push(`/results/${data.data.analysisId}`);
     } catch (err) {
       console.error('Analysis error:', err);
       setError(err instanceof Error ? err.message : 'Failed to start analysis');
