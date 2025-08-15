@@ -101,13 +101,13 @@ export default function PersonaAnalyzer() {
         throw new Error(data.error?.message || 'Failed to start analysis');
       }
 
-      console.log('Analysis completed:', data);
+      console.log('Analysis started:', data);
       
-      // Redirect to debug or report page
+      // Redirect to processing page first
       if (debugMode) {
         router.push(`/debug/${data.data.analysisId}`);
       } else {
-        router.push(`/report/${data.data.analysisId}`);
+        router.push(`/processing/${data.data.analysisId}`);
       }
     } catch (err) {
       console.error('Analysis error:', err);
