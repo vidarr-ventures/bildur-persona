@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 
 const inter = Inter({
@@ -37,22 +38,19 @@ export default function RootLayout({
         <nav className="border-b border-white/10 backdrop-blur-sm bg-black/20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
-              <div className="flex items-center space-x-2">
+              <Link href="/" className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-sm">B</span>
                 </div>
                 <span className="text-white font-semibold text-lg font-display">Bildur</span>
-              </div>
+              </Link>
               <div className="hidden md:flex items-center space-x-8">
-                <a href="/" className="text-purple-400 font-medium">
+                <Link href="/" className="text-purple-400 font-medium hover:text-purple-300 transition-colors">
                   Home
-                </a>
-                <a href="/about" className="text-gray-300 hover:text-white transition-colors">
-                  About
-                </a>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors">
+                </Link>
+                <Link href="/" className="text-gray-300 hover:text-white transition-colors">
                   Persona Builder
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -67,7 +65,7 @@ export default function RootLayout({
         <footer className="border-t border-white/10 bg-black/20 backdrop-blur-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="text-center">
-              <p className="text-gray-400">&copy; 2024 Bildur. All rights reserved.</p>
+              <p className="text-gray-400">&copy; 2025 Bildur. All rights reserved.</p>
             </div>
           </div>
         </footer>
