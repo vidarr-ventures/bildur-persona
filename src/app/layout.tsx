@@ -48,7 +48,7 @@ export default function RootLayout({
                 <Link href="/" className="text-purple-400 font-medium hover:text-purple-300 transition-colors">
                   Home
                 </Link>
-                <Link href="/" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/#persona-builder" className="text-gray-300 hover:text-white transition-colors">
                   Persona Builder
                 </Link>
               </div>

@@ -82,6 +82,9 @@ export default function PersonaAnalyzer() {
         u.startsWith('http') ? u : `https://${u}`
       );
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+
       const response = await fetch('/api/v2/analysis/start', {
         method: 'POST',
         headers: {
@@ -93,7 +96,10 @@ export default function PersonaAnalyzer() {
           keywordPhrases: validKeywords,
           debugMode: debugMode,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       const data = await response.json();
 
@@ -113,7 +119,11 @@ export default function PersonaAnalyzer() {
       router.push(`/results/${data.data.analysisId}`);
     } catch (err) {
       console.error('Analysis error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to start analysis');
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Analysis timed out. Please try again with fewer competitor URLs or simpler keywords.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to start analysis');
+      }
       setIsLoading(false);
     }
   };
@@ -166,7 +176,7 @@ export default function PersonaAnalyzer() {
       </section>
 
       {/* Main Form Section */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 pt-8">
+      <section id="persona-builder" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 pt-8">
         <Card className="bg-white/5 backdrop-blur-md border-white/20 shadow-2xl ring-1 ring-white/10">
           <CardContent className="p-8">
             <div className="text-center mb-8">
@@ -281,7 +291,7 @@ export default function PersonaAnalyzer() {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Processing Analysis... (2-3 minutes)
+                    Processing Analysis... (2-5 minutes)
                   </>
                 ) : (
                   <>
