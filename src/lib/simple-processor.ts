@@ -232,6 +232,15 @@ You should expect to receive content from:
 
 **Quality Check**: A thorough analysis should yield multiple customer quotes, diverse pain points, and rich behavioral insights from across the entire website, not just surface-level homepage messaging.
 
+## IMPORTANT EXTRACTION REQUIREMENTS
+- **CRITICAL**: Extract ALL instances found, not just examples
+- **customer_pain_points**: Extract EVERY pain point (minimum 5, aim for 10-15)
+- **raw_customer_quotes**: Extract EVERY quote/testimonial (minimum 5, aim for 10-20) 
+- **value_propositions**: Extract EVERY value prop (minimum 5, aim for 8-12)
+- **behavioral_patterns**: Extract EVERY pattern (minimum 3, aim for 5-8)
+- **DO NOT** return exactly 3 items - that's just the example structure
+- If fewer than minimum found, create inferred items based on content analysis
+
 ## Output Format
 Return ONLY valid JSON with this exact structure - no markdown, no explanations, no additional text:
 
