@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         console.log(`[V4] Step 3: Processing ${competitorUrls.length} competitor URLs in parallel...`);
         
         // Add step tracking for all competitors
-        const competitorStepIndexes = [];
+        const competitorStepIndexes: number[] = [];
         for (let i = 0; i < competitorUrls.length; i++) {
           analysis.steps.push({
             name: `scrape_competitor_${i + 1}`,
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
         }
         
         // Process all competitors in parallel
-        const competitorPromises = competitorUrls.map(async (compUrl, index) => {
+        const competitorPromises = competitorUrls.map(async (compUrl: string, index: number) => {
           const stepIndex = competitorStepIndexes[index];
           
           try {
