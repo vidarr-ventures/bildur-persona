@@ -164,7 +164,7 @@ export default function PersonaAnalyzer() {
       </section>
 
       {/* Main Form Section */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 pt-8">
         <Card className="bg-white/5 backdrop-blur-md border-white/20 shadow-2xl ring-1 ring-white/10">
           <CardContent className="p-8">
             <div className="text-center mb-8">
