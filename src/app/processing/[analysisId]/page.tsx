@@ -33,16 +33,48 @@ export default function ProcessingPage() {
   }, []);
 
   useEffect(() => {
-    // Simulate processing progress
+    // Check if we have results in sessionStorage (should redirect immediately)
+    const cachedResults = sessionStorage.getItem(`analysis-${analysisId}`);
+    if (cachedResults) {
+      // If we have results, redirect immediately
+      router.push(`/results/${analysisId}`);
+      return;
+    }
+
+    // Poll the API to check analysis status
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`/api/v2/analysis/${analysisId}/status`);
+        const result = await response.json();
+        
+        if (result.success && result.data?.status === 'COMPLETED') {
+          // Analysis is complete, redirect to results
+          router.push(`/results/${analysisId}`);
+          return true;
+        }
+      } catch (error) {
+        console.error('Error checking status:', error);
+      }
+      return false;
+    };
+
+    // Check immediately
+    checkStatus();
+
+    // Then poll every 2 seconds
+    const statusInterval = setInterval(async () => {
+      const isComplete = await checkStatus();
+      if (isComplete) {
+        clearInterval(statusInterval);
+        clearInterval(progressTimer);
+      }
+    }, 2000);
+
+    // Visual progress animation (purely cosmetic)
     const progressTimer = setInterval(() => {
       setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(progressTimer);
-          // Redirect to results page when complete
-          router.push(`/results/${analysisId}`);
-          return 100;
-        }
-        return prev + Math.random() * 3; // Random increment for realistic feel
+        if (prev >= 95) return 95; // Cap at 95% until actually complete
+        return prev + Math.random() * 2;
       });
     }, 800);
 
@@ -55,6 +87,7 @@ export default function ProcessingPage() {
     }, 1000);
 
     return () => {
+      clearInterval(statusInterval);
       clearInterval(progressTimer);
       clearInterval(stepTimer);
     };
