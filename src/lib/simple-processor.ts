@@ -12,7 +12,7 @@ const geminiModel = genAI.getGenerativeModel({
   model: 'gemini-1.5-flash',
   generationConfig: {
     temperature: 0.1,
-    maxOutputTokens: 8000,
+    maxOutputTokens: 16000, // Doubled for more comprehensive output
   }
 });
 
@@ -32,7 +32,7 @@ export async function scrapeWebsite(url: string, keywordPhrases: string[] = []):
   try {
     const baseUrl = new URL(url).origin;
     let allContent = '';
-    const maxContentLength = 100000; // Allow comprehensive site crawling with increased content
+    const maxContentLength = 200000; // Doubled to allow more comprehensive site crawling
     const scrapedUrls = new Set<string>();
     
     // Track page types
@@ -108,7 +108,7 @@ export async function scrapeWebsite(url: string, keywordPhrases: string[] = []):
       // Sort by relevance score (highest first) and return URLs
       return links
         .sort((a, b) => b.score - a.score)
-        .slice(0, 15) // More pages for comprehensive analysis
+        .slice(0, 30) // Increased to analyze more pages for comprehensive content
         .map(link => link.url);
     };
 
@@ -285,7 +285,7 @@ CRITICAL: Return ONLY the JSON object above - no markdown blocks, no explanation
       }
     ],
     temperature: 0.1,
-    max_tokens: 8000, // Increased for comprehensive analysis
+    max_tokens: 12000, // Further increased for comprehensive extraction
   });
   
   const extracted = JSON.parse(completion.choices[0].message.content || '{}');
@@ -675,9 +675,16 @@ Using the collected data, extract 10 key quotes that are most likely to deeply r
 Output Format Requirements
 Deliver a structured markdown report with clear sections and actionable insights. Use actual quotes from collected content to support findings. Ensure all recommendations are grounded in the collected data rather than generic assumptions.
 
-Word Count Target: 3,000-4,000 words for comprehensive analysis
+CRITICAL LENGTH REQUIREMENTS:
+- Each major section (1-7) must contain 400-500 words minimum
+- Total report length: 5,000-7,000 words for comprehensive analysis
+- Provide detailed explanations, examples, and evidence for each point
+- DO NOT summarize or be brief - be comprehensive and thorough
+- If data is limited for a section, provide framework analysis and educated inferences based on available patterns
+
 Focus: Actionable insights that directly inform product, marketing, and business strategy decisions
 Evidence: Root all insights in the actual collected data from website content and competitive analysis.
+Detail Level: Each section should be detailed enough to be a standalone mini-report.
 
 Data to analyze:
 ${JSON.stringify(combinedData, null, 2)}`;
@@ -688,7 +695,7 @@ ${JSON.stringify(combinedData, null, 2)}`;
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 8000,
+        maxOutputTokens: 16000, // Doubled for more comprehensive output
       }
     });
     response = await result.response;
