@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Globe, MessageSquare, Users, Zap, ArrowRight, CheckCircle, Star, TrendingUp, Loader2, Plus, X } from "lucide-react"
+import { Globe, MessageSquare, Users, Zap, ArrowRight, CheckCircle, Star, TrendingUp, Loader2 } from "lucide-react"
 
 export default function PersonaAnalyzer() {
   const router = useRouter();
   const [url, setUrl] = useState('');
-  const [competitorUrls, setCompetitorUrls] = useState<string[]>(['', '', '']);
+  const [competitorUrls, setCompetitorUrls] = useState<string[]>(['', '', '', '', '']);
   const [keywordPhrases, setKeywordPhrases] = useState<string[]>(['', '', '']);
   const [debugMode, setDebugMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -24,17 +24,6 @@ export default function PersonaAnalyzer() {
     } catch {
       return false;
     }
-  };
-
-  const addCompetitorField = () => {
-    if (competitorUrls.length < 5) {
-      setCompetitorUrls([...competitorUrls, '']);
-    }
-  };
-
-  const removeCompetitorField = (index: number) => {
-    const newUrls = competitorUrls.filter((_, i) => i !== index);
-    setCompetitorUrls(newUrls.length > 0 ? newUrls : ['']);
   };
 
   const updateCompetitorUrl = (index: number, value: string) => {
@@ -57,7 +46,17 @@ export default function PersonaAnalyzer() {
       return;
     }
 
-    // Validate competitor URLs if provided
+    // Validate first competitor URL is required
+    if (!competitorUrls[0] || competitorUrls[0].trim() === '') {
+      setError('Please enter at least one competitor website URL');
+      return;
+    }
+    if (!validateUrl(competitorUrls[0])) {
+      setError('Please enter a valid competitor website URL');
+      return;
+    }
+    
+    // Validate additional competitor URLs if provided
     const validCompetitors = competitorUrls.filter(u => u.trim() !== '');
     for (const compUrl of validCompetitors) {
       if (!validateUrl(compUrl)) {
@@ -220,44 +219,25 @@ export default function PersonaAnalyzer() {
 
               {/* Competitor Websites */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Competitor Websites (Optional)</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Competitor Websites <span className="text-red-400">*</span>
+                </label>
                 <p className="text-xs text-gray-500 mb-3">Add up to 5 competitor websites for comparative analysis</p>
                 <div className="space-y-3">
                   {competitorUrls.map((compUrl, i) => (
                     <div key={i} className="relative">
                       <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                       <Input
-                        placeholder={`Competitor ${i + 1} URL`}
+                        placeholder={i === 0 ? `Competitor ${i + 1} URL (required)` : `Competitor ${i + 1} URL (optional)`}
                         value={compUrl}
                         onChange={(e) => updateCompetitorUrl(i, e.target.value)}
-                        className="pl-10 pr-12 bg-white/5 border-white/20 text-white placeholder:text-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 h-12 transition-all duration-200"
+                        className="pl-10 bg-white/5 border-white/20 text-white placeholder:text-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 h-12 transition-all duration-200"
                         disabled={isLoading}
+                        required={i === 0}
                       />
-                      {competitorUrls.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeCompetitorField(i)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-400 transition-colors"
-                          disabled={isLoading}
-                        >
-                          <X className="h-5 w-5" />
-                        </button>
-                      )}
                     </div>
                   ))}
                 </div>
-                {competitorUrls.length < 5 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={addCompetitorField}
-                    className="mt-2 text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-all duration-200"
-                    disabled={isLoading}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Competitor
-                  </Button>
-                )}
               </div>
 
               {/* Debug Mode Toggle */}
