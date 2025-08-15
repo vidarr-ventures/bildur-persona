@@ -103,11 +103,19 @@ export default function PersonaAnalyzer() {
 
       console.log('Analysis started:', data);
       
-      // Redirect to processing page first
-      if (debugMode) {
-        router.push(`/debug/${data.data.analysisId}`);
+      // Check if we have results immediately (synchronous processing)
+      if (data.data.status === 'COMPLETED' && data.data.results) {
+        // Store results in sessionStorage for the results page
+        sessionStorage.setItem(`analysis-${data.data.analysisId}`, JSON.stringify(data.data.results));
+        // Redirect directly to results
+        router.push(`/results/${data.data.analysisId}`);
       } else {
-        router.push(`/processing/${data.data.analysisId}`);
+        // Redirect to processing page for async processing
+        if (debugMode) {
+          router.push(`/debug/${data.data.analysisId}`);
+        } else {
+          router.push(`/processing/${data.data.analysisId}`);
+        }
       }
     } catch (err) {
       console.error('Analysis error:', err);

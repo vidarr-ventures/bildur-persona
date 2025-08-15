@@ -55,6 +55,16 @@ export default function ResultsPage() {
         setLoading(true);
         setError(null);
         
+        // First check sessionStorage for immediate results
+        const cachedResults = sessionStorage.getItem(`analysis-${analysisId}`);
+        if (cachedResults) {
+          const parsedResults = JSON.parse(cachedResults);
+          setData(parsedResults);
+          setLoading(false);
+          return;
+        }
+        
+        // Fallback to API call
         const response = await fetch(`/api/v2/analysis/${analysisId}/report`);
         const result = await response.json();
         

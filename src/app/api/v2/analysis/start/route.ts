@@ -163,6 +163,18 @@ export async function POST(request: NextRequest) {
         data: {
           analysisId,
           status: 'COMPLETED',
+          results: {
+            id: 'report-' + analysisId,
+            analysisId,
+            fullReport: finalReport.final_report,
+            summary: finalReport.final_report.substring(0, 500) + '...',
+            demographics: extractedData?.demographics || {},
+            painPoints: extractedData?.customer_pain_points || [],
+            quotes: extractedData?.raw_customer_quotes || [],
+            valuePropositions: extractedData?.value_propositions || [],
+            behaviorPatterns: extractedData?.behavioral_patterns || [],
+            generatedAt: new Date().toISOString(),
+          },
         },
       });
 
