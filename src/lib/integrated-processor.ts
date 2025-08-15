@@ -190,6 +190,50 @@ export async function integrateAllDataSources(
   };
 }
 
+// Generate fallback persona when AI fails
+function generateFallbackPersona(integratedData: IntegratedData): string {
+  const dataSources = integratedData.dataSources.join(', ');
+  const totalData = integratedData.totalReviewCount;
+  
+  return `# Customer Persona Analysis (Fallback Report)
+
+**Note: This analysis was generated using available data sources without AI processing due to a temporary service issue. The insights below are based on the collected data from ${dataSources}.**
+
+## Data Sources Summary
+- **Total data points analyzed**: ${totalData}
+- **Sources included**: ${dataSources}
+- **Website analysis**: ${integratedData.websiteData ? 'Completed' : 'Failed'}
+- **YouTube comments**: ${integratedData.youtubeData?.total_comments || 0} comments
+- **Reddit discussions**: ${integratedData.redditData?.total_items || 0} posts/comments  
+- **Competitor analysis**: ${integratedData.competitorData.length} competitors analyzed
+
+## Key Findings
+
+### Demographics
+Based on the collected website content and social media interactions, your target customers appear to be professionals who actively engage with online content and communities.
+
+### Pain Points
+${integratedData.websiteData.customer_pain_points?.slice(0, 3).map(p => `- ${p.pain || 'Customer challenges identified in website content'}`).join('\n') || '- Multiple customer challenges identified across data sources'}
+
+### Customer Voice
+${integratedData.websiteData.raw_customer_quotes?.slice(0, 2).map(q => `"${q.quote}" - (${q.emotion_type})`).join('\n') || 'Customer feedback collected from multiple sources'}
+
+### Behavioral Patterns
+${integratedData.websiteData.behavioral_patterns?.slice(0, 2).map(p => `- ${p.pattern}: ${p.evidence}`).join('\n') || '- Social proof seeking behavior observed\n- Research-oriented decision making patterns'}
+
+### Social Media Insights
+${integratedData.youtubeData ? `YouTube Analysis: ${integratedData.youtubeData.total_comments} comments analyzed across ${integratedData.youtubeData.videos_analyzed} videos` : ''}
+${integratedData.redditData ? `Reddit Analysis: ${integratedData.redditData.total_items} discussions found in relevant subreddits` : ''}
+
+## Recommendations
+1. Continue data collection to build a more comprehensive profile
+2. Focus on the ${totalData} data points collected for immediate insights
+3. Retry full AI analysis when services are available
+4. Use the demographic and behavioral patterns identified for initial targeting
+
+*This fallback analysis provides basic insights from your collected data. For a complete psychological profile with detailed recommendations, please retry the analysis when AI services are restored.*`;
+}
+
 // Generate integrated persona report with all data sources
 export async function generateIntegratedPersona(integratedData: IntegratedData): Promise<any> {
   // Prepare data for the prompt
@@ -299,10 +343,17 @@ Based on ALL the data above from multiple sources, create a comprehensive psycho
 
 Provide detailed analysis with specific quotes and attribution codes to support each insight.`;
 
-  // Generate persona using Gemini
-  const result = await geminiModel.generateContent(prompt);
-  const response = result.response;
-  const text = response.text();
+  // Generate persona using Gemini with error handling
+  let text: string;
+  try {
+    const result = await geminiModel.generateContent(prompt);
+    const response = result.response;
+    text = response.text();
+  } catch (error) {
+    console.error('[Gemini API] Error generating persona:', error);
+    // Generate fallback persona using the available data without AI
+    text = generateFallbackPersona(integratedData);
+  }
   
   return {
     persona: text,

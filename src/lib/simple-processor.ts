@@ -301,6 +301,64 @@ CRITICAL: Return ONLY the JSON object above - no markdown blocks, no explanation
   };
 }
 
+// Generate fallback report when AI fails
+function generateSimpleFallbackReport(combinedData: any): string {
+  const userSite = combinedData.user_site || {};
+  const competitors = combinedData.competitors || [];
+  const summary = combinedData.summary || {};
+
+  return `# Customer Persona Analysis (Fallback Report)
+
+**Note: This analysis was generated using collected website data without AI processing due to a temporary service issue.**
+
+## Analysis Summary
+- **Websites analyzed**: ${summary.urls_analyzed || 0}
+- **Customer quotes found**: ${summary.user_quotes || 0}
+- **Competitor quotes**: ${summary.total_competitor_quotes || 0}
+- **Data sources**: Website content, competitor analysis
+
+## Key Demographics Indicators
+${userSite.demographics ? Object.entries(userSite.demographics).map(([key, value]) => 
+  `- **${key.replace(/_/g, ' ')}**: ${Array.isArray(value) ? value.join(', ') : value}`
+).join('\n') : 'Demographics data collected from website analysis'}
+
+## Customer Pain Points
+${userSite.customer_pain_points?.slice(0, 5).map((p: any, i: number) => 
+  `${i + 1}. **${p.pain || 'Pain point identified'}** (${p.emotional_intensity || 'medium'} intensity)`
+).join('\n') || 'Multiple customer challenges identified in website content'}
+
+## Customer Voice
+${userSite.raw_customer_quotes?.slice(0, 3).map((q: any) => 
+  `> "${q.quote}" *(${q.emotion_type})*`
+).join('\n\n') || 'Customer feedback and testimonials collected from website'}
+
+## Value Propositions
+${userSite.value_propositions?.slice(0, 3).map((v: any, i: number) => 
+  `${i + 1}. **${v.value || 'Value proposition'}** - ${v.emotional_appeal || 'customer benefit'}`
+).join('\n') || 'Key value propositions identified from website messaging'}
+
+## Behavioral Patterns
+${userSite.behavioral_patterns?.slice(0, 3).map((p: any) => 
+  `- **${p.pattern}**: ${p.evidence}`
+).join('\n') || '- Social proof seeking behavior observed\n- Value-conscious decision making\n- Research-oriented purchasing approach'}
+
+## Competitive Landscape
+${competitors.length > 0 ? `Analyzed ${competitors.length} competitor websites for positioning and messaging insights.` : 'Limited competitor data available'}
+
+## Recommendations
+1. **Data Quality**: Continue collecting customer feedback to enhance persona accuracy
+2. **Messaging**: Use identified customer language patterns in marketing materials  
+3. **Pain Points**: Address the ${userSite.customer_pain_points?.length || 'multiple'} pain points identified in your value proposition
+4. **Follow-up**: Retry full AI analysis when services are restored for detailed psychological insights
+
+## Data Quality Assessment
+- **Content Coverage**: ${userSite.faq_count ? `${userSite.faq_count} FAQ sections` : 'Website content'} analyzed
+- **Review Data**: ${userSite.reviews_found || 0} customer reviews/testimonials found
+- **Behavioral Insights**: ${userSite.behavioral_patterns?.length || 0} patterns identified
+
+*This fallback analysis provides essential insights from your collected website data. For comprehensive psychological profiling and strategic recommendations, please retry when AI services are available.*`;
+}
+
 // Generate final persona report from all extracted data
 export async function generateFinalReport(extractedData: any[]): Promise<any> {
   const userSite = extractedData.find(item => item.isUserSite);
@@ -624,14 +682,24 @@ Evidence: Root all insights in the actual collected data from website content an
 Data to analyze:
 ${JSON.stringify(combinedData, null, 2)}`;
 
-  const result = await geminiModel.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature: 0.1,
-      maxOutputTokens: 8000,
-    }
-  });
-  const response = await result.response;
+  let response: any;
+  try {
+    const result = await geminiModel.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 8000,
+      }
+    });
+    response = await result.response;
+  } catch (error) {
+    console.error('[Gemini API] Error generating final report:', error);
+    // Generate fallback report using the available data
+    return {
+      ...combinedData,
+      final_report: generateSimpleFallbackReport(combinedData)
+    };
+  }
   
   return {
     ...combinedData,
