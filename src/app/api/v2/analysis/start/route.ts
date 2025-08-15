@@ -90,24 +90,31 @@ export async function POST(request: NextRequest) {
       }];
 
       if (competitorUrls && competitorUrls.length > 0) {
-        console.log(`[V4] Step 3: Processing ${competitorUrls.length} competitor URLs...`);
+        console.log(`[V4] Step 3: Processing ${competitorUrls.length} competitor URLs in parallel...`);
         
+        // Add step tracking for all competitors
+        const competitorStepIndexes = [];
         for (let i = 0; i < competitorUrls.length; i++) {
-          const compUrl = competitorUrls[i];
           analysis.steps.push({
             name: `scrape_competitor_${i + 1}`,
             status: 'in_progress',
             startedAt: new Date().toISOString(),
           });
+          competitorStepIndexes.push(analysis.steps.length - 1);
+        }
+        
+        // Process all competitors in parallel
+        const competitorPromises = competitorUrls.map(async (compUrl, index) => {
+          const stepIndex = competitorStepIndexes[index];
           
           try {
             console.log(`[V4] Scraping competitor: ${compUrl}`);
             const compScrapeResult = await scrapeWebsite(compUrl, keywordPhrases);
             const compData = await extractDataWithAI(compScrapeResult.content, keywordPhrases);
             
-            analysis.steps[analysis.steps.length - 1].status = 'completed';
-            analysis.steps[analysis.steps.length - 1].completedAt = new Date().toISOString();
-            analysis.steps[analysis.steps.length - 1].output = {
+            analysis.steps[stepIndex].status = 'completed';
+            analysis.steps[stepIndex].completedAt = new Date().toISOString();
+            analysis.steps[stepIndex].output = {
               contentLength: compScrapeResult.content.length,
               totalPages: compScrapeResult.metadata.totalPages,
               blogPages: compScrapeResult.metadata.blogPages,
@@ -119,17 +126,28 @@ export async function POST(request: NextRequest) {
               reviewsFound: compData.reviews_found || 0,
             };
             
-            allSiteData.push({
+            return {
               url: compUrl,
               data: compData,
               isUserSite: false,
-            });
+            };
           } catch (error) {
             console.error(`[V4] Failed to process competitor ${compUrl}:`, error);
-            analysis.steps[analysis.steps.length - 1].status = 'failed';
-            analysis.steps[analysis.steps.length - 1].completedAt = new Date().toISOString();
+            analysis.steps[stepIndex].status = 'failed';
+            analysis.steps[stepIndex].completedAt = new Date().toISOString();
+            return null;
           }
-        }
+        });
+        
+        // Wait for all competitors to complete
+        const competitorResults = await Promise.all(competitorPromises);
+        
+        // Add successful results to allSiteData
+        competitorResults.forEach(result => {
+          if (result) {
+            allSiteData.push(result);
+          }
+        });
       }
 
       // Step 4: Generate final report with all data

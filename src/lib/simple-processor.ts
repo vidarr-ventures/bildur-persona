@@ -108,7 +108,7 @@ export async function scrapeWebsite(url: string, keywordPhrases: string[] = []):
       // Sort by relevance score (highest first) and return URLs
       return links
         .sort((a, b) => b.score - a.score)
-        .slice(0, 30) // Increased to analyze more pages for comprehensive content
+        .slice(0, 15) // Reduced for faster processing while maintaining quality
         .map(link => link.url);
     };
 
@@ -124,9 +124,10 @@ export async function scrapeWebsite(url: string, keywordPhrases: string[] = []):
       }
     };
 
-    // Scrape main page
+    // Scrape main page with timeout
     const mainResponse = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PersonaBot/1.0)' },
+      signal: AbortSignal.timeout(10000), // 10 second timeout
     });
     
     if (!mainResponse.ok) {
@@ -156,6 +157,7 @@ export async function scrapeWebsite(url: string, keywordPhrases: string[] = []):
       try {
         const response = await fetch(link, {
           headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PersonaBot/1.0)' },
+          signal: AbortSignal.timeout(8000), // 8 second timeout per page
         });
         
         if (response.ok) {
@@ -172,10 +174,11 @@ export async function scrapeWebsite(url: string, keywordPhrases: string[] = []):
           }
         }
       } catch (error) {
-        // Continue with other pages
+        // Continue with other pages - timeouts and network errors are expected
       }
       
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Reduced delay from 500ms to 100ms for faster processing
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
     if (allContent.length > maxContentLength) {
@@ -687,7 +690,7 @@ Evidence: Root all insights in the actual collected data from website content an
 Detail Level: Each section should be detailed enough to be a standalone mini-report.
 
 Data to analyze:
-${JSON.stringify(combinedData, null, 2)}`;
+${JSON.stringify(combinedData, null, 2).substring(0, 50000)}`; // Truncate to prevent excessive token usage
 
   let response: any;
   try {
@@ -695,7 +698,7 @@ ${JSON.stringify(combinedData, null, 2)}`;
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 16000, // Doubled for more comprehensive output
+        maxOutputTokens: 8000, // Reduced for faster processing
       }
     });
     response = await result.response;
