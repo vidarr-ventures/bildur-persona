@@ -1,20 +1,22 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
   subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
+  display: "swap",
+  variable: "--font-space-grotesk",
 });
 
 export const metadata: Metadata = {
-  title: "Persona Generator | Bildur",
-  description: "AI-powered customer persona generation tool by Bildur",
+  title: "Bildur - AI-Powered Customer Persona Analyzer",
+  description: "Generate detailed customer personas using AI analysis of reviews, social media, and website content.",
 };
 
 export default function RootLayout({
@@ -23,30 +25,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-black text-white`}>
-        {/* Bildur Navigation */}
-        <nav className="bg-black/95 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-50">
+    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}>
+      <body className="font-sans min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        {/* Navigation */}
+        <nav className="border-b border-white/10 backdrop-blur-sm bg-black/20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex items-center">
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">B</span>
-                  </div>
-                  <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                    Bildur
-                  </span>
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">B</span>
                 </div>
+                <span className="text-white font-semibold text-lg font-display">Bildur</span>
               </div>
-              <div className="flex items-center space-x-4">
-                <a href="https://bildur.com" className="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+              <div className="hidden md:flex items-center space-x-8">
+                <a href="/" className="text-purple-400 font-medium">
                   Home
                 </a>
-                <a href="https://bildur.com/about" className="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                <a href="/about" className="text-gray-300 hover:text-white transition-colors">
                   About
                 </a>
-                <a href="/" className="text-purple-400 hover:text-purple-300 px-3 py-2 text-sm font-medium">
+                <a href="#" className="text-gray-300 hover:text-white transition-colors">
                   Persona Builder
                 </a>
               </div>
@@ -59,11 +57,11 @@ export default function RootLayout({
           {children}
         </main>
 
-        {/* Bildur Footer */}
-        <footer className="bg-gray-950 border-t border-gray-800">
+        {/* Footer */}
+        <footer className="border-t border-white/10 bg-black/20 backdrop-blur-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="text-center text-gray-400">
-              <p>&copy; 2024 Bildur. All rights reserved.</p>
+            <div className="text-center">
+              <p className="text-gray-400">&copy; 2024 Bildur. All rights reserved.</p>
             </div>
           </div>
         </footer>

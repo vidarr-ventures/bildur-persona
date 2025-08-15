@@ -133,13 +133,18 @@ export async function POST(request: NextRequest) {
           const commentsData = await commentsResponse.json();
           totalApiQuotaUsed += 1; // CommentThreads cost 1 quota unit per request
           
-          if (commentsData.items) {
+          console.log(`[YOUTUBE LIVE] Comments API response for ${videoTitle}: ${commentsData.items ? commentsData.items.length : 0} items`);
+          
+          if (commentsData.items && commentsData.items.length > 0) {
             for (const item of commentsData.items) {
               const comment = item.snippet.topLevelComment.snippet;
               const relevanceScore = calculateRelevance(comment.textDisplay, keyword);
               
-              // Only include relevant comments
-              if (relevanceScore >= 0.3) {
+              // Log relevance scores for debugging
+              console.log(`[YOUTUBE LIVE] Comment relevance: ${relevanceScore.toFixed(2)} for "${comment.textDisplay.substring(0, 50)}..."`);
+              
+              // Only include relevant comments (lowered threshold)
+              if (relevanceScore >= 0.1) {
                 const commentObj = {
                   comment_id: item.snippet.topLevelComment.id,
                   text: comment.textDisplay,
